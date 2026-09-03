@@ -218,19 +218,13 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(Spacing.small))
 
             Text(
-                text = "Minesweeper",
+                text = "Mines",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(Spacing.titleToSubtitle))
-
-            Text(
-                text = "Clear the board without hitting a mine.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -283,27 +277,6 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(Spacing.medium))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Timer,
-                    contentDescription = null,
-                    modifier = Modifier.height(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Best time: 01:42",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.large))
 
             Row(
                 modifier = Modifier
@@ -411,15 +384,6 @@ fun DifficultyOption(
                     }
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "${difficulty.rows} × ${difficulty.columns} · ${difficulty.mines} mines",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
             }
         }
     }

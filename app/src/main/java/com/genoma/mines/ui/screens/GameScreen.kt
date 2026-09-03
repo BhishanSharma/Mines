@@ -212,7 +212,7 @@ private fun GameTopBar(
         }
 
         Text(
-            text = "Minesweeper",
+            text = "Mines",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
