@@ -1,7 +1,11 @@
 package com.genoma.mines
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +29,13 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SentimentSatisfied
+import androidx.compose.material.icons.filled.SentimentVeryDissatisfied
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,13 +51,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameStatus
+import com.genoma.mines.ui.theme.CountEight
+import com.genoma.mines.ui.theme.CountFive
+import com.genoma.mines.ui.theme.CountFour
+import com.genoma.mines.ui.theme.CountOne
+import com.genoma.mines.ui.theme.CountSeven
+import com.genoma.mines.ui.theme.CountSix
+import com.genoma.mines.ui.theme.CountThree
+import com.genoma.mines.ui.theme.CountTwo
 import com.genoma.mines.ui.theme.MinesTheme
 
 data class CellUiState(
@@ -119,30 +139,53 @@ fun GameScreen(
             when (status) {
 
                 GameStatus.WON -> {
-                    ResultMessage(
-                        title = "You won! 🎉",
-                        message = "Great job! You cleared the board.",
-                        onReset = onReset
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ResultMessage(
+                            title = "You won!",
+                            message = "Great job! You cleared the board.",
+                            isWin = true,
+                            onReset = onReset
+                        )
+                    }
                 }
 
                 GameStatus.LOST -> {
-                    ResultMessage(
-                        title = "Game over 💥",
-                        message = "You hit a mine.",
-                        onReset = onReset
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ResultMessage(
+                            title = "Game over",
+                            message = "You hit a mine.",
+                            isWin = false,
+                            onReset = onReset
+                        )
+                    }
                 }
 
                 else -> {
-                    MineBoard(
-                        columns = difficulty.columns,
-                        cells = cells,
-                        interactionEnabled = status == GameStatus.PLAYING,
-                        onCellTap = onCellTap,
-                        onCellLongPress = onCellLongPress,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MineBoard(
+                            columns = difficulty.columns,
+                            cells = cells,
+                            interactionEnabled = status == GameStatus.PLAYING,
+                            onCellTap = onCellTap,
+                            onCellLongPress = onCellLongPress,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }
@@ -161,7 +204,7 @@ private fun GameTopBar(
             onClick = onBack
         ) {
             Icon(
-                imageVector = Icons.Filled.PlayArrow,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back to home",
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(20.dp)
@@ -234,14 +277,51 @@ private fun GameStatusBar(
 private fun ResultMessage(
     title: String,
     message: String,
+    isWin: Boolean,
     onReset: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        val badgeColor = if (isWin) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.errorContainer
+        }
+        val badgeIconColor = if (isWin) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onErrorContainer
+        }
+
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(badgeColor),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isWin) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = badgeIconColor,
+                    modifier = Modifier.size(30.dp)
+                )
+            } else {
+                MineIcon(
+                    color = badgeIconColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+
+        Spacer(
+            modifier = Modifier.height(16.dp)
+        )
 
         Text(
             text = title,
@@ -331,14 +411,6 @@ private fun ResetButton(
     status: GameStatus,
     onClick: () -> Unit
 ) {
-    val emoji = when (status) {
-        GameStatus.READY -> "🙂"
-        GameStatus.PLAYING -> "⏸"
-        GameStatus.WON -> "😎"
-        GameStatus.LOST -> "😵"
-        GameStatus.PAUSED -> "▶️"
-    }
-
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -351,10 +423,44 @@ private fun ResetButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = emoji,
-            style = MaterialTheme.typography.titleLarge
-        )
+        val iconColor = MaterialTheme.colorScheme.onPrimaryContainer
+
+        when (status) {
+            GameStatus.READY -> Icon(
+                imageVector = Icons.Filled.SentimentSatisfied,
+                contentDescription = "Start game",
+                tint = iconColor,
+                modifier = Modifier.size(22.dp)
+            )
+
+            GameStatus.PLAYING -> Icon(
+                imageVector = Icons.Filled.Pause,
+                contentDescription = "Pause game",
+                tint = iconColor,
+                modifier = Modifier.size(22.dp)
+            )
+
+            GameStatus.PAUSED -> Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = "Resume game",
+                tint = iconColor,
+                modifier = Modifier.size(22.dp)
+            )
+
+            GameStatus.WON -> Icon(
+                imageVector = Icons.Filled.EmojiEvents,
+                contentDescription = "You won, tap to play again",
+                tint = iconColor,
+                modifier = Modifier.size(22.dp)
+            )
+
+            GameStatus.LOST -> Icon(
+                imageVector = Icons.Filled.SentimentVeryDissatisfied,
+                contentDescription = "Game over, tap to play again",
+                tint = iconColor,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 
@@ -414,7 +520,7 @@ private fun MineCell(
     onTap: () -> Unit,
     onLongPress: () -> Unit
 ) {
-    val backgroundColor = when {
+    val targetColor = when {
         state.isDetonated ->
             MaterialTheme.colorScheme.errorContainer
 
@@ -425,11 +531,32 @@ private fun MineCell(
             MaterialTheme.colorScheme.primaryContainer
     }
 
+    // Smoothly cross-fades when a cell flips from hidden to revealed,
+    // instead of popping instantly.
+    val backgroundColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = tween(durationMillis = 180),
+        label = "cellBackground"
+    )
+
+    // Unrevealed cells get a faint highlight border to read as
+    // "raised" tiles waiting to be tapped; revealed cells sit flush.
+    val borderColor = if (!state.isRevealed) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+    } else {
+        Color.Transparent
+    }
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(6.dp))
             .background(backgroundColor)
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(6.dp)
+            )
             .combinedClickable(
                 enabled = enabled,
                 onClick = onTap,
@@ -439,16 +566,18 @@ private fun MineCell(
     ) {
         when {
             state.isFlagged && !state.isRevealed -> {
-                Text(
-                    text = "🚩",
-                    style = MaterialTheme.typography.bodyMedium
+                Icon(
+                    imageVector = Icons.Filled.Flag,
+                    contentDescription = "Flagged",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
             state.isRevealed && state.isMine -> {
-                Text(
-                    text = "💣",
-                    style = MaterialTheme.typography.bodyMedium
+                MineIcon(
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
@@ -471,19 +600,79 @@ private fun MineCell(
     }
 }
 
+/**
+ * A minimal vector-drawn bomb: a round body with a short fuse.
+ * Avoids relying on emoji (which render inconsistently across devices)
+ * or a mismatched stock icon, since Material Icons has no literal bomb.
+ */
+@Composable
+fun MineIcon(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Canvas(modifier = modifier) {
+        val bodyRadius = size.minDimension * 0.36f
+        val bodyCenter = Offset(
+            x = size.width / 2f,
+            y = size.height / 2f + size.height * 0.08f
+        )
+
+        // Body
+        drawCircle(
+            color = color,
+            radius = bodyRadius,
+            center = bodyCenter
+        )
+
+        // Fuse, angled up and to the right
+        val fuseStart = Offset(
+            x = bodyCenter.x + bodyRadius * 0.55f,
+            y = bodyCenter.y - bodyRadius * 0.75f
+        )
+        val fuseEnd = Offset(
+            x = fuseStart.x + size.width * 0.16f,
+            y = fuseStart.y - size.height * 0.22f
+        )
+        drawLine(
+            color = color,
+            start = fuseStart,
+            end = fuseEnd,
+            strokeWidth = size.minDimension * 0.09f,
+            cap = StrokeCap.Round
+        )
+
+        // Spark at the fuse tip
+        drawCircle(
+            color = color,
+            radius = size.minDimension * 0.07f,
+            center = fuseEnd
+        )
+
+        // Small highlight to give the body some dimension
+        drawCircle(
+            color = Color.White.copy(alpha = 0.35f),
+            radius = bodyRadius * 0.28f,
+            center = Offset(
+                x = bodyCenter.x - bodyRadius * 0.35f,
+                y = bodyCenter.y - bodyRadius * 0.35f
+            )
+        )
+    }
+}
+
 @Composable
 private fun colorForCount(
     count: Int
 ): Color {
     return when (count) {
-        1 -> Color(0xFF3B82F6)
-        2 -> Color(0xFF16A34A)
-        3 -> Color(0xFFDC2626)
-        4 -> Color(0xFF7C3AED)
-        5 -> Color(0xFFB45309)
-        6 -> Color(0xFF0D9488)
-        7 -> Color(0xFF111827)
-        else -> Color(0xFF6B7280)
+        1 -> CountOne
+        2 -> CountTwo
+        3 -> CountThree
+        4 -> CountFour
+        5 -> CountFive
+        6 -> CountSix
+        7 -> CountSeven
+        else -> CountEight
     }
 }
 
