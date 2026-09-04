@@ -32,10 +32,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,11 +72,14 @@ fun SettingsScreen(
                 )
         ) {
 
+            // Top bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
+                IconButton(
+                    onClick = onBack
+                ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
@@ -97,7 +96,11 @@ fun SettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(SettingsSpacing.barToContent))
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.barToContent
+                )
+            )
 
             Text(
                 text = "PREFERENCES",
@@ -106,11 +109,19 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(SettingsSpacing.rowGap))
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.rowGap
+                )
+            )
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(SettingsSpacing.rowGap)
+                verticalArrangement = Arrangement.spacedBy(
+                    SettingsSpacing.rowGap
+                )
             ) {
+
+                // Sound
                 SettingToggleRow(
                     icon = if (soundEnabled) {
                         Icons.AutoMirrored.Filled.VolumeUp
@@ -123,6 +134,7 @@ fun SettingsScreen(
                     onCheckedChange = onSoundToggle
                 )
 
+                // Haptics
                 SettingToggleRow(
                     icon = Icons.Filled.Vibration,
                     title = "Haptics",
@@ -154,10 +166,18 @@ private fun SettingToggleRow(
             }
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (checked) 2.dp else 0.dp
+            defaultElevation = if (checked) {
+                2.dp
+            } else {
+                0.dp
+            }
         ),
         border = BorderStroke(
-            width = if (checked) 1.5.dp else 1.dp,
+            width = if (checked) {
+                1.5.dp
+            } else {
+                1.dp
+            },
             color = if (checked) {
                 MaterialTheme.colorScheme.primary
             } else {
@@ -168,16 +188,24 @@ private fun SettingToggleRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+            // Icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(
+                        RoundedCornerShape(10.dp)
+                    )
                     .background(
                         if (checked) {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            MaterialTheme.colorScheme.primary
+                                .copy(alpha = 0.15f)
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         }
@@ -196,9 +224,14 @@ private fun SettingToggleRow(
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
 
-            Column(modifier = Modifier.weight(1f)) {
+            // Text
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
@@ -209,28 +242,40 @@ private fun SettingToggleRow(
                         MaterialTheme.colorScheme.onSurface
                     }
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
+
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (checked) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                            .copy(alpha = 0.8f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(
+                modifier = Modifier.width(8.dp)
+            )
 
+            // Toggle
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    checkedThumbColor =
+                        MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor =
+                        MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor =
+                        MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor =
+                        MaterialTheme.colorScheme.surfaceVariant
                 )
             )
         }
@@ -240,15 +285,12 @@ private fun SettingToggleRow(
 @Preview(showBackground = true)
 @Composable
 private fun SettingsScreenPreview() {
-    var sound by remember { mutableStateOf(true) }
-    var haptics by remember { mutableStateOf(false) }
-
     MinesTheme {
         SettingsScreen(
-            soundEnabled = sound,
-            hapticsEnabled = haptics,
-            onSoundToggle = { sound = it },
-            onHapticsToggle = { haptics = it },
+            soundEnabled = true,
+            hapticsEnabled = false,
+            onSoundToggle = {},
+            onHapticsToggle = {},
             onBack = {}
         )
     }

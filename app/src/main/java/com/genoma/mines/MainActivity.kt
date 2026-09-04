@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -56,10 +55,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameStatus
 import com.genoma.mines.ui.theme.MinesTheme
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.genoma.mines.viewmodel.MinesweeperViewModel
 
 private sealed class Screen {
@@ -96,15 +95,9 @@ fun MinesweeperApp(
         mutableStateOf<Screen>(Screen.Home)
     }
 
-    // Simple in-memory preferences for now. If these need to survive
-    // app restarts later, back them with DataStore/SharedPreferences.
-    var soundEnabled by remember {
-        mutableStateOf(true)
-    }
-
-    var hapticsEnabled by remember {
-        mutableStateOf(true)
-    }
+    // Settings are now controlled by the ViewModel.
+    val soundEnabled by viewModel.soundEnabled.collectAsState()
+    val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
 
     val gameState by viewModel.gameState.collectAsState()
 
@@ -137,8 +130,15 @@ fun MinesweeperApp(
             SettingsScreen(
                 soundEnabled = soundEnabled,
                 hapticsEnabled = hapticsEnabled,
-                onSoundToggle = { soundEnabled = it },
-                onHapticsToggle = { hapticsEnabled = it },
+
+                onSoundToggle = { enabled ->
+                    viewModel.setSoundEnabled(enabled)
+                },
+
+                onHapticsToggle = { enabled ->
+                    viewModel.setHapticsEnabled(enabled)
+                },
+
                 onBack = {
                     screen = Screen.Home
                 }
@@ -168,7 +168,8 @@ fun MinesweeperApp(
                             isFlagged = cell.isFlagged,
                             isMine = cell.isMine,
                             adjacentMines = cell.adjacentMines,
-                            isDetonated = state.detonatedCellIndex == index
+                            isDetonated =
+                                state.detonatedCellIndex == index
                         )
                     },
 
@@ -195,7 +196,7 @@ fun MinesweeperApp(
 
                     onPause = {
                         viewModel.togglePause()
-                    },
+                    }
                 )
 
             } else {
@@ -206,8 +207,7 @@ fun MinesweeperApp(
 }
 
 /**
- * Screen-level spacing scale, kept in one place so it's easy to retune
- * without hunting through the composable tree for magic numbers.
+ * Screen-level spacing scale.
  */
 private object Spacing {
     val screenHorizontal = 24.dp
@@ -235,13 +235,17 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Respect status/navigation bars since the activity draws edge-to-edge.
                 .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .padding(horizontal = Spacing.screenHorizontal)
-                .padding(top = Spacing.screenTop, bottom = Spacing.screenBottom)
+                .padding(
+                    top = Spacing.screenTop,
+                    bottom = Spacing.screenBottom
+                )
         ) {
 
-            Spacer(modifier = Modifier.weight(0.5f))
+            Spacer(
+                modifier = Modifier.weight(0.5f)
+            )
 
             Box(
                 modifier = Modifier
@@ -256,7 +260,9 @@ fun HomeScreen(
                         modifier = Modifier
                             .size(84.dp)
                             .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(
+                                MaterialTheme.colorScheme.primaryContainer
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         MineIcon(
@@ -265,7 +271,9 @@ fun HomeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(Spacing.small))
+                    Spacer(
+                        modifier = Modifier.height(Spacing.small)
+                    )
 
                     Text(
                         text = "Mines",
@@ -279,9 +287,13 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.titleToSubtitle))
+            Spacer(
+                modifier = Modifier.height(Spacing.titleToSubtitle)
+            )
 
-            Spacer(modifier = Modifier.weight(0.5f))
+            Spacer(
+                modifier = Modifier.weight(0.5f)
+            )
 
             Text(
                 text = "CHOOSE DIFFICULTY",
@@ -290,22 +302,31 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(Spacing.optionGap))
+            Spacer(
+                modifier = Modifier.height(Spacing.optionGap)
+            )
 
             Column(
                 modifier = Modifier.selectableGroup(),
-                verticalArrangement = Arrangement.spacedBy(Spacing.small)
+                verticalArrangement = Arrangement.spacedBy(
+                    Spacing.small
+                )
             ) {
                 Difficulty.entries.forEach { difficulty ->
+
                     DifficultyOption(
                         difficulty = difficulty,
                         selected = selectedDifficulty == difficulty,
-                        onClick = { onDifficultySelected(difficulty) }
+                        onClick = {
+                            onDifficultySelected(difficulty)
+                        }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.large))
+            Spacer(
+                modifier = Modifier.height(Spacing.large)
+            )
 
             Button(
                 onClick = onStartGame,
@@ -323,7 +344,11 @@ fun HomeScreen(
                     contentDescription = null,
                     modifier = Modifier.height(18.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+
+                Spacer(
+                    modifier = Modifier.width(8.dp)
+                )
+
                 Text(
                     text = "Start game",
                     style = MaterialTheme.typography.labelLarge,
@@ -331,7 +356,9 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(Spacing.medium))
+            Spacer(
+                modifier = Modifier.height(Spacing.medium)
+            )
 
             Row(
                 modifier = Modifier
@@ -348,7 +375,11 @@ fun HomeScreen(
                     modifier = Modifier.height(16.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+
+                Spacer(
+                    modifier = Modifier.width(6.dp)
+                )
+
                 Text(
                     text = "How to play",
                     style = MaterialTheme.typography.labelLarge,
@@ -372,7 +403,11 @@ fun HomeScreen(
                     modifier = Modifier.height(16.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+
+                Spacer(
+                    modifier = Modifier.width(6.dp)
+                )
+
                 Text(
                     text = "Settings",
                     style = MaterialTheme.typography.labelLarge,
@@ -381,9 +416,9 @@ fun HomeScreen(
                 )
             }
 
-
-
-            Spacer(modifier = Modifier.weight(0.75f))
+            Spacer(
+                modifier = Modifier.weight(0.75f)
+            )
         }
     }
 }
@@ -394,14 +429,18 @@ fun DifficultyOption(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource = remember {
+        MutableInteractionSource()
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = "${difficulty.displayName()} difficulty, " +
-                        "${difficulty.rows} by ${difficulty.columns} grid, ${difficulty.mines} mines"
+                contentDescription =
+                    "${difficulty.displayName()} difficulty, " +
+                            "${difficulty.rows} by ${difficulty.columns} grid, " +
+                            "${difficulty.mines} mines"
             }
             .selectable(
                 selected = selected,
@@ -433,7 +472,10 @@ fun DifficultyOption(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -451,9 +493,13 @@ fun DifficultyOption(
                 modifier = Modifier.height(20.dp)
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = difficulty.displayName(),
                     style = MaterialTheme.typography.titleSmall,
@@ -464,7 +510,10 @@ fun DifficultyOption(
                         MaterialTheme.colorScheme.onSurface
                     }
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
             }
         }
     }

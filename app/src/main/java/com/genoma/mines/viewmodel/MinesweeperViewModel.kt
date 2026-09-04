@@ -1,27 +1,78 @@
 package com.genoma.mines.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.genoma.mines.feedback.GameFeedback
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameState
 import com.genoma.mines.game.GameStatus
 import com.genoma.mines.game.MinesweeperGame
+import com.genoma.mines.settings.SettingsDataStore
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 
-class MinesweeperViewModel : ViewModel() {
+class MinesweeperViewModel(
+    application: Application
+) : AndroidViewModel(application) {
 
     private var game: MinesweeperGame? = null
     private var timerJob: Job? = null
 
-    private val _gameState = MutableStateFlow<GameState?>(null)
+    private val feedback = GameFeedback(application)
 
+    private val settings = SettingsDataStore(application)
+
+    private val _gameState = MutableStateFlow<GameState?>(null)
     val gameState: StateFlow<GameState?> = _gameState.asStateFlow()
+
+    // Sound and haptic settings
+    private val _soundEnabled = MutableStateFlow(true)
+    val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
+
+    private val _hapticsEnabled = MutableStateFlow(true)
+    val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled.asStateFlow()
+
+    init {
+        loadSettings()
+    }
+
+    private fun loadSettings() {
+        viewModelScope.launch {
+            launch {
+                settings.soundEnabled.collect { enabled ->
+                    _soundEnabled.value = enabled
+                }
+            }
+
+            launch {
+                settings.hapticsEnabled.collect { enabled ->
+                    _hapticsEnabled.value = enabled
+                }
+            }
+        }
+    }
+
+    fun setSoundEnabled(enabled: Boolean) {
+        _soundEnabled.value = enabled
+
+        viewModelScope.launch {
+            settings.setSoundEnabled(enabled)
+        }
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        _hapticsEnabled.value = enabled
+
+        viewModelScope.launch {
+            settings.setHapticsEnabled(enabled)
+        }
+    }
 
     fun startGame(difficulty: Difficulty) {
         timerJob?.cancel()
@@ -91,7 +142,6 @@ class MinesweeperViewModel : ViewModel() {
     fun revealCell(index: Int) {
 
         val currentGame = game ?: return
-
         val currentState = _gameState.value ?: return
 
         if (currentState.status != GameStatus.PLAYING) {
@@ -102,6 +152,11 @@ class MinesweeperViewModel : ViewModel() {
 
         if (hitMine) {
             timerJob?.cancel()
+
+            feedback.explosion(
+                soundEnabled = _soundEnabled.value,
+                hapticsEnabled = _hapticsEnabled.value
+            )
 
             currentGame.revealAllMines()
 
@@ -123,6 +178,16 @@ class MinesweeperViewModel : ViewModel() {
 
         if (status == GameStatus.WON) {
             timerJob?.cancel()
+
+            feedback.win(
+                soundEnabled = _soundEnabled.value,
+                hapticsEnabled = _hapticsEnabled.value
+            )
+        } else {
+            feedback.tap(
+                soundEnabled = _soundEnabled.value,
+                hapticsEnabled = _hapticsEnabled.value
+            )
         }
 
         _gameState.value = currentState.copy(
@@ -130,7 +195,6 @@ class MinesweeperViewModel : ViewModel() {
             flagsPlaced = currentGame.getFlagsPlaced(),
             status = status
         )
-
     }
 
     fun toggleFlag(index: Int) {
@@ -142,7 +206,16 @@ class MinesweeperViewModel : ViewModel() {
             return
         }
 
-        currentGame.toggleFlag(index)
+        val changed = currentGame.toggleFlag(index)
+
+        if (!changed) {
+            return
+        }
+
+        feedback.flag(
+            soundEnabled = _soundEnabled.value,
+            hapticsEnabled = _hapticsEnabled.value
+        )
 
         _gameState.value = currentState.copy(
             cells = currentGame.getBoard(),
@@ -151,7 +224,6 @@ class MinesweeperViewModel : ViewModel() {
     }
 
     fun resetGame() {
-
         val currentState = _gameState.value ?: return
 
         startGame(currentState.difficulty)
@@ -161,5 +233,11 @@ class MinesweeperViewModel : ViewModel() {
         timerJob?.cancel()
         game = null
         _gameState.value = null
+    }
+
+    override fun onCleared() {
+        timerJob?.cancel()
+        feedback.release()
+        super.onCleared()
     }
 }
