@@ -22,10 +22,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -69,6 +67,11 @@ import com.genoma.mines.ui.theme.CountSix
 import com.genoma.mines.ui.theme.CountThree
 import com.genoma.mines.ui.theme.CountTwo
 import com.genoma.mines.ui.theme.MinesTheme
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 
 data class CellUiState(
     val isRevealed: Boolean = false,
@@ -117,7 +120,9 @@ fun GameScreen(
         ) {
 
             GameTopBar(
-                onBack = onBack
+                onBack = onBack,
+                onNewGame = onReset,
+                onQuit = onBack
             )
 
             Spacer(
@@ -194,7 +199,9 @@ fun GameScreen(
 
 @Composable
 private fun GameTopBar(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNewGame: () -> Unit,
+    onQuit: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -215,11 +222,59 @@ private fun GameTopBar(
             text = "Mines",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
         )
+
+        Box {
+            var menuExpanded by remember { mutableStateOf(false) }
+
+            IconButton(
+                onClick = { menuExpanded = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = "More options",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("New game") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.RestartAlt,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onNewGame()
+                    }
+                )
+
+                DropdownMenuItem(
+                    text = { Text("Quit") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onQuit()
+                    }
+                )
+            }
+        }
     }
 }
-
 @Composable
 private fun GameStatusBar(
     minesRemaining: Int,
