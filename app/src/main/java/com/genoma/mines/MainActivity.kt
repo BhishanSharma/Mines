@@ -60,6 +60,9 @@ import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameStatus
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 
 private sealed class Screen {
     object Home : Screen()
@@ -265,9 +268,11 @@ fun HomeScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        MineIcon(
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(38.dp)
+                        Image(
+                            painter = painterResource(id = R.drawable.mine_logo),
+                            contentDescription = "Mines logo",
+                            modifier = Modifier.size(68.dp),
+                            contentScale = ContentScale.Fit
                         )
                     }
 
