@@ -1,7 +1,10 @@
 package com.genoma.mines.ui.screens
 
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +24,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -37,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -54,13 +61,19 @@ private object SettingsSpacing {
 fun SettingsScreen(
     soundEnabled: Boolean,
     hapticsEnabled: Boolean,
+    darkTheme: Boolean,
     isSignedIn: Boolean,
     userName: String?,
     onSoundToggle: (Boolean) -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
+    onThemeToggle: (Boolean) -> Unit,
+    onFeedbackClick: () -> Unit,
     onSignOut: () -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val appVersion = getInstalledAppVersion(context)
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -106,6 +119,7 @@ fun SettingsScreen(
                 )
             )
 
+            // Account
             Text(
                 text = "ACCOUNT",
                 style = MaterialTheme.typography.labelMedium,
@@ -121,38 +135,62 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant
+                )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(
+                            horizontal = 16.dp,
+                            vertical = 14.dp
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
-                            text = if (isSignedIn) (userName ?: "Signed in") else "Playing as Guest",
+                            text = if (isSignedIn) {
+                                userName ?: "Signed in"
+                            } else {
+                                "Playing as Guest"
+                            },
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+
                         Text(
-                            text = if (isSignedIn) "Google account" else "Not signed in",
+                            text = if (isSignedIn) {
+                                "Google account"
+                            } else {
+                                "Not signed in"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     if (isSignedIn) {
-                        TextButton(onClick = onSignOut) {
+                        TextButton(
+                            onClick = onSignOut
+                        ) {
                             Text("Sign out")
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(SettingsSpacing.barToContent))
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.barToContent
+                )
+            )
 
+            // App Appearance
             Text(
                 text = "PREFERENCES",
                 style = MaterialTheme.typography.labelMedium,
@@ -171,6 +209,19 @@ fun SettingsScreen(
                     SettingsSpacing.rowGap
                 )
             ) {
+
+                // Theme
+                SettingToggleRow(
+                    icon = Icons.Filled.DarkMode,
+                    title = "Dark theme",
+                    subtitle = if (darkTheme) {
+                        "Use the dark appearance"
+                    } else {
+                        "Use the light appearance"
+                    },
+                    checked = darkTheme,
+                    onCheckedChange = onThemeToggle
+                )
 
                 // Sound
                 SettingToggleRow(
@@ -192,6 +243,48 @@ fun SettingsScreen(
                     subtitle = "Vibrate on reveal, flag, and game over",
                     checked = hapticsEnabled,
                     onCheckedChange = onHapticsToggle
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.barToContent
+                )
+            )
+
+            // About App
+            Text(
+                text = "ABOUT APP",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.rowGap
+                )
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(
+                    SettingsSpacing.rowGap
+                )
+            ) {
+
+                // Feedback
+                SettingActionRow(
+                    icon = Icons.Filled.Feedback,
+                    title = "Feedback",
+                    subtitle = "Share your feedback about the app",
+                    onClick = onFeedbackClick
+                )
+
+                // Version
+                SettingInfoRow(
+                    icon = Icons.Filled.Info,
+                    title = "App version",
+                    value = appVersion
                 )
             }
         }
@@ -250,9 +343,7 @@ private fun SettingToggleRow(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(
-                        RoundedCornerShape(10.dp)
-                    )
+                    .clip(RoundedCornerShape(10.dp))
                     .background(
                         if (checked) {
                             MaterialTheme.colorScheme.primary
@@ -333,6 +424,171 @@ private fun SettingToggleRow(
     }
 }
 
+@Composable
+private fun SettingActionRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
+
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingInfoRow(
+    icon: ImageVector,
+    title: String,
+    value: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
+
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Reads the versionName from the currently installed application package.
+ *
+ * This means the value comes from the APK installed on the device rather
+ * than being hardcoded in the Settings screen.
+ */
+private fun getInstalledAppVersion(context: Context): String {
+    return try {
+        context.packageManager
+            .getPackageInfo(context.packageName, 0)
+            .versionName
+            ?.let { "Version $it" }
+            ?: "Version unknown"
+    } catch (_: PackageManager.NameNotFoundException) {
+        "Version unknown"
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun SettingsScreenPreview() {
@@ -340,10 +596,13 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             soundEnabled = true,
             hapticsEnabled = false,
+            darkTheme = true,
             isSignedIn = true,
             userName = "Jordan",
             onSoundToggle = {},
             onHapticsToggle = {},
+            onThemeToggle = {},
+            onFeedbackClick = {},
             onSignOut = {},
             onBack = {}
         )
