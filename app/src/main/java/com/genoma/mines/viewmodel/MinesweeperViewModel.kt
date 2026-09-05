@@ -14,8 +14,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 class MinesweeperViewModel(
     application: Application
@@ -25,13 +26,11 @@ class MinesweeperViewModel(
     private var timerJob: Job? = null
 
     private val feedback = GameFeedback(application)
-
     private val settings = SettingsDataStore(application)
 
     private val _gameState = MutableStateFlow<GameState?>(null)
     val gameState: StateFlow<GameState?> = _gameState.asStateFlow()
 
-    // Sound and haptic settings
     private val _soundEnabled = MutableStateFlow(true)
     val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
 
@@ -44,6 +43,7 @@ class MinesweeperViewModel(
 
     private fun loadSettings() {
         viewModelScope.launch {
+
             launch {
                 settings.soundEnabled.collect { enabled ->
                     _soundEnabled.value = enabled
@@ -124,7 +124,7 @@ class MinesweeperViewModel(
 
         timerJob = viewModelScope.launch {
             while (isActive) {
-                delay(1000)
+                delay(1.seconds)
 
                 val currentState = _gameState.value
 
@@ -238,6 +238,5 @@ class MinesweeperViewModel(
     override fun onCleared() {
         timerJob?.cancel()
         feedback.release()
-        super.onCleared()
     }
 }

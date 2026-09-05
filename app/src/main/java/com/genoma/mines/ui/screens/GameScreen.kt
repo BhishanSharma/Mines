@@ -1,4 +1,4 @@
-package com.genoma.mines
+package com.genoma.mines.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -740,33 +740,32 @@ private fun GameScreenPreview() {
         List(
             difficulty.rows * difficulty.columns
         ) { index ->
-            when {
-                index == 4 ->
+            when (index) {
+                4 ->
                     CellUiState(
                         isRevealed = true,
                         adjacentMines = 2
                     )
 
-                index == 5 ->
+                5 ->
                     CellUiState(
                         isRevealed = true,
                         adjacentMines = 0
                     )
 
-                index == 6 ->
+                6 ->
                     CellUiState(
                         isFlagged = true
                     )
 
-                index == 10 ->
+                10 ->
                     CellUiState(
                         isRevealed = true,
                         isMine = true,
                         isDetonated = true
                     )
 
-                else ->
-                    CellUiState()
+                else -> CellUiState()
             }
         }
     }

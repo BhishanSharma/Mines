@@ -3,7 +3,7 @@ package com.genoma.mines.game
 import kotlin.random.Random
 
 class MinesweeperGame(
-    val difficulty: Difficulty
+    difficulty: Difficulty
 ) {
 
     private val rows = difficulty.rows
@@ -223,9 +223,5 @@ class MinesweeperGame(
 
     fun getFlagsPlaced(): Int {
         return board.count { it.isFlagged }
-    }
-
-    fun getMineCount(): Int {
-        return board.count { it.isMine }
     }
 }

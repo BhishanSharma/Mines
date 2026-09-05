@@ -18,6 +18,12 @@ import com.genoma.mines.auth.GoogleAuthManager
 import com.genoma.mines.auth.GoogleSignInResult
 import com.genoma.mines.auth.UserSessionStore
 import com.genoma.mines.game.Difficulty
+import com.genoma.mines.ui.screens.CellUiState
+import com.genoma.mines.ui.screens.GameScreen
+import com.genoma.mines.ui.screens.HomeScreen
+import com.genoma.mines.ui.screens.HowToPlayScreen
+import com.genoma.mines.ui.screens.LoginScreen
+import com.genoma.mines.ui.screens.SettingsScreen
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
 import kotlinx.coroutines.flow.first
@@ -100,7 +106,7 @@ fun MinesweeperApp(
         return
     }
 
-    when (val current = screen) {
+    when (screen) {
 
         is Screen.Login -> {
             LoginScreen(

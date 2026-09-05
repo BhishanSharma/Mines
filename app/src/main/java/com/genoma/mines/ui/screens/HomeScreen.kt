@@ -1,4 +1,4 @@
-package com.genoma.mines
+package com.genoma.mines.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Button
@@ -48,8 +47,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import com.genoma.mines.R
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.ui.theme.MinesTheme
 
@@ -217,7 +218,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.HelpOutline,
+                    imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
                     contentDescription = null,
                     modifier = Modifier.height(16.dp),
                     tint = MaterialTheme.colorScheme.primary
