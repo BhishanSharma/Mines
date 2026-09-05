@@ -12,6 +12,15 @@ class MinesweeperGame(
 
     private var board: MutableList<Cell> = mutableListOf()
 
+    /**
+     * Mines aren't placed until the first reveal. This guarantees the
+     * opening move can never be a mine, and — since the first click's
+     * whole neighborhood is excluded from mine placement — it also
+     * guarantees the first reveal opens up a small area rather than
+     * landing on an isolated numbered cell.
+     */
+    private var minesPlaced = false
+
     init {
         createBoard()
     }
@@ -24,27 +33,31 @@ class MinesweeperGame(
                 column = index % columns
             )
         }
-
-        placeMines()
-        calculateAdjacentMines()
     }
 
-    private fun placeMines() {
+    private fun placeMines(excludingIndex: Int) {
 
-        val minePositions = mutableSetOf<Int>()
+        val excludedCell = board[excludingIndex]
+        val safeZone = (getNeighbors(excludedCell).map { it.row * columns + it.column } + excludingIndex)
+            .toSet()
 
-        while (minePositions.size < mineCount) {
-            minePositions.add(
-                Random.nextInt(board.size)
-            )
+        var candidates = board.indices.filterNot { it in safeZone }
+
+        // Fallback for boards where mines can't all fit outside the safe
+        // zone (e.g. a very small custom difficulty) — fall back to only
+        // excluding the tapped cell itself, so the game can still start.
+        if (candidates.size < mineCount) {
+            candidates = board.indices.filterNot { it == excludingIndex }
         }
+
+        val minePositions = candidates.shuffled(Random).take(mineCount).toSet()
 
         minePositions.forEach { position ->
-
-            board[position] = board[position].copy(
-                isMine = true
-            )
+            board[position] = board[position].copy(isMine = true)
         }
+
+        calculateAdjacentMines()
+        minesPlaced = true
     }
 
     private fun calculateAdjacentMines() {
@@ -100,37 +113,38 @@ class MinesweeperGame(
         return board.toList()
     }
 
-    fun reveal(index: Int): Boolean {
+    /**
+     * Reveals [index]. Returns the index of the mine that was detonated,
+     * or null if the reveal was safe (including no-ops on cells that are
+     * already revealed or flagged).
+     */
+    fun reveal(index: Int): Int? {
         if (index !in board.indices) {
-            return false
+            return null
+        }
+
+        if (!minesPlaced) {
+            placeMines(excludingIndex = index)
         }
 
         val cell = board[index]
 
         if (cell.isRevealed || cell.isFlagged) {
-            return false
+            return null
         }
 
-        // If it's a mine, reveal only that mine.
         if (cell.isMine) {
-            board[index] = cell.copy(
-                isRevealed = true
-            )
-            return true
+            board[index] = cell.copy(isRevealed = true)
+            return index
         }
 
-        // Reveal the selected cell.
-        board[index] = cell.copy(
-            isRevealed = true
-        )
+        board[index] = cell.copy(isRevealed = true)
 
-        // If there are no adjacent mines,
-        // reveal the connected empty area.
         if (cell.adjacentMines == 0) {
             revealEmptyArea(index)
         }
 
-        return false
+        return null
     }
 
     private fun revealEmptyArea(startIndex: Int) {
@@ -182,6 +196,52 @@ class MinesweeperGame(
                 }
             }
         }
+    }
+
+    /**
+     * Chording: tapping an already-revealed numbered cell whose flagged
+     * neighbor count matches its own number auto-reveals all remaining
+     * unflagged neighbors at once. Standard Minesweeper shortcut for
+     * clearing cells you're confident about without tapping each one.
+     *
+     * Returns the index of a mine if chording detonates one (i.e. a
+     * neighbor was wrongly left unflagged), or null if all revealed
+     * neighbors were safe. No-ops (returns null) if [index] isn't a
+     * revealed, non-mine, numbered cell, or if the flag count doesn't
+     * match yet.
+     */
+    fun chord(index: Int): Int? {
+        if (index !in board.indices) {
+            return null
+        }
+
+        val cell = board[index]
+
+        if (!cell.isRevealed || cell.isMine) {
+            return null
+        }
+
+        val neighbors = getNeighbors(cell)
+        val flaggedCount = neighbors.count { it.isFlagged }
+
+        if (flaggedCount != cell.adjacentMines) {
+            return null
+        }
+
+        var detonatedIndex: Int? = null
+
+        neighbors.forEach { neighbor ->
+            if (!neighbor.isFlagged && !neighbor.isRevealed) {
+                val neighborIndex = neighbor.row * columns + neighbor.column
+                val result = reveal(neighborIndex)
+
+                if (result != null && detonatedIndex == null) {
+                    detonatedIndex = result
+                }
+            }
+        }
+
+        return detonatedIndex
     }
 
     fun toggleFlag(index: Int): Boolean {

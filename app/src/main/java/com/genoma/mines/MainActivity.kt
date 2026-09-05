@@ -2,6 +2,7 @@ package com.genoma.mines
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import com.genoma.mines.ui.screens.GameScreen
 import com.genoma.mines.ui.screens.HomeScreen
 import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
+import com.genoma.mines.ui.screens.ProfileScreen
 import com.genoma.mines.ui.screens.SettingsScreen
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
@@ -34,6 +36,7 @@ private sealed class Screen {
     object Home : Screen()
     object Settings : Screen()
     object HowToPlay : Screen()
+    object Profile : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
 
@@ -106,6 +109,31 @@ fun MinesweeperApp(
         return
     }
 
+    // The app manages navigation itself via `screen` rather than Navigation
+    // Compose, so system/gesture back does nothing by default except close
+    // the Activity. This routes it through the same "back" action each
+    // screen's own back button already uses. Disabled on Home and Login
+    // since those are the app's root screens — back there should behave
+    // normally and exit the app.
+    BackHandler(enabled = screen !is Screen.Home && screen !is Screen.Login) {
+        when (screen) {
+            is Screen.Game -> {
+                viewModel.goBackToHome()
+                screen = Screen.Home
+            }
+
+            is Screen.Settings,
+            is Screen.HowToPlay,
+            is Screen.Profile -> {
+                screen = Screen.Home
+            }
+
+            else -> {
+                // Unreachable: Home/Login are excluded via `enabled` above.
+            }
+        }
+    }
+
     when (screen) {
 
         is Screen.Login -> {
@@ -164,6 +192,10 @@ fun MinesweeperApp(
 
                 onOpenSettings = {
                     screen = Screen.Settings
+                },
+
+                onOpenProfile = {
+                    screen = Screen.Profile
                 }
             )
         }
@@ -253,6 +285,15 @@ fun MinesweeperApp(
             } else {
                 screen = Screen.Home
             }
+        }
+
+        is Screen.Profile -> {
+            ProfileScreen(
+                username = "${userProfile?.displayName}",
+                onBack = {
+                    screen = Screen.Home
+                }
+            )
         }
     }
 }

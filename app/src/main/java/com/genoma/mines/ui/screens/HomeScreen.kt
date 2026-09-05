@@ -79,7 +79,7 @@ fun HomeScreen(
     onStartGame: () -> Unit,
     onHowToPlay: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenProfile: () -> Unit = {},
+    onOpenProfile: () -> Unit,
     username: String = "Player",
     gamesWon: Int = 0
 ) {
