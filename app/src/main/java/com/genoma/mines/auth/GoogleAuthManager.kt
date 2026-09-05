@@ -1,6 +1,8 @@
 package com.genoma.mines.auth
 
+import android.app.Activity
 import android.content.Context
+import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -23,7 +25,10 @@ class GoogleAuthManager(
         CredentialManager.create(context)
     }
 
-    suspend fun signIn(webClientId: String): GoogleSignInResult {
+    suspend fun signIn(
+        webClientId: String,
+        activity: Activity
+    ): GoogleSignInResult {
 
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(false)
@@ -36,16 +41,20 @@ class GoogleAuthManager(
             .build()
 
         return try {
+
             val response = credentialManager.getCredential(
-                request = request,
-                context = context
+                context = activity,
+                request = request
             )
 
             val credential = response.credential
 
-            if (credential is CustomCredential &&
-                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            if (
+                credential is CustomCredential &&
+                credential.type ==
+                GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
             ) {
+
                 val googleIdTokenCredential =
                     GoogleIdTokenCredential.createFrom(credential.data)
 
@@ -54,31 +63,42 @@ class GoogleAuthManager(
                         id = googleIdTokenCredential.id,
                         displayName = googleIdTokenCredential.displayName,
                         email = null,
-                        photoUrl = googleIdTokenCredential.profilePictureUri?.toString()
+                        photoUrl =
+                            googleIdTokenCredential.profilePictureUri
+                                ?.toString()
                     )
                 )
+
             } else {
-                GoogleSignInResult.Failure("Unexpected credential type")
+                GoogleSignInResult.Failure(
+                    "Unexpected credential type"
+                )
             }
 
         } catch (e: GoogleIdTokenParsingException) {
-            GoogleSignInResult.Failure("Could not parse Google ID token")
+
+            GoogleSignInResult.Failure(
+                "Could not parse Google ID token"
+            )
+
         } catch (e: GetCredentialException) {
-            if (e.type == "android.credentials.GetCredentialException.TYPE_USER_CANCELED") {
-                GoogleSignInResult.Cancelled
-            } else {
-                GoogleSignInResult.Failure(e.message ?: "Sign-in failed")
-            }
+
+            GoogleSignInResult.Failure(
+                e.message ?: "Sign-in failed"
+            )
         }
     }
 
     suspend fun signOut() {
+
         try {
+
             credentialManager.clearCredentialState(
-                androidx.credentials.ClearCredentialStateRequest()
+                ClearCredentialStateRequest()
             )
+
         } catch (e: Exception) {
-            // Ignore — nothing to clear
+            // Nothing to clear.
         }
     }
 }

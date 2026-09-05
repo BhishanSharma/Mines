@@ -99,6 +99,7 @@ fun MinesweeperApp(
     viewModel: MinesweeperViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val activity = context as ComponentActivity
     val scope = rememberCoroutineScope()
 
     val authManager = remember {
@@ -119,12 +120,20 @@ fun MinesweeperApp(
         mutableStateOf(Difficulty.EASY)
     }
 
+    var isSigningOut by remember {
+        mutableStateOf(false)
+    }
+
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
     val gameState by viewModel.gameState.collectAsState()
 
     LaunchedEffect(userProfile) {
-        if (userProfile != null && screen is Screen.Login) {
+        if (
+            userProfile != null &&
+            screen is Screen.Login &&
+            !isSigningOut
+        ) {
             screen = Screen.Home
         }
     }
@@ -135,11 +144,12 @@ fun MinesweeperApp(
             LoginScreen(
                 onGoogleSignInClick = {
                     scope.launch {
-                        when (
-                            val result = authManager.signIn(
-                                context.getString(R.string.google_web_client_id)
-                            )
-                        ) {
+                        val result = authManager.signIn(
+                            webClientId = context.getString(R.string.google_web_client_id),
+                            activity = activity
+                        )
+
+                        when (result) {
                             is GoogleSignInResult.Success -> {
                                 sessionStore.save(result.profile)
                                 screen = Screen.Home
@@ -197,8 +207,11 @@ fun MinesweeperApp(
                 },
                 onSignOut = {
                     scope.launch {
+                        isSigningOut = true
+
                         authManager.signOut()
                         sessionStore.clear()
+
                         screen = Screen.Login
                     }
                 },
