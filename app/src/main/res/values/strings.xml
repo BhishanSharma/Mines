@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Mines</string>
+    <!-- Paste the WEB client ID here, not the Android one -->
+    <string name="google_web_client_id">77522977796-jtkoarngsesvhg11s5jhb4eheia4g9ns.apps.googleusercontent.com</string>
 </resources>

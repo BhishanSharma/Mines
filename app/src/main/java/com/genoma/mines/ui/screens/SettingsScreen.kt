@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +54,11 @@ private object SettingsSpacing {
 fun SettingsScreen(
     soundEnabled: Boolean,
     hapticsEnabled: Boolean,
+    isSignedIn: Boolean,
+    userName: String?,
     onSoundToggle: (Boolean) -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
+    onSignOut: () -> Unit,
     onBack: () -> Unit
 ) {
     Surface(
@@ -101,6 +105,53 @@ fun SettingsScreen(
                     SettingsSpacing.barToContent
                 )
             )
+
+            Text(
+                text = "ACCOUNT",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(SettingsSpacing.rowGap))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isSignedIn) (userName ?: "Signed in") else "Playing as Guest",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isSignedIn) "Google account" else "Not signed in",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (isSignedIn) {
+                        TextButton(onClick = onSignOut) {
+                            Text("Sign out")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(SettingsSpacing.barToContent))
 
             Text(
                 text = "PREFERENCES",
@@ -289,8 +340,11 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             soundEnabled = true,
             hapticsEnabled = false,
+            isSignedIn = true,
+            userName = "Jordan",
             onSoundToggle = {},
             onHapticsToggle = {},
+            onSignOut = {},
             onBack = {}
         )
     }
