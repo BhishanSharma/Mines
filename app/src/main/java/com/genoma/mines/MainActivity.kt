@@ -53,6 +53,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: MinesweeperViewModel = viewModel()
 
+            // Null means "no saved preference" — fall back to the system
+            // setting until the user explicitly picks one in Settings.
             val darkThemePreference by viewModel.darkTheme.collectAsState()
             val systemInDarkTheme = isSystemInDarkTheme()
             val darkTheme = darkThemePreference ?: systemInDarkTheme
@@ -263,6 +265,9 @@ fun MinesweeperApp(
                 userEmail = userProfile?.email ?: "",
 
                 onSubmit = { feedback ->
+                    // TODO: replace with a real submission path (API call,
+                    // email intent, etc.) once one exists. For now this
+                    // just confirms receipt and returns to Settings.
                     android.widget.Toast.makeText(
                         context,
                         "Thanks for the feedback!",
@@ -335,8 +340,14 @@ fun MinesweeperApp(
         }
 
         is Screen.Profile -> {
+            val selectedAvatar by viewModel.selectedAvatar.collectAsState()
+
             ProfileScreen(
                 username = "${userProfile?.displayName}",
+                selectedAvatar = selectedAvatar,
+                onAvatarSelected = { avatar ->
+                    viewModel.setAvatar(avatar)
+                },
                 onBack = {
                     screen = Screen.Home
                 }

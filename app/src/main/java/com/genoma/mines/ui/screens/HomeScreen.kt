@@ -157,21 +157,6 @@ fun HomeScreen(
                         modifier = Modifier.height(20.dp)
                     )
 
-                    /*
-                     * Score badge
-                     *
-                     * The Layout contains two completely independent
-                     * children:
-                     *
-                     * 1. The score pill
-                     * 2. The circular icon background
-                     *
-                     * The circle is NOT part of the pill's padding or
-                     * internal Row layout.
-                     *
-                     * Its center is positioned exactly at the pill's
-                     * right-most edge and vertically centered with it.
-                     */
                     Layout(
                         modifier = Modifier.offset(
                             x = -Spacing.screenHorizontal
@@ -245,13 +230,7 @@ fun HomeScreen(
                             )
                         )
 
-                        /*
-                         * The Layout itself has exactly the pill's size.
-                         *
-                         * This is important because the circle is allowed
-                         * to visually overflow the Layout bounds without
-                         * changing the pill's size.
-                         */
+
                         layout(
                             width = pill.width,
                             height = pill.height
@@ -263,15 +242,6 @@ fun HomeScreen(
                                 y = 0
                             )
 
-                            /*
-                             * Put the CENTER of the circle exactly on
-                             * the RIGHT EDGE of the pill.
-                             *
-                             * Therefore:
-                             *
-                             * circleLeft =
-                             *     pillRight - (circleWidth / 2)
-                             */
                             circle.place(
                                 x = pill.width - (circle.width / 2),
                                 y = (pill.height - circle.height) / 2

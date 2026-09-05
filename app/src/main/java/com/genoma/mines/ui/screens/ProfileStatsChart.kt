@@ -73,10 +73,7 @@ fun ProfileStatsChart(
         )
     }
 
-    // Reuses the app's own brand colors instead of arbitrary hex values —
-    // teal (primary) for wins, the same coral used for "game over"
-    // elsewhere in the app (error) for losses, so this chart reads as
-    // part of the same app rather than a generic dropped-in widget.
+
     val winColor = MaterialTheme.colorScheme.primary
     val lossColor = MaterialTheme.colorScheme.error
 

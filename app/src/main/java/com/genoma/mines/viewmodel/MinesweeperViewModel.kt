@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
+import com.genoma.mines.ui.screens.AvatarOption
 
 class MinesweeperViewModel(
     application: Application
@@ -48,6 +49,9 @@ class MinesweeperViewModel(
     private val _darkTheme = MutableStateFlow<Boolean?>(null)
     val darkTheme: StateFlow<Boolean?> = _darkTheme.asStateFlow()
 
+    private val _selectedAvatar = MutableStateFlow(AvatarOption.Default)
+    val selectedAvatar: StateFlow<AvatarOption> = _selectedAvatar.asStateFlow()
+
     init {
         loadSettings()
     }
@@ -71,6 +75,12 @@ class MinesweeperViewModel(
             launch {
                 settings.darkThemeEnabled.collect { enabled ->
                     _darkTheme.value = enabled
+                }
+            }
+
+            launch {
+                settings.selectedAvatarId.collect { avatarId ->
+                    _selectedAvatar.value = AvatarOption.fromId(avatarId)
                 }
             }
         }
@@ -98,6 +108,14 @@ class MinesweeperViewModel(
 
         viewModelScope.launch {
             settings.setDarkThemeEnabled(enabled)
+        }
+    }
+
+    fun setAvatar(avatar: AvatarOption) {
+        _selectedAvatar.value = avatar
+
+        viewModelScope.launch {
+            settings.setSelectedAvatarId(avatar.id)
         }
     }
 
