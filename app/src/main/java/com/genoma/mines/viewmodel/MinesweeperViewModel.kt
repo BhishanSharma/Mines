@@ -42,6 +42,12 @@ class MinesweeperViewModel(
     private val _hapticsEnabled = MutableStateFlow(true)
     val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled.asStateFlow()
 
+
+    // Null = no saved preference yet; the UI falls back to the system
+    // setting until the user explicitly picks light or dark.
+    private val _darkTheme = MutableStateFlow<Boolean?>(null)
+    val darkTheme: StateFlow<Boolean?> = _darkTheme.asStateFlow()
+
     init {
         loadSettings()
     }
@@ -60,6 +66,13 @@ class MinesweeperViewModel(
                     _hapticsEnabled.value = enabled
                 }
             }
+
+
+            launch {
+                settings.darkThemeEnabled.collect { enabled ->
+                    _darkTheme.value = enabled
+                }
+            }
         }
     }
 
@@ -76,6 +89,15 @@ class MinesweeperViewModel(
 
         viewModelScope.launch {
             settings.setHapticsEnabled(enabled)
+        }
+    }
+
+
+    fun setDarkTheme(enabled: Boolean) {
+        _darkTheme.value = enabled
+
+        viewModelScope.launch {
+            settings.setDarkThemeEnabled(enabled)
         }
     }
 

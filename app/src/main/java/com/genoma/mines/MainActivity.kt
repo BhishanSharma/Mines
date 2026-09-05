@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -20,6 +21,7 @@ import com.genoma.mines.auth.GoogleSignInResult
 import com.genoma.mines.auth.UserSessionStore
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.ui.screens.CellUiState
+import com.genoma.mines.ui.screens.FeedbackScreen
 import com.genoma.mines.ui.screens.GameScreen
 import com.genoma.mines.ui.screens.HomeScreen
 import com.genoma.mines.ui.screens.HowToPlayScreen
@@ -37,6 +39,7 @@ private sealed class Screen {
     object Settings : Screen()
     object HowToPlay : Screen()
     object Profile : Screen()
+    object Feedback : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
 
@@ -48,8 +51,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            MinesTheme {
-                MinesweeperApp()
+            val viewModel: MinesweeperViewModel = viewModel()
+
+            val darkThemePreference by viewModel.darkTheme.collectAsState()
+            val systemInDarkTheme = isSystemInDarkTheme()
+            val darkTheme = darkThemePreference ?: systemInDarkTheme
+
+            MinesTheme(darkTheme = darkTheme) {
+                MinesweeperApp(
+                    viewModel = viewModel,
+                    darkTheme = darkTheme
+                )
             }
         }
     }
@@ -57,7 +69,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MinesweeperApp(
-    viewModel: MinesweeperViewModel = viewModel()
+    viewModel: MinesweeperViewModel = viewModel(),
+    darkTheme: Boolean = isSystemInDarkTheme()
 ) {
     val context = LocalContext.current
     val activity = context as ComponentActivity
@@ -126,6 +139,10 @@ fun MinesweeperApp(
             is Screen.HowToPlay,
             is Screen.Profile -> {
                 screen = Screen.Home
+            }
+
+            is Screen.Feedback -> {
+                screen = Screen.Settings
             }
 
             else -> {
@@ -204,6 +221,7 @@ fun MinesweeperApp(
             SettingsScreen(
                 soundEnabled = soundEnabled,
                 hapticsEnabled = hapticsEnabled,
+                darkTheme = darkTheme,
                 isSignedIn = userProfile != null,
                 userName = userProfile?.displayName,
 
@@ -213,6 +231,14 @@ fun MinesweeperApp(
 
                 onHapticsToggle = { enabled ->
                     viewModel.setHapticsEnabled(enabled)
+                },
+
+                onThemeToggle = { enabled ->
+                    viewModel.setDarkTheme(enabled)
+                },
+
+                onFeedbackClick = {
+                    screen = Screen.Feedback
                 },
 
                 onSignOut = {
@@ -227,6 +253,27 @@ fun MinesweeperApp(
 
                 onBack = {
                     screen = Screen.Home
+                }
+            )
+        }
+
+        is Screen.Feedback -> {
+            FeedbackScreen(
+                userName = userProfile?.displayName ?: "Guest",
+                userEmail = userProfile?.email ?: "",
+
+                onSubmit = { feedback ->
+                    android.widget.Toast.makeText(
+                        context,
+                        "Thanks for the feedback!",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+
+                    screen = Screen.Settings
+                },
+
+                onBack = {
+                    screen = Screen.Settings
                 }
             )
         }
