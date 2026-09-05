@@ -1,6 +1,5 @@
 package com.genoma.mines.ui.screens
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -35,12 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,8 +53,7 @@ private data class ProfileStats(
     val gamesWon: Int,
     val gamesLost: Int,
     val currentStreak: Int,
-    val bestStreak: Int,
-    val recentGames: List<Boolean>
+    val bestStreak: Int
 ) {
     val winRate: Int
         get() = if (gamesPlayed == 0) 0 else (gamesWon * 100) / gamesPlayed
@@ -77,16 +69,7 @@ fun ProfileScreen(
         gamesWon = 29,
         gamesLost = 13,
         currentStreak = 4,
-        bestStreak = 8,
-        recentGames = listOf(
-            true,
-            true,
-            false,
-            true,
-            false,
-            true,
-            true
-        )
+        bestStreak = 8
     )
 
     Surface(
@@ -107,7 +90,9 @@ fun ProfileScreen(
                     ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
+                IconButton(
+                    onClick = onBack
+                ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
@@ -173,22 +158,14 @@ fun ProfileScreen(
                 )
 
                 Spacer(
-                    modifier = Modifier.height(ProfileSpacing.small)
-                )
-
-                Text(
-                    text = "Mines player",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(
                     modifier = Modifier.height(ProfileSpacing.large)
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ProfileSpacing.small)
+                    horizontalArrangement = Arrangement.spacedBy(
+                        ProfileSpacing.small
+                    )
                 ) {
                     ProfileStatCard(
                         value = stats.gamesPlayed.toString(),
@@ -215,7 +192,9 @@ fun ProfileScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ProfileSpacing.small)
+                    horizontalArrangement = Arrangement.spacedBy(
+                        ProfileSpacing.small
+                    )
                 ) {
                     ProfileStatCard(
                         value = "${stats.winRate}%",
@@ -241,7 +220,7 @@ fun ProfileScreen(
                 )
 
                 Text(
-                    text = "Recent performance",
+                    text = "Performance",
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
@@ -252,21 +231,10 @@ fun ProfileScreen(
                     modifier = Modifier.height(ProfileSpacing.medium)
                 )
 
-                PerformanceCard(
-                    results = stats.recentGames
-                )
+                ProfileStatsChart()
 
                 Spacer(
-                    modifier = Modifier.height(ProfileSpacing.large)
-                )
-
-                StreakCard(
-                    currentStreak = stats.currentStreak,
-                    bestStreak = stats.bestStreak
-                )
-
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.large)
+                    modifier = Modifier.height(ProfileSpacing.medium)
                 )
             }
         }
@@ -312,205 +280,6 @@ private fun ProfileStatCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun PerformanceCard(
-    results: List<Boolean>
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Last ${results.size} games",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(2.dp)
-                    )
-
-                    Text(
-                        text = "Win / loss history",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Text(
-                    text = "${results.count { it }} wins",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Spacer(
-                modifier = Modifier.height(16.dp)
-            )
-
-            PerformanceGraph(
-                results = results,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(170.dp)
-            )
-
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                GraphLegend(
-                    color = MaterialTheme.colorScheme.primary,
-                    label = "Won"
-                )
-
-                Spacer(
-                    modifier = Modifier.width(20.dp)
-                )
-
-                GraphLegend(
-                    color = MaterialTheme.colorScheme.error,
-                    label = "Lost"
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PerformanceGraph(
-    results: List<Boolean>,
-    modifier: Modifier = Modifier
-) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val errorColor = MaterialTheme.colorScheme.error
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val outlineColor = MaterialTheme.colorScheme.outline
-    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
-
-    Canvas(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(surfaceVariantColor)
-            .padding(16.dp)
-    ) {
-        if (results.isEmpty()) return@Canvas
-
-        val centerY = size.height / 2f
-        val topY = size.height * 0.22f
-        val bottomY = size.height * 0.78f
-
-        drawLine(
-            color = outlineColor,
-            start = Offset(0f, centerY),
-            end = Offset(size.width, centerY),
-            strokeWidth = 1.dp.toPx()
-        )
-
-        val points = results.mapIndexed { index, won ->
-            val x = if (results.size == 1) {
-                size.width / 2f
-            } else {
-                index * size.width / (results.size - 1)
-            }
-
-            val y = if (won) topY else bottomY
-
-            Offset(x, y)
-        }
-
-        if (points.size > 1) {
-            val path = Path().apply {
-                moveTo(points.first().x, points.first().y)
-
-                for (index in 1 until points.size) {
-                    lineTo(
-                        points[index].x,
-                        points[index].y
-                    )
-                }
-            }
-
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 3.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round
-                )
-            )
-        }
-
-        points.forEachIndexed { index, point ->
-            val color = if (results[index]) {
-                primaryColor
-            } else {
-                errorColor
-            }
-
-            drawCircle(
-                color = color,
-                radius = 7.dp.toPx(),
-                center = point
-            )
-
-            drawCircle(
-                color = surfaceColor,
-                radius = 3.dp.toPx(),
-                center = point
-            )
-        }
-    }
-}
-
-@Composable
-private fun GraphLegend(
-    color: Color,
-    label: String
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(
-                    color = color,
-                    shape = CircleShape
-                )
-        )
-
-        Spacer(
-            modifier = Modifier.width(6.dp)
-        )
-
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
