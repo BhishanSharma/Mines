@@ -22,6 +22,11 @@ class MinesweeperViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
+    private companion object {
+        /** A game that runs this long auto-quits back to the home screen. */
+        const val MAX_GAME_DURATION_SECONDS = 30 * 60
+    }
+
     private var game: MinesweeperGame? = null
     private var timerJob: Job? = null
 
@@ -132,8 +137,15 @@ class MinesweeperViewModel(
                     break
                 }
 
+                val updatedSeconds = currentState.elapsedSeconds + 1
+
+                if (updatedSeconds >= MAX_GAME_DURATION_SECONDS) {
+                    goBackToHome()
+                    break
+                }
+
                 _gameState.value = currentState.copy(
-                    elapsedSeconds = currentState.elapsedSeconds + 1
+                    elapsedSeconds = updatedSeconds
                 )
             }
         }
@@ -148,9 +160,15 @@ class MinesweeperViewModel(
             return
         }
 
-        val hitMine = currentGame.reveal(index)
+        val tappedCell = currentState.cells.getOrNull(index) ?: return
 
-        if (hitMine) {
+        val detonatedIndex = if (tappedCell.isRevealed) {
+            currentGame.chord(index)
+        } else {
+            currentGame.reveal(index)
+        }
+
+        if (detonatedIndex != null) {
             timerJob?.cancel()
 
             feedback.explosion(
@@ -164,7 +182,7 @@ class MinesweeperViewModel(
                 cells = currentGame.getBoard(),
                 flagsPlaced = currentGame.getFlagsPlaced(),
                 status = GameStatus.LOST,
-                detonatedCellIndex = index
+                detonatedCellIndex = detonatedIndex
             )
 
             return

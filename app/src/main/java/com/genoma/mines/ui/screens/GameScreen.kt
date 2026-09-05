@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +41,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -102,6 +105,11 @@ fun GameScreen(
     onBack: () -> Unit,
     onPause: () -> Unit
 ) {
+    // Local UI-only state: which action a plain tap performs. This never
+    // needs to reach the ViewModel — it doesn't affect game logic, only
+    // which of the two existing callbacks a tap is routed to below.
+    var isFlagMode by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -138,7 +146,17 @@ fun GameScreen(
             )
 
             Spacer(
-                modifier = Modifier.height(GameSpacing.barToBoard)
+                modifier = Modifier.height(12.dp)
+            )
+
+            FlagModeRow(
+                isFlagMode = isFlagMode,
+                enabled = status == GameStatus.PLAYING,
+                onToggle = { isFlagMode = it }
+            )
+
+            Spacer(
+                modifier = Modifier.height(GameSpacing.barToBoard - 12.dp)
             )
 
             when (status) {
@@ -186,7 +204,16 @@ fun GameScreen(
                             columns = difficulty.columns,
                             cells = cells,
                             interactionEnabled = status == GameStatus.PLAYING,
-                            onCellTap = onCellTap,
+                            // In flag mode, a plain tap flags instead of
+                            // revealing. Long-press always flags regardless
+                            // of mode, so it keeps working as a shortcut.
+                            onCellTap = { index ->
+                                if (isFlagMode) {
+                                    onCellLongPress(index)
+                                } else {
+                                    onCellTap(index)
+                                }
+                            },
                             onCellLongPress = onCellLongPress,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -194,6 +221,51 @@ fun GameScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FlagModeRow(
+    isFlagMode: Boolean,
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Flag,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Text(
+            text = "Flag mode",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+
+        Switch(
+            checked = isFlagMode,
+            onCheckedChange = onToggle,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
     }
 }
 
@@ -320,12 +392,22 @@ private fun GameStatusBar(
 
         StatusReadout(
             label = "TIME",
-            value = elapsedSeconds
-                .coerceIn(0, 999)
-                .toString()
-                .padStart(3, '0')
+            value = formatElapsedTime(elapsedSeconds)
         )
     }
+}
+
+/**
+ * Formats a running game timer as MM:SS. The 99:59 ceiling is just a
+ * display safety net — in practice the game auto-quits at 30:00 (see
+ * MinesweeperViewModel's MAX_GAME_DURATION_SECONDS), so this never
+ * actually gets exercised past 30:00.
+ */
+private fun formatElapsedTime(totalSeconds: Int): String {
+    val clamped = totalSeconds.coerceIn(0, 99 * 60 + 59)
+    val minutes = clamped / 60
+    val seconds = clamped % 60
+    return "%02d:%02d".format(minutes, seconds)
 }
 
 @Composable
