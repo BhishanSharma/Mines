@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 // Teal/blue reads as "calm, safe" — fitting for a puzzle game where
 // the goal is to avoid danger, not create it.
 val MinesTealLight = Color(0xFF3FA9A0)
-val MinesTealDark = Color(0xFF6FD0C6)
+val MinesTealDark = Color(0xFF4FE0CE)
 
 // Warm coral used sparingly for danger states (mines, "game over").
 val MinesCoral = Color(0xFFE8604C)
@@ -24,14 +24,18 @@ val LightPrimaryContainer = Color(0xFFBEEAE4)
 val LightOnPrimaryContainer = Color(0xFF00201D)
 
 // ---- Dark theme surfaces ----
-val DarkBackground = Color(0xFF101514)
-val DarkSurface = Color(0xFF1A2120)
-val DarkSurfaceVariant = Color(0xFF23302E)
-val DarkOnBackground = Color(0xFFE3E8E6)
-val DarkOnSurfaceVariant = Color(0xFFA9B8B5)
-val DarkOutline = Color(0xFF3E4C49)
-val DarkPrimaryContainer = Color(0xFF1F4B45)
-val DarkOnPrimaryContainer = Color(0xFFBEEAE4)
+// Background pushed darker (near-black) so the board and cells read as
+// clearly lighter layers on top of it, instead of blending together.
+val DarkBackground = Color(0xFF0A0F0E)
+val DarkSurface = Color(0xFF17211F)
+val DarkSurfaceVariant = Color(0xFF1C2826)
+val DarkOnBackground = Color(0xFFF2F5F4)
+val DarkOnSurfaceVariant = Color(0xFFAFC2BE)
+val DarkOutline = Color(0xFF3E5450)
+// Unrevealed cells: brightened well above the board/background so they
+// visibly pop as "tappable tiles" instead of nearly matching the board.
+val DarkPrimaryContainer = Color(0xFF2C6259)
+val DarkOnPrimaryContainer = Color(0xFFEAFFFA)
 
 // ---- Cell number colors (classic Minesweeper convention, tuned for
 // contrast on both light and dark cell backgrounds) ----
