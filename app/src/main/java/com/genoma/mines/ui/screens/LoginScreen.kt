@@ -206,13 +206,6 @@ fun LoginScreen(
             }
 
             Spacer(modifier = Modifier.height(36.dp))
-
-            Text(
-                text = "Sign in to keep your progress across devices.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
