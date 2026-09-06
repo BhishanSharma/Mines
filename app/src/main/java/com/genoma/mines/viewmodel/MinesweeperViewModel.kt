@@ -3,12 +3,24 @@ package com.genoma.mines.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.genoma.mines.data.GameRepository
+import com.genoma.mines.data.GameRepositoryImpl
+import com.genoma.mines.data.GameResult
+import com.genoma.mines.data.GameHistoryItem
+import com.genoma.mines.data.UserStatistics
+import com.genoma.mines.data.local.GuestGameDatabase
+import com.genoma.mines.data.local.GuestGameRepository
+import com.genoma.mines.data.remote.FirestoreGameRepository
 import com.genoma.mines.feedback.GameFeedback
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameState
 import com.genoma.mines.game.GameStatus
+import com.genoma.mines.game.GameResultType
 import com.genoma.mines.game.MinesweeperGame
+import com.genoma.mines.game.ScoreCalculator
+import com.genoma.mines.session.SessionManager
 import com.genoma.mines.settings.SettingsDataStore
+import com.genoma.mines.ui.screens.AvatarOption
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
-import com.genoma.mines.ui.screens.AvatarOption
 
 class MinesweeperViewModel(
     application: Application
@@ -34,6 +45,19 @@ class MinesweeperViewModel(
     private val feedback = GameFeedback(application)
     private val settings = SettingsDataStore(application)
 
+    private val sessionManager = SessionManager()
+    private val scoreCalculator = ScoreCalculator()
+
+    private val gameRepository: GameRepository = GameRepositoryImpl(
+        sessionManager = sessionManager,
+        guestRepository = GuestGameRepository(
+            GuestGameDatabase.getInstance(application).guestGameDao()
+        ),
+        firestoreRepository = FirestoreGameRepository()
+    )
+
+    private var gameResultSaved = false
+
     private val _gameState = MutableStateFlow<GameState?>(null)
     val gameState: StateFlow<GameState?> = _gameState.asStateFlow()
 
@@ -43,6 +67,8 @@ class MinesweeperViewModel(
     private val _hapticsEnabled = MutableStateFlow(true)
     val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled.asStateFlow()
 
+    private val _lastScore = MutableStateFlow<Int?>(null)
+    val lastScore: StateFlow<Int?> = _lastScore.asStateFlow()
 
     // Null = no saved preference yet; the UI falls back to the system
     // setting until the user explicitly picks light or dark.
@@ -70,7 +96,6 @@ class MinesweeperViewModel(
                     _hapticsEnabled.value = enabled
                 }
             }
-
 
             launch {
                 settings.darkThemeEnabled.collect { enabled ->
@@ -102,7 +127,6 @@ class MinesweeperViewModel(
         }
     }
 
-
     fun setDarkTheme(enabled: Boolean) {
         _darkTheme.value = enabled
 
@@ -123,6 +147,8 @@ class MinesweeperViewModel(
         timerJob?.cancel()
 
         game = MinesweeperGame(difficulty)
+        gameResultSaved = false
+        _lastScore.value = null
 
         val newGame = game ?: return
 
@@ -218,12 +244,15 @@ class MinesweeperViewModel(
 
             currentGame.revealAllMines()
 
-            _gameState.value = currentState.copy(
+            val finalState = currentState.copy(
                 cells = currentGame.getBoard(),
                 flagsPlaced = currentGame.getFlagsPlaced(),
                 status = GameStatus.LOST,
                 detonatedCellIndex = detonatedIndex
             )
+
+            _gameState.value = finalState
+            completeLevel(finalState, GameResultType.LOSS)
 
             return
         }
@@ -248,11 +277,17 @@ class MinesweeperViewModel(
             )
         }
 
-        _gameState.value = currentState.copy(
+        val updatedState = currentState.copy(
             cells = currentGame.getBoard(),
             flagsPlaced = currentGame.getFlagsPlaced(),
             status = status
         )
+
+        _gameState.value = updatedState
+
+        if (status == GameStatus.WON) {
+            completeLevel(updatedState, GameResultType.WIN)
+        }
     }
 
     fun toggleFlag(index: Int) {
@@ -279,6 +314,44 @@ class MinesweeperViewModel(
             cells = currentGame.getBoard(),
             flagsPlaced = currentGame.getFlagsPlaced()
         )
+    }
+
+    private fun completeLevel(state: GameState, result: GameResultType) {
+        if (gameResultSaved) return
+        gameResultSaved = true
+
+        val correctlyRevealedCells = state.cells.count { it.isRevealed && !it.isMine }
+
+        val mistakes = state.cells.count { it.isFlagged && !it.isMine }
+
+        val score = scoreCalculator.calculate(
+            difficulty = state.difficulty,
+            result = result,
+            elapsedSeconds = state.elapsedSeconds.toLong(),
+            correctlyRevealedCells = correctlyRevealedCells,
+            mistakes = mistakes
+        )
+
+        _lastScore.value = score
+
+        val gameResult = GameResult(
+            difficulty = state.difficulty,
+            score = score,
+            result = result,
+            durationSeconds = state.elapsedSeconds.toLong()
+        )
+
+        viewModelScope.launch {
+            gameRepository.saveGameResult(gameResult)
+        }
+    }
+
+    suspend fun loadGameHistory(): List<GameHistoryItem> {
+        return gameRepository.getGameHistory()
+    }
+
+    suspend fun loadStatistics(): UserStatistics {
+        return gameRepository.getStatistics()
     }
 
     fun resetGame() {

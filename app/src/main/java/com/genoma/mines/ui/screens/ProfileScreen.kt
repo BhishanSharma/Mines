@@ -31,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,9 +49,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.genoma.mines.data.DifficultyStatistics
+import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.ui.theme.MinesTheme
 
 private object ProfileSpacing {
@@ -62,20 +66,11 @@ private object ProfileSpacing {
     val large = 22.dp
 }
 
-private data class ProfileStats(
-    val gamesPlayed: Int,
-    val gamesWon: Int,
-    val gamesLost: Int,
-    val currentStreak: Int,
-    val bestStreak: Int
-) {
-    val winRate: Int
-        get() = if (gamesPlayed == 0) 0 else (gamesWon * 100) / gamesPlayed
-}
-
 @Composable
 fun ProfileScreen(
     username: String = "Player",
+    statistics: UserStatistics = UserStatistics.EMPTY,
+    isLoading: Boolean = false,
     selectedAvatar: AvatarOption = AvatarOption.Default,
     onAvatarSelected: (AvatarOption) -> Unit = {},
     onBack: () -> Unit = {}
@@ -83,14 +78,6 @@ fun ProfileScreen(
     var showAvatarPicker by remember {
         mutableStateOf(false)
     }
-
-    val stats = ProfileStats(
-        gamesPlayed = 42,
-        gamesWon = 29,
-        gamesLost = 13,
-        currentStreak = 4,
-        bestStreak = 8
-    )
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -126,6 +113,16 @@ fun ProfileScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Column
             }
 
             Column(
@@ -218,6 +215,16 @@ fun ProfileScreen(
                     modifier = Modifier.height(ProfileSpacing.large)
                 )
 
+                Text(
+                    text = "OVERALL",
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(ProfileSpacing.small))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(
@@ -225,19 +232,19 @@ fun ProfileScreen(
                     )
                 ) {
                     ProfileStatCard(
-                        value = stats.gamesPlayed.toString(),
+                        value = statistics.totalGames.toString(),
                         label = "Played",
                         modifier = Modifier.weight(1f)
                     )
 
                     ProfileStatCard(
-                        value = stats.gamesWon.toString(),
+                        value = statistics.totalWins.toString(),
                         label = "Won",
                         modifier = Modifier.weight(1f)
                     )
 
                     ProfileStatCard(
-                        value = stats.gamesLost.toString(),
+                        value = statistics.totalLosses.toString(),
                         label = "Lost",
                         modifier = Modifier.weight(1f)
                     )
@@ -254,20 +261,14 @@ fun ProfileScreen(
                     )
                 ) {
                     ProfileStatCard(
-                        value = "${stats.winRate}%",
+                        value = "${statistics.winRatio}%",
                         label = "Win rate",
                         modifier = Modifier.weight(1f)
                     )
 
                     ProfileStatCard(
-                        value = stats.currentStreak.toString(),
-                        label = "Streak",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    ProfileStatCard(
-                        value = stats.bestStreak.toString(),
-                        label = "Best streak",
+                        value = statistics.totalScore.toString(),
+                        label = "Total score",
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -277,18 +278,23 @@ fun ProfileScreen(
                 )
 
                 Text(
-                    text = "Performance",
+                    text = "BY DIFFICULTY",
                     modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.medium)
-                )
+                Spacer(modifier = Modifier.height(ProfileSpacing.small))
 
-                ProfileStatsChart()
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ProfileSpacing.small)
+                ) {
+                    DifficultyStatRow(label = "Easy", stats = statistics.easy)
+                    DifficultyStatRow(label = "Medium", stats = statistics.medium)
+                    DifficultyStatRow(label = "Hard", stats = statistics.hard)
+                }
 
                 Spacer(
                     modifier = Modifier.height(ProfileSpacing.medium)
@@ -483,6 +489,58 @@ private fun ProfileStatCard(
     }
 }
 
+@Composable
+private fun DifficultyStatRow(
+    label: String,
+    stats: DifficultyStatistics
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+
+            Text(
+                text = "${stats.games} played",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+
+            Text(
+                text = "${stats.winRatio}% won",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+
+            Text(
+                text = "${stats.score} pts",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End
+            )
+        }
+    }
+}
+
 @Preview(
     showBackground = true,
     showSystemUi = true
@@ -492,6 +550,15 @@ private fun ProfileScreenPreview() {
     MinesTheme {
         ProfileScreen(
             username = "Alex",
+            statistics = UserStatistics(
+                totalGames = 42,
+                totalWins = 29,
+                totalLosses = 13,
+                totalScore = 18450,
+                easy = DifficultyStatistics(20, 16, 5200),
+                medium = DifficultyStatistics(15, 10, 7100),
+                hard = DifficultyStatistics(7, 3, 6150)
+            ),
             onBack = {}
         )
     }

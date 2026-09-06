@@ -19,10 +19,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.genoma.mines.auth.GoogleAuthManager
 import com.genoma.mines.auth.GoogleSignInResult
 import com.genoma.mines.auth.UserSessionStore
+import com.genoma.mines.data.GameHistoryItem
+import com.genoma.mines.data.UserStatistics
+import com.genoma.mines.data.remote.FirestoreGameRepository
 import com.genoma.mines.game.Difficulty
+import com.genoma.mines.session.SessionManager
+import com.genoma.mines.session.UserSession
+import com.genoma.mines.ui.screens.AvatarOption
 import com.genoma.mines.ui.screens.CellUiState
 import com.genoma.mines.ui.screens.FeedbackScreen
 import com.genoma.mines.ui.screens.GameScreen
+import com.genoma.mines.ui.screens.GuestHistoryScreen
 import com.genoma.mines.ui.screens.HomeScreen
 import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
@@ -39,6 +46,7 @@ private sealed class Screen {
     object Settings : Screen()
     object HowToPlay : Screen()
     object Profile : Screen()
+    object GuestHistory : Screen()
     object Feedback : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
@@ -86,6 +94,14 @@ fun MinesweeperApp(
         UserSessionStore(context)
     }
 
+    val sessionManager = remember {
+        SessionManager()
+    }
+
+    val firestoreRepository = remember {
+        FirestoreGameRepository()
+    }
+
     val userProfile by sessionStore.userProfile.collectAsState(
         initial = null
     )
@@ -106,6 +122,14 @@ fun MinesweeperApp(
         mutableStateOf(false)
     }
 
+    val isAuthenticated = sessionManager.currentSession is UserSession.Authenticated
+
+    var guestHistory by remember { mutableStateOf<List<GameHistoryItem>>(emptyList()) }
+    var guestHistoryLoading by remember { mutableStateOf(true) }
+
+    var userStatistics by remember { mutableStateOf(UserStatistics.EMPTY) }
+    var statisticsLoading by remember { mutableStateOf(true) }
+
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
     val gameState by viewModel.gameState.collectAsState()
@@ -120,16 +144,28 @@ fun MinesweeperApp(
         sessionLoaded = true
     }
 
+    LaunchedEffect(screen) {
+        when (screen) {
+            is Screen.GuestHistory -> {
+                guestHistoryLoading = true
+                guestHistory = viewModel.loadGameHistory()
+                guestHistoryLoading = false
+            }
+
+            is Screen.Profile -> {
+                statisticsLoading = true
+                userStatistics = viewModel.loadStatistics()
+                statisticsLoading = false
+            }
+
+            else -> Unit
+        }
+    }
+
     if (!sessionLoaded) {
         return
     }
 
-    // The app manages navigation itself via `screen` rather than Navigation
-    // Compose, so system/gesture back does nothing by default except close
-    // the Activity. This routes it through the same "back" action each
-    // screen's own back button already uses. Disabled on Home and Login
-    // since those are the app's root screens — back there should behave
-    // normally and exit the app.
     BackHandler(enabled = screen !is Screen.Home && screen !is Screen.Login) {
         when (screen) {
             is Screen.Game -> {
@@ -139,7 +175,8 @@ fun MinesweeperApp(
 
             is Screen.Settings,
             is Screen.HowToPlay,
-            is Screen.Profile -> {
+            is Screen.Profile,
+            is Screen.GuestHistory -> {
                 screen = Screen.Home
             }
 
@@ -169,6 +206,14 @@ fun MinesweeperApp(
 
                             is GoogleSignInResult.Success -> {
                                 sessionStore.save(result.profile)
+
+                                firestoreRepository.ensureUserDocument(
+                                    uid = result.profile.id,
+                                    name = result.profile.displayName,
+                                    email = result.profile.email,
+                                    photoUrl = result.profile.photoUrl
+                                )
+
                                 screen = Screen.Home
                             }
 
@@ -214,8 +259,14 @@ fun MinesweeperApp(
                 },
 
                 onOpenProfile = {
-                    screen = Screen.Profile
-                }
+                    screen = if (isAuthenticated) {
+                        Screen.Profile
+                    } else {
+                        Screen.GuestHistory
+                    }
+                },
+
+                username = userProfile?.displayName ?: "Guest"
             )
         }
 
@@ -265,9 +316,6 @@ fun MinesweeperApp(
                 userEmail = userProfile?.email ?: "",
 
                 onSubmit = { feedback ->
-                    // TODO: replace with a real submission path (API call,
-                    // email intent, etc.) once one exists. For now this
-                    // just confirms receipt and returns to Settings.
                     android.widget.Toast.makeText(
                         context,
                         "Thanks for the feedback!",
@@ -343,11 +391,23 @@ fun MinesweeperApp(
             val selectedAvatar by viewModel.selectedAvatar.collectAsState()
 
             ProfileScreen(
-                username = "${userProfile?.displayName}",
+                username = userProfile?.displayName ?: "Player",
+                statistics = userStatistics,
+                isLoading = statisticsLoading,
                 selectedAvatar = selectedAvatar,
                 onAvatarSelected = { avatar ->
                     viewModel.setAvatar(avatar)
                 },
+                onBack = {
+                    screen = Screen.Home
+                }
+            )
+        }
+
+        is Screen.GuestHistory -> {
+            GuestHistoryScreen(
+                isLoading = guestHistoryLoading,
+                history = guestHistory,
                 onBack = {
                     screen = Screen.Home
                 }
