@@ -81,6 +81,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenProfile: () -> Unit,
     username: String = "Player",
+    selectedAvatar: AvatarOption = AvatarOption.Default,
     gamesWon: Int = 0
 ) {
     Surface(
@@ -129,15 +130,14 @@ fun HomeScreen(
                                 .clickable(onClick = onOpenProfile),
                             contentAlignment = Alignment.Center
                         ) {
-                            // TODO: once a real profile photo URL is
-                            // available, load it here (e.g. with Coil's
-                            // AsyncImage) and fall back to this icon only
-                            // when there's no photo.
-                            Icon(
-                                imageVector = Icons.Filled.Person,
+                            Image(
+                                painter = painterResource(id = selectedAvatar.drawableRes),
                                 contentDescription = "Profile",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(4.dp)
+                                    .clip(RoundedCornerShape(10.dp)),
+                                contentScale = ContentScale.Crop
                             )
                         }
 

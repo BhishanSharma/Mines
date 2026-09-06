@@ -69,6 +69,7 @@ fun SettingsScreen(
     onThemeToggle: (Boolean) -> Unit,
     onFeedbackClick: () -> Unit,
     onSignOut: () -> Unit,
+    onSignInClick: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -179,6 +180,12 @@ fun SettingsScreen(
                             onClick = onSignOut
                         ) {
                             Text("Sign out")
+                        }
+                    } else {
+                        TextButton(
+                            onClick = onSignInClick
+                        ) {
+                            Text("Sign in")
                         }
                     }
                 }
@@ -604,6 +611,7 @@ private fun SettingsScreenPreview() {
             onThemeToggle = {},
             onFeedbackClick = {},
             onSignOut = {},
+            onSignInClick = {},
             onBack = {}
         )
     }

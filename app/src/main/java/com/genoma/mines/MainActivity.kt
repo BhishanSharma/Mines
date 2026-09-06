@@ -23,9 +23,6 @@ import com.genoma.mines.data.GameHistoryItem
 import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.data.remote.FirestoreGameRepository
 import com.genoma.mines.game.Difficulty
-import com.genoma.mines.session.SessionManager
-import com.genoma.mines.session.UserSession
-import com.genoma.mines.ui.screens.AvatarOption
 import com.genoma.mines.ui.screens.CellUiState
 import com.genoma.mines.ui.screens.FeedbackScreen
 import com.genoma.mines.ui.screens.GameScreen
@@ -94,10 +91,6 @@ fun MinesweeperApp(
         UserSessionStore(context)
     }
 
-    val sessionManager = remember {
-        SessionManager()
-    }
-
     val firestoreRepository = remember {
         FirestoreGameRepository()
     }
@@ -122,8 +115,6 @@ fun MinesweeperApp(
         mutableStateOf(false)
     }
 
-    val isAuthenticated = sessionManager.currentSession is UserSession.Authenticated
-
     var guestHistory by remember { mutableStateOf<List<GameHistoryItem>>(emptyList()) }
     var guestHistoryLoading by remember { mutableStateOf(true) }
 
@@ -133,6 +124,7 @@ fun MinesweeperApp(
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
     val gameState by viewModel.gameState.collectAsState()
+    val selectedAvatar by viewModel.selectedAvatar.collectAsState()
 
     LaunchedEffect(Unit) {
         val savedProfile = sessionStore.userProfile.first()
@@ -259,14 +251,13 @@ fun MinesweeperApp(
                 },
 
                 onOpenProfile = {
-                    screen = if (isAuthenticated) {
-                        Screen.Profile
-                    } else {
-                        Screen.GuestHistory
-                    }
+                    screen = Screen.Profile
                 },
 
-                username = userProfile?.displayName ?: "Guest"
+                username = userProfile?.displayName ?: "Guest",
+                selectedAvatar = selectedAvatar,              // ← add this line
+                gamesWon = userStatistics.totalScore
+
             )
         }
 
@@ -304,6 +295,10 @@ fun MinesweeperApp(
                     }
                 },
 
+                onSignInClick = {           // ← add this block
+                    screen = Screen.Login
+                },
+
                 onBack = {
                     screen = Screen.Home
                 }
@@ -315,7 +310,7 @@ fun MinesweeperApp(
                 userName = userProfile?.displayName ?: "Guest",
                 userEmail = userProfile?.email ?: "",
 
-                onSubmit = { feedback ->
+                onSubmit = { _ ->
                     android.widget.Toast.makeText(
                         context,
                         "Thanks for the feedback!",
@@ -388,7 +383,6 @@ fun MinesweeperApp(
         }
 
         is Screen.Profile -> {
-            val selectedAvatar by viewModel.selectedAvatar.collectAsState()
 
             ProfileScreen(
                 username = userProfile?.displayName ?: "Player",
