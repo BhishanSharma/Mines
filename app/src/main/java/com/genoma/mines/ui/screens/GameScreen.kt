@@ -110,117 +110,127 @@ fun GameScreen(
     // which of the two existing callbacks a tap is routed to below.
     var isFlagMode by remember { mutableStateOf(false) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
-                .padding(
-                    horizontal = GameSpacing.screenHorizontal
-                )
-                .padding(
-                    top = GameSpacing.screenTop,
-                    bottom = GameSpacing.screenBottom
-                )
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(WindowInsets.safeDrawing.asPaddingValues())
+                    .padding(
+                        horizontal = GameSpacing.screenHorizontal
+                    )
+                    .padding(
+                        top = GameSpacing.screenTop,
+                        bottom = GameSpacing.screenBottom
+                    )
+            ) {
 
-            GameTopBar(
-                onBack = onBack,
-                onNewGame = onReset,
-                onQuit = onBack
-            )
+                GameTopBar(
+                    onBack = onBack,
+                    onNewGame = onReset,
+                    onQuit = onBack
+                )
 
-            Spacer(
-                modifier = Modifier.height(GameSpacing.barToBoard)
-            )
+                Spacer(
+                    modifier = Modifier.height(GameSpacing.barToBoard)
+                )
 
-            GameStatusBar(
-                minesRemaining = difficulty.mines - flagsPlaced,
-                elapsedSeconds = elapsedSeconds,
-                status = status,
-                onReset = onReset,
-                onPause = onPause
-            )
+                GameStatusBar(
+                    minesRemaining = difficulty.mines - flagsPlaced,
+                    elapsedSeconds = elapsedSeconds,
+                    status = status,
+                    onReset = onReset,
+                    onPause = onPause
+                )
 
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
 
-            FlagModeRow(
-                isFlagMode = isFlagMode,
-                enabled = status == GameStatus.PLAYING,
-                onToggle = { isFlagMode = it }
-            )
+                FlagModeRow(
+                    isFlagMode = isFlagMode,
+                    enabled = status == GameStatus.PLAYING,
+                    onToggle = { isFlagMode = it }
+                )
 
-            Spacer(
-                modifier = Modifier.height(GameSpacing.barToBoard - 12.dp)
-            )
+                Spacer(
+                    modifier = Modifier.height(GameSpacing.barToBoard - 12.dp)
+                )
 
-            when (status) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // The board stays visible in every non-READY state,
+                    // including WON/LOST, so a loss reveals where every mine
+                    // was instead of hiding the board behind the result card.
+                    MineBoard(
+                        columns = difficulty.columns,
+                        cells = cells,
+                        interactionEnabled = status == GameStatus.PLAYING,
+                        // In flag mode, a plain tap flags instead of
+                        // revealing. Long-press always flags regardless
+                        // of mode, so it keeps working as a shortcut.
+                        onCellTap = { index ->
+                            if (isFlagMode) {
+                                onCellLongPress(index)
+                            } else {
+                                onCellTap(index)
+                            }
+                        },
+                        onCellLongPress = onCellLongPress,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                GameStatus.WON -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ResultMessage(
-                            title = "You won!",
-                            message = "Great job! You cleared the board.",
-                            isWin = true,
-                            onReset = onReset
-                        )
-                    }
-                }
+                    // Win/loss is shown as a slim banner pinned to the bottom
+                    // of the board rather than a big centered card, so the
+                    // whole grid — every revealed mine included — stays
+                    // visible instead of being blacked out underneath it.
+                    when (status) {
 
-                GameStatus.LOST -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ResultMessage(
-                            title = "Game over",
-                            message = "You hit a mine.",
-                            isWin = false,
-                            onReset = onReset
-                        )
-                    }
-                }
+                        GameStatus.WON -> {
+                            ResultBanner(
+                                title = "You won!",
+                                message = "Great job! You cleared the board.",
+                                isWin = true,
+                                onReset = onReset,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                            )
+                        }
 
-                else -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        MineBoard(
-                            columns = difficulty.columns,
-                            cells = cells,
-                            interactionEnabled = status == GameStatus.PLAYING,
-                            // In flag mode, a plain tap flags instead of
-                            // revealing. Long-press always flags regardless
-                            // of mode, so it keeps working as a shortcut.
-                            onCellTap = { index ->
-                                if (isFlagMode) {
-                                    onCellLongPress(index)
-                                } else {
-                                    onCellTap(index)
-                                }
-                            },
-                            onCellLongPress = onCellLongPress,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        GameStatus.LOST -> {
+                            ResultBanner(
+                                title = "Game over",
+                                message = "You hit a mine.",
+                                isWin = false,
+                                onReset = onReset,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                            )
+                        }
+
+                        else -> {
+                            // PLAYING/PAUSED: board only, no overlay.
+                        }
                     }
                 }
             }
         }
+
+        ConfettiOverlay(
+            visible = status == GameStatus.WON,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -410,96 +420,108 @@ private fun formatElapsedTime(totalSeconds: Int): String {
     return "%02d:%02d".format(minutes, seconds)
 }
 
+/**
+ * Compact win/loss banner pinned to the bottom of the board. Deliberately
+ * slim (icon + two lines of text + a button, in a single row) so it only
+ * covers a strip at the bottom of the grid instead of the board's center —
+ * the point of showing it over the board at all is so a loss reveals where
+ * every mine was, which a big centered card would otherwise hide.
+ */
 @Composable
-private fun ResultMessage(
+private fun ResultBanner(
     title: String,
     message: String,
     isWin: Boolean,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    val badgeColor = if (isWin) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
+    val badgeIconColor = if (isWin) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onErrorContainer
+    }
+
+    Card(
+        modifier = modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-
-        val badgeColor = if (isWin) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.errorContainer
-        }
-        val badgeIconColor = if (isWin) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onErrorContainer
-        }
-
-        Box(
+        Row(
             modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .background(badgeColor),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isWin) {
-                Icon(
-                    imageVector = Icons.Filled.EmojiEvents,
-                    contentDescription = null,
-                    tint = badgeIconColor,
-                    modifier = Modifier.size(30.dp)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(badgeColor),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isWin) {
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = null,
+                        tint = badgeIconColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    MineIcon(
+                        color = badgeIconColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            } else {
-                MineIcon(
-                    color = badgeIconColor,
-                    modifier = Modifier.size(28.dp)
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
 
-        Spacer(
-            modifier = Modifier.height(16.dp)
-        )
+            Spacer(modifier = Modifier.width(12.dp))
 
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
-
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    MaterialTheme.colorScheme.primaryContainer
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer
+                    )
+                    .clickable(onClick = onReset)
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 10.dp
+                    )
+            ) {
+                Text(
+                    text = "Play again",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                .clickable(onClick = onReset)
-                .padding(
-                    horizontal = 24.dp,
-                    vertical = 12.dp
-                )
-        ) {
-            Text(
-                text = "Play again",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            }
         }
     }
 }
