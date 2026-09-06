@@ -1,41 +1,41 @@
 {
   "project_info": {
-    "project_number": "1080086649955",
-    "project_id": "mines-9a0de",
-    "storage_bucket": "mines-9a0de.firebasestorage.app"
+    "project_number": "454308075650",
+    "project_id": "mines-72a34",
+    "storage_bucket": "mines-72a34.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1080086649955:android:e8ee939d7d2855b15fac56",
+        "mobilesdk_app_id": "1:454308075650:android:342970a1758a74265fbc9b",
         "android_client_info": {
           "package_name": "com.genoma.mines"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1080086649955-sd2opd2lo01i5kdr7rm2litnag9615o4.apps.googleusercontent.com",
+          "client_id": "454308075650-ub0uoel93210eap2hsei9e4da1a740ho.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.genoma.mines",
-            "certificate_hash": "a7b0e5af55fa35cd5a0430518e9e2d9cab76146b"
+            "certificate_hash": "77a1143709cb36e599f02534877718b1e9e4127e"
           }
         },
         {
-          "client_id": "1080086649955-i8mvrh4vmhbf0t6n5uk92tdie8uf7j5a.apps.googleusercontent.com",
+          "client_id": "454308075650-ma6e4lql3qv05cbncm03jutleiq1g2h0.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAppsWBkZpGv30CglTrgZXj5VAO6fdM2GU"
+          "current_key": "AIzaSyAg35LRBHcvXe_fd7hfQkws5rMSkr6dUtE"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1080086649955-i8mvrh4vmhbf0t6n5uk92tdie8uf7j5a.apps.googleusercontent.com",
+              "client_id": "454308075650-ma6e4lql3qv05cbncm03jutleiq1g2h0.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

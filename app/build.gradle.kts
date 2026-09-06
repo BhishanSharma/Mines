@@ -57,10 +57,10 @@ dependencies {
 
     // --- Firebase Auth + Firestore (authenticated users) ---
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.analytics)
     implementation(libs.kotlinx.coroutines.play.services)
-    implementation("com.google.firebase:firebase-analytics")
 
     // --- Room (guest users) ---
     implementation(libs.androidx.room.runtime)
