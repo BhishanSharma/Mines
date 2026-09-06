@@ -255,7 +255,8 @@ fun MinesweeperApp(
                 },
 
                 username = userProfile?.displayName ?: "Guest",
-                selectedAvatar = selectedAvatar,              // ← add this line
+                selectedAvatar = selectedAvatar,
+                photoUrl = userProfile?.photoUrl,
                 gamesWon = userStatistics.totalScore
 
             )
@@ -306,20 +307,30 @@ fun MinesweeperApp(
         }
 
         is Screen.Feedback -> {
-            FeedbackScreen(
-                userName = userProfile?.displayName ?: "Guest",
-                userEmail = userProfile?.email ?: "",
+            val isSubmittingFeedback by viewModel.isSubmittingFeedback.collectAsState()
+            val feedbackError by viewModel.feedbackError.collectAsState()
+            val feedbackSubmitted by viewModel.feedbackSubmitted.collectAsState()
 
-                onSubmit = { _ ->
+            LaunchedEffect(feedbackSubmitted) {
+                if (feedbackSubmitted) {
                     android.widget.Toast.makeText(
                         context,
                         "Thanks for the feedback!",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
-
+                    viewModel.resetFeedbackSubmitted()
                     screen = Screen.Settings
-                },
+                }
+            }
 
+            FeedbackScreen(
+                userName = userProfile?.displayName ?: "Guest",
+                userEmail = userProfile?.email ?: "",
+                isSubmitting = isSubmittingFeedback,
+                submitError = feedbackError,
+                onSubmit = { data ->
+                    viewModel.submitFeedback(data, userId = userProfile?.id)
+                },
                 onBack = {
                     screen = Screen.Settings
                 }
@@ -389,6 +400,7 @@ fun MinesweeperApp(
                 statistics = userStatistics,
                 isLoading = statisticsLoading,
                 selectedAvatar = selectedAvatar,
+                photoUrl = userProfile?.photoUrl,
                 onAvatarSelected = { avatar ->
                     viewModel.setAvatar(avatar)
                 },

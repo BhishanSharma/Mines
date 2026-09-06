@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.genoma.mines.data.DifficultyStatistics
 import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.ui.theme.MinesTheme
@@ -72,6 +73,7 @@ fun ProfileScreen(
     statistics: UserStatistics = UserStatistics.EMPTY,
     isLoading: Boolean = false,
     selectedAvatar: AvatarOption = AvatarOption.Default,
+    photoUrl: String? = null,
     onAvatarSelected: (AvatarOption) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
@@ -160,43 +162,57 @@ fun ProfileScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            painter = painterResource(
-                                id = selectedAvatar.drawableRes
-                            ),
-                            contentDescription = "Profile picture",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(4.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
+                        if (photoUrl != null) {
+                            AsyncImage(
+                                model = photoUrl,
+                                contentDescription = "Profile picture",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(4.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(
+                                    id = selectedAvatar.drawableRes
+                                ),
+                                contentDescription = "Profile picture",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(4.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
 
-                    // Edit badge — bottom-right, overlapping the avatar's
-                    // own edge, opens the avatar picker below.
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.background,
-                                shape = CircleShape
+                    // Only let guests pick a stand-in avatar; Google users' photo
+                    // comes from their account and isn't user-editable here.
+                    if (photoUrl == null) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .border(
+                                    width = 2.dp,
+                                    color = MaterialTheme.colorScheme.background,
+                                    shape = CircleShape
+                                )
+                                .clickable {
+                                    showAvatarPicker = true
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Change profile picture",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(16.dp)
                             )
-                            .clickable {
-                                showAvatarPicker = true
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "Change profile picture",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        }
                     }
                 }
 

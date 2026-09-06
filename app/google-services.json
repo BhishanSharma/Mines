@@ -23,7 +23,7 @@
         },
         {
           "client_id": "454308075650-ma6e4lql3qv05cbncm03jutleiq1g2h0.apps.googleusercontent.com",
-          "client_type": 3
+          "client_type": 1
         }
       ],
       "api_key": [
@@ -36,7 +36,7 @@
           "other_platform_oauth_client": [
             {
               "client_id": "454308075650-ma6e4lql3qv05cbncm03jutleiq1g2h0.apps.googleusercontent.com",
-              "client_type": 3
+              "client_type": 1
             }
           ]
         }

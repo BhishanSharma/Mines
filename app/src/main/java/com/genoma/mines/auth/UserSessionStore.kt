@@ -14,6 +14,7 @@ class UserSessionStore(private val context: Context) {
     private companion object {
         val USER_ID = stringPreferencesKey("user_id")
         val USER_NAME = stringPreferencesKey("user_name")
+        val USER_EMAIL = stringPreferencesKey("user_email")
         val USER_PHOTO = stringPreferencesKey("user_photo")
     }
 
@@ -22,7 +23,7 @@ class UserSessionStore(private val context: Context) {
         UserProfile(
             id = id,
             displayName = prefs[USER_NAME],
-            email = null,
+            email = prefs[USER_EMAIL],
             photoUrl = prefs[USER_PHOTO]
         )
     }
@@ -31,6 +32,7 @@ class UserSessionStore(private val context: Context) {
         context.userSessionDataStore.edit { prefs ->
             prefs[USER_ID] = profile.id
             profile.displayName?.let { prefs[USER_NAME] = it }
+            profile.email?.let { prefs[USER_EMAIL] = it }
             profile.photoUrl?.let { prefs[USER_PHOTO] = it }
         }
     }

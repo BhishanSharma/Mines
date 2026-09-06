@@ -11,6 +11,8 @@ import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.data.local.GuestGameDatabase
 import com.genoma.mines.data.local.GuestGameRepository
 import com.genoma.mines.data.remote.FirestoreGameRepository
+import com.genoma.mines.data.remote.FirestoreFeedbackRepository
+import com.genoma.mines.data.remote.FeedbackSubmission
 import com.genoma.mines.feedback.GameFeedback
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameState
@@ -21,6 +23,7 @@ import com.genoma.mines.game.ScoreCalculator
 import com.genoma.mines.session.SessionManager
 import com.genoma.mines.settings.SettingsDataStore
 import com.genoma.mines.ui.screens.AvatarOption
+import com.genoma.mines.ui.screens.FeedbackData
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +50,8 @@ class MinesweeperViewModel(
 
     private val sessionManager = SessionManager()
     private val scoreCalculator = ScoreCalculator()
+
+    private val feedbackRepository = FirestoreFeedbackRepository()
 
     private val gameRepository: GameRepository = GameRepositoryImpl(
         sessionManager = sessionManager,
@@ -77,6 +82,15 @@ class MinesweeperViewModel(
 
     private val _selectedAvatar = MutableStateFlow(AvatarOption.Default)
     val selectedAvatar: StateFlow<AvatarOption> = _selectedAvatar.asStateFlow()
+
+    private val _isSubmittingFeedback = MutableStateFlow(false)
+    val isSubmittingFeedback: StateFlow<Boolean> = _isSubmittingFeedback.asStateFlow()
+
+    private val _feedbackError = MutableStateFlow<String?>(null)
+    val feedbackError: StateFlow<String?> = _feedbackError.asStateFlow()
+
+    private val _feedbackSubmitted = MutableStateFlow(false)
+    val feedbackSubmitted: StateFlow<Boolean> = _feedbackSubmitted.asStateFlow()
 
     init {
         loadSettings()
@@ -364,6 +378,36 @@ class MinesweeperViewModel(
         timerJob?.cancel()
         game = null
         _gameState.value = null
+    }
+
+    fun submitFeedback(data: FeedbackData, userId: String?) {
+        if (_isSubmittingFeedback.value) return
+
+        _isSubmittingFeedback.value = true
+        _feedbackError.value = null
+
+        viewModelScope.launch {
+            try {
+                feedbackRepository.submitFeedback(
+                    FeedbackSubmission(
+                        userId = userId,
+                        userName = data.userName,
+                        userEmail = data.userEmail,
+                        description = data.description,
+                        screenshotCount = data.screenshots.size
+                    )
+                )
+                _feedbackSubmitted.value = true
+            } catch (e: Exception) {
+                _feedbackError.value = e.message ?: "Couldn't send feedback. Please try again."
+            } finally {
+                _isSubmittingFeedback.value = false
+            }
+        }
+    }
+
+    fun resetFeedbackSubmitted() {
+        _feedbackSubmitted.value = false
     }
 
     override fun onCleared() {
