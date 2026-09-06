@@ -542,8 +542,7 @@ private fun DifficultyStatRow(
 }
 
 @Preview(
-    showBackground = true,
-    showSystemUi = true
+    showBackground = true
 )
 @Composable
 private fun ProfileScreenPreview() {
