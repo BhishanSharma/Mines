@@ -145,6 +145,44 @@ class GameFeedback(
         }
     }
 
+    /**
+     * Extra celebration layered on top of [win] when the finished game is
+     * also a new personal-best time for its difficulty — a brighter,
+     * longer fanfare than the regular win chime so a record feels like a
+     * bigger deal than an ordinary clear.
+     */
+    fun newBestTime(
+        soundEnabled: Boolean = true,
+        hapticsEnabled: Boolean = true
+    ) {
+        if (soundEnabled) {
+            feedbackScope.launch {
+                // Same rising run as `win`, but climbing further and
+                // finishing on a held high note instead of stopping short.
+                val notes = intArrayOf(
+                    ToneGenerator.TONE_DTMF_1,
+                    ToneGenerator.TONE_DTMF_4,
+                    ToneGenerator.TONE_DTMF_7,
+                    ToneGenerator.TONE_DTMF_9,
+                    ToneGenerator.TONE_DTMF_S,
+                    ToneGenerator.TONE_DTMF_S
+                )
+
+                notes.forEach { note ->
+                    toneGenerator.startTone(note, 90)
+                    delay(85)
+                }
+            }
+        }
+
+        if (hapticsEnabled) {
+            vibrateWaveform(
+                timings = longArrayOf(0, 40, 60, 40, 60, 40, 60, 200),
+                amplitudes = intArrayOf(0, 120, 0, 170, 0, 220, 0, 255)
+            )
+        }
+    }
+
     fun release() {
         toneGenerator.release()
         feedbackScope.cancel()

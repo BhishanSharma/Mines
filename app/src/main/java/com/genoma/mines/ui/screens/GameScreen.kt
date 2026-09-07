@@ -1,7 +1,17 @@
 package com.genoma.mines.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -35,6 +45,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SentimentSatisfied
 import androidx.compose.material.icons.filled.SentimentVeryDissatisfied
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -45,6 +56,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +96,9 @@ data class CellUiState(
     val isDetonated: Boolean = false
 )
 
+/** Accent used to make a new-best-time win banner stand out from a normal win. */
+private val BestTimeGold = Color(0xFFD4A017)
+
 private object GameSpacing {
     val screenHorizontal = 16.dp
     val screenTop = 16.dp
@@ -99,6 +114,8 @@ fun GameScreen(
     flagsPlaced: Int,
     elapsedSeconds: Int,
     status: GameStatus,
+    isNewBestTime: Boolean = false,
+    previousBestSeconds: Long? = null,
     onCellTap: (index: Int) -> Unit,
     onCellLongPress: (index: Int) -> Unit,
     onReset: () -> Unit,
@@ -197,9 +214,20 @@ fun GameScreen(
 
                         GameStatus.WON -> {
                             ResultBanner(
-                                title = "You won!",
-                                message = "Great job! You cleared the board.",
+                                title = if (isNewBestTime) {
+                                    "New best time!"
+                                } else {
+                                    "You won!"
+                                },
+                                message = if (isNewBestTime) {
+                                    "Great job! Your fastest clear yet at this difficulty."
+                                } else {
+                                    "Great job! You cleared the board."
+                                },
                                 isWin = true,
+                                isNewBestTime = isNewBestTime,
+                                elapsedSeconds = elapsedSeconds,
+                                previousBestSeconds = previousBestSeconds,
                                 onReset = onReset,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
@@ -433,17 +461,22 @@ private fun ResultBanner(
     message: String,
     isWin: Boolean,
     onReset: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isNewBestTime: Boolean = false,
+    elapsedSeconds: Int = 0,
+    previousBestSeconds: Long? = null
 ) {
-    val badgeColor = if (isWin) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.errorContainer
+    // A new best time gets a gold badge instead of the usual win color, so
+    // it visually stands out from an ordinary clear at a glance.
+    val badgeColor = when {
+        isNewBestTime -> BestTimeGold
+        isWin -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.errorContainer
     }
-    val badgeIconColor = if (isWin) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onErrorContainer
+    val badgeIconColor = when {
+        isNewBestTime -> Color.White
+        isWin -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onErrorContainer
     }
 
     Card(
@@ -499,6 +532,20 @@ private fun ResultBanner(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // Only shown on a win where there's an actual prior best to
+                // compare against — omitted for a loss, and omitted for a
+                // player's very first win at a difficulty (nothing to
+                // compare yet).
+                if (isWin && previousBestSeconds != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    TimeComparisonChip(
+                        isNewBestTime = isNewBestTime,
+                        elapsedSeconds = elapsedSeconds,
+                        previousBestSeconds = previousBestSeconds
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -525,6 +572,114 @@ private fun ResultBanner(
         }
     }
 }
+
+/**
+ * A small pill comparing this win's time against the player's best at this
+ * difficulty. It pops in with a bouncy scale + fade entrance so it draws
+ * the eye right after the banner appears, then settles into a slow,
+ * continuous pulse — a stronger gold glow for a new record, a gentler one
+ * otherwise — so it keeps reading as "live" feedback rather than static
+ * text.
+ */
+@Composable
+private fun TimeComparisonChip(
+    isNewBestTime: Boolean,
+    elapsedSeconds: Int,
+    previousBestSeconds: Long,
+    modifier: Modifier = Modifier
+) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(220)) + scaleIn(
+            initialScale = 0.6f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ),
+        modifier = modifier
+    ) {
+        val infiniteTransition = rememberInfiniteTransition(
+            label = "timeComparisonPulse"
+        )
+
+        // A gentle breathing glow behind the chip — noticeably stronger
+        // for a new record so it feels like a celebration, subtler for a
+        // near-miss so it informs without competing with the banner.
+        val glowAlpha by infiniteTransition.animateFloat(
+            initialValue = if (isNewBestTime) 0.55f else 0.85f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = if (isNewBestTime) 650 else 1100,
+                    easing = FastOutSlowInEasing
+                ),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "glowAlpha"
+        )
+
+        val diffSeconds = kotlin.math.abs(elapsedSeconds - previousBestSeconds.toInt())
+
+        val (chipBackground, chipContentColor, chipIcon, chipLabel) = if (isNewBestTime) {
+            Quadruple(
+                BestTimeGold.copy(alpha = glowAlpha),
+                Color.White,
+                Icons.Filled.EmojiEvents,
+                if (diffSeconds > 0) {
+                    "${diffSeconds}s faster than your best"
+                } else {
+                    "Matched your best time"
+                }
+            )
+        } else {
+            Quadruple(
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = glowAlpha),
+                MaterialTheme.colorScheme.onSecondaryContainer,
+                Icons.Filled.Timer,
+                "+${diffSeconds}s off your best (${formatElapsedTime(previousBestSeconds.toInt())})"
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(chipBackground)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = chipIcon,
+                contentDescription = null,
+                tint = chipContentColor,
+                modifier = Modifier.size(13.dp)
+            )
+
+            Spacer(modifier = Modifier.width(5.dp))
+
+            Text(
+                text = chipLabel,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = chipContentColor
+            )
+        }
+    }
+}
+
+/** Small local helper — `TimeComparisonChip` is the only place that needs a 4-tuple. */
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
 
 @Composable
 private fun StatusReadout(

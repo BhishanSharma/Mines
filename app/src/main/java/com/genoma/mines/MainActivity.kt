@@ -124,6 +124,8 @@ fun MinesweeperApp(
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
     val gameState by viewModel.gameState.collectAsState()
+    val isNewBestTime by viewModel.isNewBestTime.collectAsState()
+    val previousBestSeconds by viewModel.previousBestSeconds.collectAsState()
     val selectedAvatar by viewModel.selectedAvatar.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -366,6 +368,8 @@ fun MinesweeperApp(
                     flagsPlaced = state.flagsPlaced,
                     elapsedSeconds = state.elapsedSeconds,
                     status = state.status,
+                    isNewBestTime = isNewBestTime,
+                    previousBestSeconds = previousBestSeconds,
 
                     onCellTap = { index ->
                         viewModel.revealCell(index)

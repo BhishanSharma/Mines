@@ -75,6 +75,15 @@ class MinesweeperViewModel(
     private val _lastScore = MutableStateFlow<Int?>(null)
     val lastScore: StateFlow<Int?> = _lastScore.asStateFlow()
 
+    private val _isNewBestTime = MutableStateFlow(false)
+    val isNewBestTime: StateFlow<Boolean> = _isNewBestTime.asStateFlow()
+
+    // The player's best prior time (seconds) at this difficulty, captured
+    // right before the just-finished game is saved — lets the UI show how
+    // the current run compares, whether it's a new record or not.
+    private val _previousBestSeconds = MutableStateFlow<Long?>(null)
+    val previousBestSeconds: StateFlow<Long?> = _previousBestSeconds.asStateFlow()
+
     // Null = no saved preference yet; the UI falls back to the system
     // setting until the user explicitly picks light or dark.
     private val _darkTheme = MutableStateFlow<Boolean?>(null)
@@ -163,6 +172,8 @@ class MinesweeperViewModel(
         game = MinesweeperGame(difficulty)
         gameResultSaved = false
         _lastScore.value = null
+        _isNewBestTime.value = false
+        _previousBestSeconds.value = null
 
         val newGame = game ?: return
 
@@ -356,6 +367,34 @@ class MinesweeperViewModel(
         )
 
         viewModelScope.launch {
+            if (result == GameResultType.WIN) {
+                // Compare against past wins at this difficulty *before*
+                // saving the current one, so it's judged against previous
+                // attempts rather than against itself.
+                val previousBestSeconds = gameRepository.getGameHistory()
+                    .filter {
+                        it.difficulty == state.difficulty &&
+                                it.result == GameResultType.WIN
+                    }
+                    .minOfOrNull { it.durationSeconds }
+
+                val isNewBest = previousBestSeconds == null ||
+                        state.elapsedSeconds.toLong() < previousBestSeconds
+
+                _isNewBestTime.value = isNewBest
+                _previousBestSeconds.value = previousBestSeconds
+
+                if (isNewBest) {
+                    feedback.newBestTime(
+                        soundEnabled = _soundEnabled.value,
+                        hapticsEnabled = _hapticsEnabled.value
+                    )
+                }
+            } else {
+                _isNewBestTime.value = false
+                _previousBestSeconds.value = null
+            }
+
             gameRepository.saveGameResult(gameResult)
         }
     }
