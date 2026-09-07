@@ -347,14 +347,14 @@ class MinesweeperViewModel(
 
         val correctlyRevealedCells = state.cells.count { it.isRevealed && !it.isMine }
 
-        val mistakes = state.cells.count { it.isFlagged && !it.isMine }
+        val totalSafeCells = state.difficulty.rows * state.difficulty.columns - state.difficulty.mines
 
         val score = scoreCalculator.calculate(
             difficulty = state.difficulty,
             result = result,
             elapsedSeconds = state.elapsedSeconds.toLong(),
             correctlyRevealedCells = correctlyRevealedCells,
-            mistakes = mistakes
+            totalSafeCells = totalSafeCells
         )
 
         _lastScore.value = score

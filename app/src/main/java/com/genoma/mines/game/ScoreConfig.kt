@@ -1,10 +1,12 @@
 package com.genoma.mines.game
 
 data class ScoreConfig(
-    val baseScore: Int,
-    val targetDurationSeconds: Long,
-    val timeBonusPerSecond: Int,
-    val pointsPerCell: Int,
-    val winBonus: Int,
-    val penaltyPerMistake: Int
+    val fastTimeSeconds: Long,
+    val averageTimeSeconds: Long,
+    val fastWinPoints: Int,
+    val averageWinPoints: Int,
+    val slowWinPoints: Int,
+    val earlyLossPenalty: Int,
+    val survivalThreshold: Double,
+    val survivalPoints: Int
 )

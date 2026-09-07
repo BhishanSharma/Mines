@@ -4,61 +4,65 @@ class ScoreCalculator {
 
     private fun configFor(difficulty: Difficulty): ScoreConfig = when (difficulty) {
         Difficulty.EASY -> ScoreConfig(
-            baseScore = 100,
-            targetDurationSeconds = 120,
-            timeBonusPerSecond = 2,
-            pointsPerCell = 5,
-            winBonus = 50,
-            penaltyPerMistake = 10
+            fastTimeSeconds = 60,
+            averageTimeSeconds = 120,
+            fastWinPoints = 100,
+            averageWinPoints = 70,
+            slowWinPoints = 40,
+            earlyLossPenalty = -30,
+            survivalThreshold = 0.5,
+            survivalPoints = 20
         )
 
         Difficulty.MEDIUM -> ScoreConfig(
-            baseScore = 250,
-            targetDurationSeconds = 180,
-            timeBonusPerSecond = 4,
-            pointsPerCell = 10,
-            winBonus = 150,
-            penaltyPerMistake = 20
+            fastTimeSeconds = 90,
+            averageTimeSeconds = 180,
+            fastWinPoints = 200,
+            averageWinPoints = 150,
+            slowWinPoints = 90,
+            earlyLossPenalty = -50,
+            survivalThreshold = 0.5,
+            survivalPoints = 40
         )
 
         Difficulty.HARD -> ScoreConfig(
-            baseScore = 500,
-            targetDurationSeconds = 240,
-            timeBonusPerSecond = 6,
-            pointsPerCell = 20,
-            winBonus = 300,
-            penaltyPerMistake = 30
+            fastTimeSeconds = 120,
+            averageTimeSeconds = 240,
+            fastWinPoints = 350,
+            averageWinPoints = 250,
+            slowWinPoints = 150,
+            earlyLossPenalty = -80,
+            survivalThreshold = 0.5,
+            survivalPoints = 70
         )
     }
-
     fun calculate(
         difficulty: Difficulty,
         result: GameResultType,
         elapsedSeconds: Long,
         correctlyRevealedCells: Int,
-        mistakes: Int
+        totalSafeCells: Int
     ): Int {
         val config = configFor(difficulty)
 
-        val accuracyBonus = correctlyRevealedCells * config.pointsPerCell
-        val mistakePenalty = mistakes * config.penaltyPerMistake
-
-        if (result == GameResultType.LOSS) {
-            // Losing should cost points, not just withhold the win bonus.
-            // Hitting a mine forfeits the round's base score outright, and
-            // each misflagged cell costs extra — the cells safely cleared
-            // beforehand only soften the blow, they don't erase it, so this
-            // stays negative in all but the most nearly-cleared boards.
-            return accuracyBonus - config.baseScore - mistakePenalty
+        if (result == GameResultType.WIN) {
+            return when {
+                elapsedSeconds <= config.fastTimeSeconds -> config.fastWinPoints
+                elapsedSeconds <= config.averageTimeSeconds -> config.averageWinPoints
+                else -> config.slowWinPoints
+            }
         }
 
-        val timeBonus =
-            maxOf(0L, config.targetDurationSeconds - elapsedSeconds) *
-                    config.timeBonusPerSecond
+        val survivalRatio = if (totalSafeCells > 0) {
+            correctlyRevealedCells.toDouble() / totalSafeCells
+        } else {
+            0.0
+        }
 
-        return maxOf(
-            0,
-            config.baseScore + timeBonus.toInt() + accuracyBonus + config.winBonus - mistakePenalty
-        )
+        return if (survivalRatio >= config.survivalThreshold) {
+            config.survivalPoints
+        } else {
+            config.earlyLossPenalty
+        }
     }
 }

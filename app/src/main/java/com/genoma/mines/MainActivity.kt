@@ -113,17 +113,7 @@ fun MinesweeperApp(
         mutableStateOf<Screen>(Screen.Login)
     }
 
-    /*
-     * The bottom navigation is owned by the app-level Scaffold rather than
-     * by individual screens. This keeps it persistent while navigating.
-     *
-     * Game is intentionally excluded from the Scaffold bottomBar below.
-     *
-     * The current project has no separate AchievementsScreen or
-     * MoreGamesScreen yet, so those two actions show a message until those
-     * screens are added. Statistics uses ProfileScreen because that screen
-     * already loads UserStatistics.
-     */
+
     var selectedBottomNavItem by remember {
         mutableStateOf(BottomNavItem.HOW_TO_PLAY)
     }
@@ -167,7 +157,7 @@ fun MinesweeperApp(
                 guestHistoryLoading = false
             }
 
-            is Screen.Profile -> {
+            is Screen.Profile, is Screen.Home -> {
                 statisticsLoading = true
                 userStatistics = viewModel.loadStatistics()
                 statisticsLoading = false
