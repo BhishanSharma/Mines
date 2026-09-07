@@ -27,13 +27,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -45,16 +50,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import com.genoma.mines.R
 import com.genoma.mines.game.Difficulty
@@ -83,7 +90,11 @@ fun HomeScreen(
     username: String = "Player",
     selectedAvatar: AvatarOption = AvatarOption.Default,
     photoUrl: String? = null,
-    gamesWon: Int = 0
+    gamesWon: Int = 0,
+    onOpenPremium: () -> Unit = {},
+    onOpenStatistics: () -> Unit = {},
+    onOpenAchievements: () -> Unit = {},
+    onOpenMoreGames: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -100,334 +111,396 @@ fun HomeScreen(
                 )
         ) {
 
-            // Entry points that would otherwise live in a bottom nav bar —
-            // kept up top instead since this app intentionally has none.
+            // ---------- Top bar: avatar + name + quick actions ----------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
 
-                Column(
-                    horizontalAlignment = Alignment.Start
-                ) {
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .background(
-                                    MaterialTheme.colorScheme.primaryContainer
-                                )
-                                .clickable(onClick = onOpenProfile),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (photoUrl != null) {
-                                AsyncImage(
-                                    model = photoUrl,
-                                    contentDescription = "Profile",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(4.dp)
-                                        .clip(RoundedCornerShape(10.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Image(
-                                    painter = painterResource(id = selectedAvatar.drawableRes),
-                                    contentDescription = "Profile",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(4.dp)
-                                        .clip(RoundedCornerShape(10.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-
-                        Spacer(
-                            modifier = Modifier.width(10.dp)
-                        )
-
-                        Text(
-                            text = username,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    Spacer(
-                        modifier = Modifier.height(20.dp)
-                    )
-
-                    Layout(
-                        modifier = Modifier.offset(
-                            x = -Spacing.screenHorizontal
-                        ),
-                        content = {
-
-                            // Score pill
-                            Row(
-                                modifier = Modifier
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = 0.dp,
-                                            bottomStart = 0.dp,
-                                            topEnd = 20.dp,
-                                            bottomEnd = 20.dp
-                                        )
-                                    )
-                                    .background(
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    )
-                                    .padding(
-                                        start = 16.dp,
-                                        end = 40.dp,
-                                        top = 9.dp,
-                                        bottom = 9.dp
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "$gamesWon",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                            }
-
-                            /*
-                             * Independent circular icon background.
-                             *
-                             * 50.dp icon
-                             * + 2.dp on each side
-                             * = 54.dp circle
-                             */
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.TrackChanges,
-                                    contentDescription = "Score",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(44.dp)
-                                )
-                            }
-                        }
-                    ) { measurables, constraints ->
-
-                        // Measure the pill first.
-                        val pill = measurables[0].measure(constraints)
-
-                        // Measure the independent circle.
-                        val circle = measurables[1].measure(
-                            constraints.copy(
-                                minWidth = 0,
-                                minHeight = 0
-                            )
-                        )
-
-
-                        layout(
-                            width = pill.width,
-                            height = pill.height
-                        ) {
-
-                            // Place the pill normally.
-                            pill.place(
-                                x = 0,
-                                y = 0
-                            )
-
-                            circle.place(
-                                x = pill.width - (circle.width / 2),
-                                y = (pill.height - circle.height) / 2
-                            )
-                        }
-                    }
-                }
-
-                // Settings button
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onOpenSettings),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
-            }
-
-            Spacer(
-                modifier = Modifier.weight(0.5f)
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
 
                     Box(
                         modifier = Modifier
-                            .size(84.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                MaterialTheme.colorScheme.primaryContainer
-                            ),
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            )
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable(onClick = onOpenProfile),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            painter = painterResource(
-                                id = R.drawable.mine_logo
-                            ),
-                            contentDescription = "Mines logo",
-                            modifier = Modifier.size(68.dp),
-                            contentScale = ContentScale.Fit
-                        )
+                        if (photoUrl != null) {
+                            AsyncImage(
+                                model = photoUrl,
+                                contentDescription = "Profile",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(3.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            AsyncImage(
+                                model = selectedAvatar.drawableRes,
+                                contentDescription = "Profile",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(3.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
 
-                    Spacer(
-                        modifier = Modifier.height(Spacing.small)
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    Text(
-                        text = "Mines",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 30.sp,
-                            lineHeight = 36.sp
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                    Column {
+                        Text(
+                            text = username,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = "Ready to explore?",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconPillButton(
+                        icon = Icons.Filled.WorkspacePremium,
+                        onClick = onOpenPremium,
+                        filled = true
+                    )
+                    IconPillButton(
+                        icon = Icons.Filled.Settings,
+                        onClick = onOpenSettings,
+                        filled = false
                     )
                 }
             }
 
-            Spacer(
-                modifier = Modifier.weight(0.5f)
-            )
+            Spacer(modifier = Modifier.height(Spacing.medium))
 
-            Text(
-                text = "CHOOSE DIFFICULTY",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(
-                modifier = Modifier.height(Spacing.optionGap)
-            )
-
-            Column(
-                modifier = Modifier.selectableGroup(),
-                verticalArrangement = Arrangement.spacedBy(
-                    Spacing.small
+            // ---------- Star / score pill ----------
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = "Score",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
                 )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "$gamesWon",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(0.6f))
+
+            // ---------- Hero: copy on the left, illustration on the right ----------
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "CLASSIC PUZZLE",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Mines",
+                        style = MaterialTheme.typography.headlineLarge.copy(fontSize = 36.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Think. Uncover. Win.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                MinesHeroIllustration()
+            }
+
+            Spacer(modifier = Modifier.weight(0.6f))
+
+            // ---------- Difficulty section header ----------
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "CHOOSE DIFFICULTY",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.optionGap))
+
+            // ---------- Difficulty cards ----------
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Difficulty.entries.forEach { difficulty ->
                     DifficultyOption(
                         difficulty = difficulty,
                         selected = selectedDifficulty == difficulty,
-                        onClick = {
-                            onDifficultySelected(difficulty)
-                        }
+                        onClick = { onDifficultySelected(difficulty) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(Spacing.large)
-            )
+            Spacer(modifier = Modifier.height(Spacing.large))
 
-            Button(
-                onClick = onStartGame,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.height(18.dp)
-                )
-
-                Spacer(
-                    modifier = Modifier.width(8.dp)
-                )
-
-                Text(
-                    text = "Start game",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Spacer(
-                modifier = Modifier.height(Spacing.medium)
-            )
-
+            // ---------- Start game ----------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = onHowToPlay)
-                    .padding(vertical = 12.dp),
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable(onClick = onStartGame),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                    imageVector = Icons.Filled.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier.height(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
                 )
-
-                Spacer(
-                    modifier = Modifier.width(6.dp)
-                )
-
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "How to play",
+                    text = "Start Game",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
 
-            Spacer(
-                modifier = Modifier.weight(0.75f)
+            Spacer(modifier = Modifier.height(Spacing.medium))
+
+            // ---------- Quick actions ----------
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                QuickActionButton(
+                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
+                    label = "How to Play",
+                    onClick = onHowToPlay,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    icon = Icons.Filled.BarChart,
+                    label = "Statistics",
+                    onClick = onOpenStatistics,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    icon = Icons.Filled.EmojiEvents,
+                    label = "Achievements",
+                    onClick = onOpenAchievements,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionButton(
+                    icon = Icons.Filled.SportsEsports,
+                    label = "More Games",
+                    onClick = onOpenMoreGames,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(0.8f))
+
+            // ---------- Footer quote on a tinted band ----------
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(vertical = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Filled.Flag,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(1.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "\u201CSmall moves. Big victories.\u201D",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .height(1.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun IconPillButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    filled: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (filled) {
+                    Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                } else {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                }
             )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (filled) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onBackground
+            },
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+
+/**
+ * Small illustrative widget built entirely from shapes + icons (no extra
+ * drawable assets required): a soft blob backdrop, a 2x2 tile grid with a
+ * flag and two number tiles, and a bomb badge with a spark. Swap this out
+ * for a real illustration drawable if/when you have one.
+ */
+@Composable
+private fun MinesHeroIllustration(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.size(220.dp),
+        contentAlignment = Alignment.Center
+    ) {
+
+            Image(
+                painter = painterResource(
+                    id = R.drawable.home_banner
+                ),
+                contentDescription = "Mines logo",
+                contentScale = ContentScale.FillBounds
+            )
+    }
+}
+
+
+@Composable
+private fun HeroTile(
+    number: String? = null,
+    numberColor: Color = Color.Unspecified,
+    content: (@Composable () -> Unit)? = null
+) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            content != null -> content()
+            number != null -> Text(
+                text = number,
+                color = numberColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun MiniGridIcon(selected: Boolean) {
+    val dotColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(3) {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(dotColor.copy(alpha = if (selected) 0.9f else 0.35f))
+                    )
+                }
+            }
         }
     }
 }
@@ -437,15 +510,13 @@ fun HomeScreen(
 fun DifficultyOption(
     difficulty: Difficulty,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember {
-        MutableInteractionSource()
-    }
+    val interactionSource = remember { MutableInteractionSource() }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .semantics {
                 contentDescription =
                     "${difficulty.displayName()} difficulty, " +
@@ -459,7 +530,7 @@ fun DifficultyOption(
                 interactionSource = interactionSource,
                 indication = null
             ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.primaryContainer
@@ -479,53 +550,109 @@ fun DifficultyOption(
             }
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    horizontal = 16.dp,
-                    vertical = 14.dp
-                ),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp)
         ) {
-            Icon(
-                imageVector = if (selected) {
-                    Icons.Outlined.RadioButtonChecked
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                MiniGridIcon(selected = selected)
+                Icon(
+                    imageVector = if (selected) {
+                        Icons.Outlined.RadioButtonChecked
+                    } else {
+                        Icons.Outlined.RadioButtonUnchecked
+                    },
+                    contentDescription = null,
+                    tint = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    },
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = difficulty.displayName(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
-                    Icons.Outlined.RadioButtonUnchecked
-                },
-                contentDescription = null,
-                tint = if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.outline
-                },
-                modifier = Modifier.height(20.dp)
+                    MaterialTheme.colorScheme.onSurface
+                }
             )
 
-            Spacer(
-                modifier = Modifier.width(12.dp)
+            Spacer(modifier = Modifier.height(2.dp))
+
+
+            Text(
+                text = "${difficulty.mines} mines",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Column(
-                modifier = Modifier.weight(1f)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = difficulty.displayName(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                )
-
-                Spacer(
-                    modifier = Modifier.height(2.dp)
+                    text = difficulty.tagline(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+    }
+}
+
+
+@Composable
+private fun QuickActionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -538,20 +665,28 @@ fun Difficulty.displayName(): String {
     }
 }
 
+fun Difficulty.tagline(): String {
+    return when (this) {
+        Difficulty.EASY -> "Good for beginners"
+        Difficulty.MEDIUM -> "A balanced challenge"
+        Difficulty.HARD -> "For true experts"
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
     MinesTheme {
         HomeScreen(
-            selectedDifficulty = Difficulty.MEDIUM,
+            selectedDifficulty = Difficulty.EASY,
             onDifficultySelected = {},
             onStartGame = {},
             onHowToPlay = {},
             onOpenSettings = {},
             onOpenProfile = {},
-            username = "Alex",
-            gamesWon = 12
+            username = "Bhishan Sharma",
+            gamesWon = 0
         )
     }
 }
