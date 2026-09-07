@@ -314,79 +314,79 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(Spacing.medium))
 
             // ---------- Quick actions ----------
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                QuickActionButton(
-                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
-                    label = "How to Play",
-                    onClick = onHowToPlay,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionButton(
-                    icon = Icons.Filled.BarChart,
-                    label = "Statistics",
-                    onClick = onOpenStatistics,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionButton(
-                    icon = Icons.Filled.EmojiEvents,
-                    label = "Achievements",
-                    onClick = onOpenAchievements,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickActionButton(
-                    icon = Icons.Filled.SportsEsports,
-                    label = "More Games",
-                    onClick = onOpenMoreGames,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.spacedBy(10.dp)
+//            ) {
+//                QuickActionButton(
+//                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
+//                    label = "How to Play",
+//                    onClick = onHowToPlay,
+//                    modifier = Modifier.weight(1f)
+//                )
+//                QuickActionButton(
+//                    icon = Icons.Filled.BarChart,
+//                    label = "Statistics",
+//                    onClick = onOpenStatistics,
+//                    modifier = Modifier.weight(1f)
+//                )
+//                QuickActionButton(
+//                    icon = Icons.Filled.EmojiEvents,
+//                    label = "Achievements",
+//                    onClick = onOpenAchievements,
+//                    modifier = Modifier.weight(1f)
+//                )
+//                QuickActionButton(
+//                    icon = Icons.Filled.SportsEsports,
+//                    label = "More Games",
+//                    onClick = onOpenMoreGames,
+//                    modifier = Modifier.weight(1f)
+//                )
+//            }
 
-            Spacer(modifier = Modifier.weight(0.8f))
-
-            // ---------- Footer quote on a tinted band ----------
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(vertical = 20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Filled.Flag,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(1.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "\u201CSmall moves. Big victories.\u201D",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(1.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
-                        )
-                    }
-                }
-            }
+//            Spacer(modifier = Modifier.weight(0.8f))
+//
+//            // ---------- Footer quote on a tinted band ----------
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
+//                    .background(MaterialTheme.colorScheme.primaryContainer)
+//                    .padding(vertical = 20.dp),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                    Icon(
+//                        imageVector = Icons.Filled.Flag,
+//                        contentDescription = null,
+//                        tint = MaterialTheme.colorScheme.primary,
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                    Spacer(modifier = Modifier.height(6.dp))
+//                    Row(verticalAlignment = Alignment.CenterVertically) {
+//                        Box(
+//                            modifier = Modifier
+//                                .width(24.dp)
+//                                .height(1.dp)
+//                                .background(MaterialTheme.colorScheme.outlineVariant)
+//                        )
+//                        Spacer(modifier = Modifier.width(10.dp))
+//                        Text(
+//                            text = "\u201CSmall moves. Big victories.\u201D",
+//                            style = MaterialTheme.typography.bodySmall,
+//                            fontStyle = FontStyle.Italic,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                        Spacer(modifier = Modifier.width(10.dp))
+//                        Box(
+//                            modifier = Modifier
+//                                .width(24.dp)
+//                                .height(1.dp)
+//                                .background(MaterialTheme.colorScheme.outlineVariant)
+//                        )
+//                    }
+//                }
+//            }
         }
     }
 }

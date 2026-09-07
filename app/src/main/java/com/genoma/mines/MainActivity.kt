@@ -6,6 +6,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.genoma.mines.auth.GoogleAuthManager
@@ -32,6 +36,8 @@ import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
 import com.genoma.mines.ui.screens.ProfileScreen
 import com.genoma.mines.ui.screens.SettingsScreen
+import com.genoma.mines.ui.components.BottomNavItem
+import com.genoma.mines.ui.components.BottomNavbar
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
 import kotlinx.coroutines.flow.first
@@ -105,6 +111,21 @@ fun MinesweeperApp(
 
     var screen by remember {
         mutableStateOf<Screen>(Screen.Login)
+    }
+
+    /*
+     * The bottom navigation is owned by the app-level Scaffold rather than
+     * by individual screens. This keeps it persistent while navigating.
+     *
+     * Game is intentionally excluded from the Scaffold bottomBar below.
+     *
+     * The current project has no separate AchievementsScreen or
+     * MoreGamesScreen yet, so those two actions show a message until those
+     * screens are added. Statistics uses ProfileScreen because that screen
+     * already loads UserStatistics.
+     */
+    var selectedBottomNavItem by remember {
+        mutableStateOf(BottomNavItem.HOW_TO_PLAY)
     }
 
     var selectedDifficulty by remember {
@@ -184,244 +205,290 @@ fun MinesweeperApp(
         }
     }
 
-    when (screen) {
+    Scaffold(
+        bottomBar = {
+            // Login is an authentication screen, so it does not show the
+            // app navigation. Game is also excluded as requested.
+            if (screen !is Screen.Login && screen !is Screen.Game) {
+                BottomNavbar(
+                    selectedItem = selectedBottomNavItem,
 
-        is Screen.Login -> {
-            LoginScreen(
-                onGoogleSignInClick = {
-                    scope.launch {
-
-                        val result = authManager.signIn(
-                            webClientId = webClientId,
-                            activity = activity
-                        )
-
-                        when (result) {
-
-                            is GoogleSignInResult.Success -> {
-                                sessionStore.save(result.profile)
-
-                                firestoreRepository.ensureUserDocument(
-                                    uid = result.profile.id,
-                                    name = result.profile.displayName,
-                                    email = result.profile.email,
-                                    photoUrl = result.profile.photoUrl
-                                )
-
-                                screen = Screen.Home
-                            }
-
-                            is GoogleSignInResult.Failure -> {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    result.message,
-                                    android.widget.Toast.LENGTH_LONG
-                                ).show()
-                            }
-
-                            GoogleSignInResult.Cancelled -> {
-                            }
-                        }
-                    }
-                },
-
-                onGuestClick = {
-                    screen = Screen.Home
-                }
-            )
-        }
-
-        is Screen.Home -> {
-            HomeScreen(
-                selectedDifficulty = selectedDifficulty,
-
-                onDifficultySelected = {
-                    selectedDifficulty = it
-                },
-
-                onStartGame = {
-                    viewModel.startGame(selectedDifficulty)
-                    screen = Screen.Game(selectedDifficulty)
-                },
-
-                onHowToPlay = {
-                    screen = Screen.HowToPlay
-                },
-
-                onOpenSettings = {
-                    screen = Screen.Settings
-                },
-
-                onOpenProfile = {
-                    screen = Screen.Profile
-                },
-
-                username = userProfile?.displayName ?: "Guest",
-                selectedAvatar = selectedAvatar,
-                photoUrl = userProfile?.photoUrl,
-                gamesWon = userStatistics.totalScore
-
-            )
-        }
-
-        is Screen.Settings -> {
-            SettingsScreen(
-                soundEnabled = soundEnabled,
-                hapticsEnabled = hapticsEnabled,
-                darkTheme = darkTheme,
-                isSignedIn = userProfile != null,
-                userName = userProfile?.displayName,
-
-                onSoundToggle = { enabled ->
-                    viewModel.setSoundEnabled(enabled)
-                },
-
-                onHapticsToggle = { enabled ->
-                    viewModel.setHapticsEnabled(enabled)
-                },
-
-                onThemeToggle = { enabled ->
-                    viewModel.setDarkTheme(enabled)
-                },
-
-                onFeedbackClick = {
-                    screen = Screen.Feedback
-                },
-
-                onSignOut = {
-                    scope.launch {
-
-                        authManager.signOut()
-                        sessionStore.clear()
-
-                        screen = Screen.Login
-                    }
-                },
-
-                onSignInClick = {           // ← add this block
-                    screen = Screen.Login
-                },
-
-                onBack = {
-                    screen = Screen.Home
-                }
-            )
-        }
-
-        is Screen.Feedback -> {
-            val isSubmittingFeedback by viewModel.isSubmittingFeedback.collectAsState()
-            val feedbackError by viewModel.feedbackError.collectAsState()
-            val feedbackSubmitted by viewModel.feedbackSubmitted.collectAsState()
-
-            LaunchedEffect(feedbackSubmitted) {
-                if (feedbackSubmitted) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Thanks for the feedback!",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                    viewModel.resetFeedbackSubmitted()
-                    screen = Screen.Settings
-                }
-            }
-
-            FeedbackScreen(
-                userName = userProfile?.displayName ?: "Guest",
-                userEmail = userProfile?.email ?: "",
-                isSubmitting = isSubmittingFeedback,
-                submitError = feedbackError,
-                onSubmit = { data ->
-                    viewModel.submitFeedback(data, userId = userProfile?.id)
-                },
-                onBack = {
-                    screen = Screen.Settings
-                }
-            )
-        }
-
-        is Screen.HowToPlay -> {
-            HowToPlayScreen(
-                onBack = {
-                    screen = Screen.Home
-                }
-            )
-        }
-
-        is Screen.Game -> {
-            val state = gameState
-
-            if (state != null) {
-                GameScreen(
-                    difficulty = state.difficulty,
-
-                    cells = state.cells.mapIndexed { index, cell ->
-                        CellUiState(
-                            isRevealed = cell.isRevealed,
-                            isFlagged = cell.isFlagged,
-                            isMine = cell.isMine,
-                            adjacentMines = cell.adjacentMines,
-                            isDetonated =
-                                state.detonatedCellIndex == index
-                        )
+                    onHowToPlay = {
+                        selectedBottomNavItem = BottomNavItem.HOW_TO_PLAY
+                        screen = Screen.HowToPlay
                     },
 
-                    flagsPlaced = state.flagsPlaced,
-                    elapsedSeconds = state.elapsedSeconds,
-                    status = state.status,
-                    isNewBestTime = isNewBestTime,
-                    previousBestSeconds = previousBestSeconds,
-
-                    onCellTap = { index ->
-                        viewModel.revealCell(index)
+                    onOpenStatistics = {
+                        selectedBottomNavItem = BottomNavItem.STATISTICS
+                        // ProfileScreen already loads and displays UserStatistics.
+                        screen = Screen.Profile
                     },
 
-                    onCellLongPress = { index ->
-                        viewModel.toggleFlag(index)
+                    onOpenAchievements = {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Achievements screen is not added yet.",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     },
 
-                    onReset = {
-                        viewModel.resetGame()
-                    },
-
-                    onBack = {
-                        viewModel.goBackToHome()
-                        screen = Screen.Home
-                    },
-
-                    onPause = {
-                        viewModel.togglePause()
+                    onOpenMoreGames = {
+                        android.widget.Toast.makeText(
+                            context,
+                            "More Games screen is not added yet.",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
-            } else {
-                screen = Screen.Home
             }
         }
+    ) { innerPadding ->
 
-        is Screen.Profile -> {
+        Box(
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            when (screen) {
 
-            ProfileScreen(
-                username = userProfile?.displayName ?: "Player",
-                statistics = userStatistics,
-                isLoading = statisticsLoading,
-                selectedAvatar = selectedAvatar,
-                photoUrl = userProfile?.photoUrl,
-                onAvatarSelected = { avatar ->
-                    viewModel.setAvatar(avatar)
-                },
-                onBack = {
-                    screen = Screen.Home
+                is Screen.Login -> {
+                    LoginScreen(
+                        onGoogleSignInClick = {
+                            scope.launch {
+
+                                val result = authManager.signIn(
+                                    webClientId = webClientId,
+                                    activity = activity
+                                )
+
+                                when (result) {
+
+                                    is GoogleSignInResult.Success -> {
+                                        sessionStore.save(result.profile)
+
+                                        firestoreRepository.ensureUserDocument(
+                                            uid = result.profile.id,
+                                            name = result.profile.displayName,
+                                            email = result.profile.email,
+                                            photoUrl = result.profile.photoUrl
+                                        )
+
+                                        screen = Screen.Home
+                                    }
+
+                                    is GoogleSignInResult.Failure -> {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            result.message,
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+
+                                    GoogleSignInResult.Cancelled -> {
+                                    }
+                                }
+                            }
+                        },
+
+                        onGuestClick = {
+                            screen = Screen.Home
+                        }
+                    )
                 }
-            )
-        }
 
-        is Screen.GuestHistory -> {
-            GuestHistoryScreen(
-                isLoading = guestHistoryLoading,
-                history = guestHistory,
-                onBack = {
-                    screen = Screen.Home
+                is Screen.Home -> {
+                    HomeScreen(
+                        selectedDifficulty = selectedDifficulty,
+
+                        onDifficultySelected = {
+                            selectedDifficulty = it
+                        },
+
+                        onStartGame = {
+                            viewModel.startGame(selectedDifficulty)
+                            screen = Screen.Game(selectedDifficulty)
+                        },
+
+                        onHowToPlay = {
+                            selectedBottomNavItem = BottomNavItem.HOW_TO_PLAY
+                            screen = Screen.HowToPlay
+                        },
+
+                        onOpenSettings = {
+                            screen = Screen.Settings
+                        },
+
+                        onOpenProfile = {
+                            selectedBottomNavItem = BottomNavItem.STATISTICS
+                            screen = Screen.Profile
+                        },
+
+                        username = userProfile?.displayName ?: "Guest",
+                        selectedAvatar = selectedAvatar,
+                        photoUrl = userProfile?.photoUrl,
+                        gamesWon = userStatistics.totalScore
+
+                    )
                 }
-            )
+
+                is Screen.Settings -> {
+                    SettingsScreen(
+                        soundEnabled = soundEnabled,
+                        hapticsEnabled = hapticsEnabled,
+                        darkTheme = darkTheme,
+                        isSignedIn = userProfile != null,
+                        userName = userProfile?.displayName,
+
+                        onSoundToggle = { enabled ->
+                            viewModel.setSoundEnabled(enabled)
+                        },
+
+                        onHapticsToggle = { enabled ->
+                            viewModel.setHapticsEnabled(enabled)
+                        },
+
+                        onThemeToggle = { enabled ->
+                            viewModel.setDarkTheme(enabled)
+                        },
+
+                        onFeedbackClick = {
+                            screen = Screen.Feedback
+                        },
+
+                        onSignOut = {
+                            scope.launch {
+
+                                authManager.signOut()
+                                sessionStore.clear()
+
+                                screen = Screen.Login
+                            }
+                        },
+
+                        onSignInClick = {           // ← add this block
+                            screen = Screen.Login
+                        },
+
+                        onBack = {
+                            screen = Screen.Home
+                        }
+                    )
+                }
+
+                is Screen.Feedback -> {
+                    val isSubmittingFeedback by viewModel.isSubmittingFeedback.collectAsState()
+                    val feedbackError by viewModel.feedbackError.collectAsState()
+                    val feedbackSubmitted by viewModel.feedbackSubmitted.collectAsState()
+
+                    LaunchedEffect(feedbackSubmitted) {
+                        if (feedbackSubmitted) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Thanks for the feedback!",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                            viewModel.resetFeedbackSubmitted()
+                            screen = Screen.Settings
+                        }
+                    }
+
+                    FeedbackScreen(
+                        userName = userProfile?.displayName ?: "Guest",
+                        userEmail = userProfile?.email ?: "",
+                        isSubmitting = isSubmittingFeedback,
+                        submitError = feedbackError,
+                        onSubmit = { data ->
+                            viewModel.submitFeedback(data, userId = userProfile?.id)
+                        },
+                        onBack = {
+                            screen = Screen.Settings
+                        }
+                    )
+                }
+
+                is Screen.HowToPlay -> {
+                    HowToPlayScreen(
+                        onBack = {
+                            screen = Screen.Home
+                        }
+                    )
+                }
+
+                is Screen.Game -> {
+                    val state = gameState
+
+                    if (state != null) {
+                        GameScreen(
+                            difficulty = state.difficulty,
+
+                            cells = state.cells.mapIndexed { index, cell ->
+                                CellUiState(
+                                    isRevealed = cell.isRevealed,
+                                    isFlagged = cell.isFlagged,
+                                    isMine = cell.isMine,
+                                    adjacentMines = cell.adjacentMines,
+                                    isDetonated =
+                                        state.detonatedCellIndex == index
+                                )
+                            },
+
+                            flagsPlaced = state.flagsPlaced,
+                            elapsedSeconds = state.elapsedSeconds,
+                            status = state.status,
+                            isNewBestTime = isNewBestTime,
+                            previousBestSeconds = previousBestSeconds,
+
+                            onCellTap = { index ->
+                                viewModel.revealCell(index)
+                            },
+
+                            onCellLongPress = { index ->
+                                viewModel.toggleFlag(index)
+                            },
+
+                            onReset = {
+                                viewModel.resetGame()
+                            },
+
+                            onBack = {
+                                viewModel.goBackToHome()
+                                screen = Screen.Home
+                            },
+
+                            onPause = {
+                                viewModel.togglePause()
+                            }
+                        )
+                    } else {
+                        screen = Screen.Home
+                    }
+                }
+
+                is Screen.Profile -> {
+
+                    ProfileScreen(
+                        username = userProfile?.displayName ?: "Player",
+                        statistics = userStatistics,
+                        isLoading = statisticsLoading,
+                        selectedAvatar = selectedAvatar,
+                        photoUrl = userProfile?.photoUrl,
+                        onAvatarSelected = { avatar ->
+                            viewModel.setAvatar(avatar)
+                        },
+                        onBack = {
+                            screen = Screen.Home
+                        }
+                    )
+                }
+
+                is Screen.GuestHistory -> {
+                    GuestHistoryScreen(
+                        isLoading = guestHistoryLoading,
+                        history = guestHistory,
+                        onBack = {
+                            screen = Screen.Home
+                        }
+                    )
+                }
+            }
         }
     }
 }
