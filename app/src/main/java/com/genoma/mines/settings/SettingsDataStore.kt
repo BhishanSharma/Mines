@@ -72,6 +72,13 @@ class SettingsDataStore(
         }
     }
 
+
+    suspend fun clearDarkThemePreference() {
+        context.settingsDataStore.edit { preferences ->
+            preferences.remove(DARK_THEME_ENABLED)
+        }
+    }
+
     suspend fun setSelectedAvatarId(avatarId: String) {
         context.settingsDataStore.edit { preferences ->
             preferences[SELECTED_AVATAR] = avatarId

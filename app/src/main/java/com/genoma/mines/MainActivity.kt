@@ -39,6 +39,7 @@ import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
 import com.genoma.mines.ui.screens.ProfileScreen
 import com.genoma.mines.ui.screens.SettingsScreen
+import com.genoma.mines.ui.screens.ThemePreference
 import com.genoma.mines.ui.components.BottomNavItem
 import com.genoma.mines.ui.components.BottomNavbar
 import com.genoma.mines.ui.theme.MinesTheme
@@ -74,7 +75,6 @@ class MainActivity : ComponentActivity() {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-
         enableEdgeToEdge()
 
         setContent {
@@ -87,10 +87,7 @@ class MainActivity : ComponentActivity() {
             val darkTheme = darkThemePreference ?: systemInDarkTheme
 
             MinesTheme(darkTheme = darkTheme) {
-                MinesweeperApp(
-                    viewModel = viewModel,
-                    darkTheme = darkTheme
-                )
+                MinesweeperApp(viewModel = viewModel)
             }
         }
     }
@@ -98,8 +95,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MinesweeperApp(
-    viewModel: MinesweeperViewModel = viewModel(),
-    darkTheme: Boolean = isSystemInDarkTheme()
+    viewModel: MinesweeperViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val activity = context as ComponentActivity
@@ -129,7 +125,6 @@ fun MinesweeperApp(
         mutableStateOf<Screen>(Screen.Login)
     }
 
-
     var selectedBottomNavItem by remember {
         mutableStateOf(BottomNavItem.HOW_TO_PLAY)
     }
@@ -142,11 +137,21 @@ fun MinesweeperApp(
         mutableStateOf(false)
     }
 
-    var guestHistory by remember { mutableStateOf<List<GameHistoryItem>>(emptyList()) }
-    var guestHistoryLoading by remember { mutableStateOf(true) }
+    var guestHistory by remember {
+        mutableStateOf<List<GameHistoryItem>>(emptyList())
+    }
 
-    var userStatistics by remember { mutableStateOf(UserStatistics.EMPTY) }
-    var statisticsLoading by remember { mutableStateOf(true) }
+    var guestHistoryLoading by remember {
+        mutableStateOf(true)
+    }
+
+    var userStatistics by remember {
+        mutableStateOf(UserStatistics.EMPTY)
+    }
+
+    var statisticsLoading by remember {
+        mutableStateOf(true)
+    }
 
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
@@ -154,6 +159,10 @@ fun MinesweeperApp(
     val isNewBestTime by viewModel.isNewBestTime.collectAsState()
     val previousBestSeconds by viewModel.previousBestSeconds.collectAsState()
     val selectedAvatar by viewModel.selectedAvatar.collectAsState()
+
+    val darkThemePreference by viewModel.darkTheme.collectAsState()
+    val themePreference =
+        ThemePreference.fromDarkThemeFlag(darkThemePreference)
 
     LaunchedEffect(Unit) {
         val savedProfile = sessionStore.userProfile.first()
@@ -187,7 +196,9 @@ fun MinesweeperApp(
         return
     }
 
-    BackHandler(enabled = screen !is Screen.Home && screen !is Screen.Login) {
+    BackHandler(
+        enabled = screen !is Screen.Home && screen !is Screen.Login
+    ) {
         when (screen) {
             is Screen.Game -> {
                 viewModel.goBackToHome()
@@ -335,7 +346,7 @@ fun MinesweeperApp(
                     SettingsScreen(
                         soundEnabled = soundEnabled,
                         hapticsEnabled = hapticsEnabled,
-                        darkTheme = darkTheme,
+                        themePreference = themePreference,
                         isSignedIn = userProfile != null,
                         userName = userProfile?.displayName,
 
@@ -347,8 +358,8 @@ fun MinesweeperApp(
                             viewModel.setHapticsEnabled(enabled)
                         },
 
-                        onThemeToggle = { enabled ->
-                            viewModel.setDarkTheme(enabled)
+                        onThemePreferenceChange = { preference ->
+                            viewModel.setThemePreference(preference)
                         },
 
                         onFeedbackClick = {
@@ -365,7 +376,7 @@ fun MinesweeperApp(
                             }
                         },
 
-                        onSignInClick = {           // ← add this block
+                        onSignInClick = {
                             screen = Screen.Login
                         },
 
@@ -376,9 +387,14 @@ fun MinesweeperApp(
                 }
 
                 is Screen.Feedback -> {
-                    val isSubmittingFeedback by viewModel.isSubmittingFeedback.collectAsState()
-                    val feedbackError by viewModel.feedbackError.collectAsState()
-                    val feedbackSubmitted by viewModel.feedbackSubmitted.collectAsState()
+                    val isSubmittingFeedback by
+                    viewModel.isSubmittingFeedback.collectAsState()
+
+                    val feedbackError by
+                    viewModel.feedbackError.collectAsState()
+
+                    val feedbackSubmitted by
+                    viewModel.feedbackSubmitted.collectAsState()
 
                     LaunchedEffect(feedbackSubmitted) {
                         if (feedbackSubmitted) {
@@ -387,6 +403,7 @@ fun MinesweeperApp(
                                 "Thanks for the feedback!",
                                 android.widget.Toast.LENGTH_LONG
                             ).show()
+
                             viewModel.resetFeedbackSubmitted()
                             screen = Screen.Settings
                         }
@@ -397,9 +414,14 @@ fun MinesweeperApp(
                         userEmail = userProfile?.email ?: "",
                         isSubmitting = isSubmittingFeedback,
                         submitError = feedbackError,
+
                         onSubmit = { data ->
-                            viewModel.submitFeedback(data, userId = userProfile?.id)
+                            viewModel.submitFeedback(
+                                data,
+                                userId = userProfile?.id
+                            )
                         },
+
                         onBack = {
                             screen = Screen.Settings
                         }
@@ -472,9 +494,11 @@ fun MinesweeperApp(
                         isLoading = statisticsLoading,
                         selectedAvatar = selectedAvatar,
                         photoUrl = userProfile?.photoUrl,
+
                         onAvatarSelected = { avatar ->
                             viewModel.setAvatar(avatar)
                         },
+
                         onBack = {
                             screen = Screen.Home
                         }
@@ -485,6 +509,7 @@ fun MinesweeperApp(
                     GuestHistoryScreen(
                         isLoading = guestHistoryLoading,
                         history = guestHistory,
+
                         onBack = {
                             screen = Screen.Home
                         }

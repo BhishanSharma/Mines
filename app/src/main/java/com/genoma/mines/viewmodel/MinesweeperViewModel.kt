@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
+import com.genoma.mines.ui.screens.ThemePreference
+import com.genoma.mines.ui.screens.toDarkThemeFlag
 
 class MinesweeperViewModel(
     application: Application
@@ -150,14 +152,18 @@ class MinesweeperViewModel(
         }
     }
 
-    fun setDarkTheme(enabled: Boolean) {
-        _darkTheme.value = enabled
+    fun setThemePreference(preference: ThemePreference) {
+        val flag = preference.toDarkThemeFlag()
+        _darkTheme.value = flag
 
         viewModelScope.launch {
-            settings.setDarkThemeEnabled(enabled)
+            if (flag == null) {
+                settings.clearDarkThemePreference()
+            } else {
+                settings.setDarkThemeEnabled(flag)
+            }
         }
     }
-
     fun setAvatar(avatar: AvatarOption) {
         _selectedAvatar.value = avatar
 

@@ -27,7 +27,6 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -61,12 +60,12 @@ private object SettingsSpacing {
 fun SettingsScreen(
     soundEnabled: Boolean,
     hapticsEnabled: Boolean,
-    darkTheme: Boolean,
+    themePreference: ThemePreference,
     isSignedIn: Boolean,
     userName: String?,
     onSoundToggle: (Boolean) -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
-    onThemeToggle: (Boolean) -> Unit,
+    onThemePreferenceChange: (ThemePreference) -> Unit,
     onFeedbackClick: () -> Unit,
     onSignOut: () -> Unit,
     onSignInClick: () -> Unit,
@@ -218,16 +217,9 @@ fun SettingsScreen(
             ) {
 
                 // Theme
-                SettingToggleRow(
-                    icon = Icons.Filled.DarkMode,
-                    title = "Dark theme",
-                    subtitle = if (darkTheme) {
-                        "Use the dark appearance"
-                    } else {
-                        "Use the light appearance"
-                    },
-                    checked = darkTheme,
-                    onCheckedChange = onThemeToggle
+                ThemeToggle(
+                    selected = themePreference,
+                    onSelect = onThemePreferenceChange
                 )
 
                 // Sound
@@ -603,12 +595,12 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             soundEnabled = true,
             hapticsEnabled = false,
-            darkTheme = true,
+            themePreference = ThemePreference.SYSTEM,
             isSignedIn = true,
             userName = "Jordan",
             onSoundToggle = {},
             onHapticsToggle = {},
-            onThemeToggle = {},
+            onThemePreferenceChange = {},
             onFeedbackClick = {},
             onSignOut = {},
             onSignInClick = {},
