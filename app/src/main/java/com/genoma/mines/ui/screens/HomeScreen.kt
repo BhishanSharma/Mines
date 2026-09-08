@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -26,15 +25,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.RadioButtonChecked
@@ -50,14 +42,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -73,7 +63,6 @@ private object Spacing {
     val screenTop = 20.dp
     val screenBottom = 24.dp
     val optionGap = 10.dp
-    val small = 8.dp
     val medium = 14.dp
     val large = 22.dp
 }
@@ -84,17 +73,13 @@ fun HomeScreen(
     selectedDifficulty: Difficulty,
     onDifficultySelected: (Difficulty) -> Unit,
     onStartGame: () -> Unit,
-    onHowToPlay: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenProfile: () -> Unit,
     username: String = "Player",
     selectedAvatar: AvatarOption = AvatarOption.Default,
     photoUrl: String? = null,
     gamesWon: Int = 0,
-    onOpenPremium: () -> Unit = {},
-    onOpenStatistics: () -> Unit = {},
-    onOpenAchievements: () -> Unit = {},
-    onOpenMoreGames: () -> Unit = {}
+    onOpenPremium: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -212,7 +197,8 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(0.6f))
+
+            Spacer(modifier = Modifier.height(Spacing.large))
 
             // ---------- Hero: copy on the left, illustration on the right ----------
             Row(
@@ -248,8 +234,7 @@ fun HomeScreen(
                 MinesHeroIllustration()
             }
 
-            Spacer(modifier = Modifier.weight(0.6f))
-
+            Spacer(modifier = Modifier.weight(0.5f))
             // ---------- Difficulty section header ----------
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -311,82 +296,9 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(Spacing.medium))
+            Spacer(modifier = Modifier.weight(0.5f))
 
-            // ---------- Quick actions ----------
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(10.dp)
-//            ) {
-//                QuickActionButton(
-//                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
-//                    label = "How to Play",
-//                    onClick = onHowToPlay,
-//                    modifier = Modifier.weight(1f)
-//                )
-//                QuickActionButton(
-//                    icon = Icons.Filled.BarChart,
-//                    label = "Statistics",
-//                    onClick = onOpenStatistics,
-//                    modifier = Modifier.weight(1f)
-//                )
-//                QuickActionButton(
-//                    icon = Icons.Filled.EmojiEvents,
-//                    label = "Achievements",
-//                    onClick = onOpenAchievements,
-//                    modifier = Modifier.weight(1f)
-//                )
-//                QuickActionButton(
-//                    icon = Icons.Filled.SportsEsports,
-//                    label = "More Games",
-//                    onClick = onOpenMoreGames,
-//                    modifier = Modifier.weight(1f)
-//                )
-//            }
 
-//            Spacer(modifier = Modifier.weight(0.8f))
-//
-//            // ---------- Footer quote on a tinted band ----------
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
-//                    .background(MaterialTheme.colorScheme.primaryContainer)
-//                    .padding(vertical = 20.dp),
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                    Icon(
-//                        imageVector = Icons.Filled.Flag,
-//                        contentDescription = null,
-//                        tint = MaterialTheme.colorScheme.primary,
-//                        modifier = Modifier.size(16.dp)
-//                    )
-//                    Spacer(modifier = Modifier.height(6.dp))
-//                    Row(verticalAlignment = Alignment.CenterVertically) {
-//                        Box(
-//                            modifier = Modifier
-//                                .width(24.dp)
-//                                .height(1.dp)
-//                                .background(MaterialTheme.colorScheme.outlineVariant)
-//                        )
-//                        Spacer(modifier = Modifier.width(10.dp))
-//                        Text(
-//                            text = "\u201CSmall moves. Big victories.\u201D",
-//                            style = MaterialTheme.typography.bodySmall,
-//                            fontStyle = FontStyle.Italic,
-//                            color = MaterialTheme.colorScheme.onSurfaceVariant
-//                        )
-//                        Spacer(modifier = Modifier.width(10.dp))
-//                        Box(
-//                            modifier = Modifier
-//                                .width(24.dp)
-//                                .height(1.dp)
-//                                .background(MaterialTheme.colorScheme.outlineVariant)
-//                        )
-//                    }
-//                }
-//            }
         }
     }
 }
@@ -456,30 +368,6 @@ private fun MinesHeroIllustration(modifier: Modifier = Modifier) {
 }
 
 
-@Composable
-private fun HeroTile(
-    number: String? = null,
-    numberColor: Color = Color.Unspecified,
-    content: (@Composable () -> Unit)? = null
-) {
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            content != null -> content()
-            number != null -> Text(
-                text = number,
-                color = numberColor,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
-        }
-    }
-}
 
 
 @Composable
@@ -620,43 +508,6 @@ fun DifficultyOption(
 }
 
 
-@Composable
-private fun QuickActionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(14.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp, horizontal = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.size(20.dp)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-
 fun Difficulty.displayName(): String {
     return when (this) {
         Difficulty.EASY -> "Easy"
@@ -682,10 +533,9 @@ private fun HomeScreenPreview() {
             selectedDifficulty = Difficulty.EASY,
             onDifficultySelected = {},
             onStartGame = {},
-            onHowToPlay = {},
             onOpenSettings = {},
             onOpenProfile = {},
-            username = "Bhishan Sharma",
+            username = "Alan",
             gamesWon = 0
         )
     }
