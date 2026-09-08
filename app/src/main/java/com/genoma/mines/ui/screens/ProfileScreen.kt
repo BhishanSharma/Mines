@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -30,19 +29,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,7 +66,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -80,6 +73,7 @@ import coil.compose.AsyncImage
 import com.genoma.mines.data.DifficultyStatistics
 import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.ui.theme.MinesTheme
+import com.genoma.mines.data.GameHistoryItem
 
 private object ProfileSpacing {
     val screenHorizontal = 24.dp
@@ -90,21 +84,6 @@ private object ProfileSpacing {
     val large = 22.dp
 }
 
-/** A single achievement badge shown in the "Achievements" strip. */
-data class Achievement(
-    val label: String,
-    val icon: ImageVector,
-    val tint: Color,
-    val unlocked: Boolean
-)
-
-private fun defaultAchievements(): List<Achievement> = listOf(
-    Achievement("First Flag", Icons.Filled.Flag, Color(0xFFE05353), unlocked = true),
-    Achievement("5 Wins", Icons.Filled.MilitaryTech, Color(0xFFF2A63D), unlocked = false),
-    Achievement("Win Streak", Icons.Filled.Whatshot, Color(0xFFFF7A45), unlocked = false),
-    Achievement("Speedster", Icons.Filled.Bolt, Color(0xFF3B82F6), unlocked = false),
-    Achievement("Perfection", Icons.Filled.Star, Color(0xFF22A06B), unlocked = false)
-)
 
 @Composable
 fun ProfileScreen(
@@ -114,20 +93,28 @@ fun ProfileScreen(
     isLoading: Boolean = false,
     selectedAvatar: AvatarOption = AvatarOption.Default,
     photoUrl: String? = null,
+
+    history: List<GameHistoryItem> = emptyList(),
+
     level: Int = 8,
     currentXp: Int = 320,
     xpForNextLevel: Int = 500,
     keepGoingMessage: String = "Play more to unlock new achievements.",
     bestTimeOverall: String? = "00:42",
     bestTimeDifficultyLabel: String = "Easy",
-    bestTimes: Map<String, String> = mapOf("Easy" to "00:42", "Medium" to "01:28"),
+    bestTimes: Map<String, String> = mapOf(
+        "Easy" to "00:42",
+        "Medium" to "01:28"
+    ),
     highlightedDifficultyLabel: String = "Easy",
-    achievements: List<Achievement> = defaultAchievements(),
+
     onAvatarSelected: (AvatarOption) -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onKeepGoingClick: () -> Unit = {},
     onDifficultyClick: (String) -> Unit = {},
-    onSeeAllAchievements: () -> Unit = {},
+
+    onSeeAllHistory: () -> Unit = {},
+
     onBack: () -> Unit = {}
 ) {
     var showAvatarPicker by remember {
@@ -413,44 +400,20 @@ fun ProfileScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(ProfileSpacing.large))
+                    // ---------- History ----------
 
-                    // ---------- Achievements ----------
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "ACHIEVEMENTS",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "See all",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable(onClick = onSeeAllAchievements)
-                        )
-                    }
+                    Spacer(
+                        modifier = Modifier.height(ProfileSpacing.large)
+                    )
 
-                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
+                    RecentHistorySection(
+                        history = history,
+                        onSeeAllHistory = onSeeAllHistory
+                    )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        achievements.take(5).forEach { achievement ->
-                            AchievementBadge(
-                                achievement = achievement,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(ProfileSpacing.medium))
+                    Spacer(
+                        modifier = Modifier.height(ProfileSpacing.medium)
+                    )
                 }
             }
         }
@@ -854,66 +817,6 @@ private fun DifficultyStatRow(
 }
 
 @Composable
-private fun AchievementBadge(
-    achievement: Achievement,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(
-                    if (achievement.unlocked) {
-                        MaterialTheme.colorScheme.surface
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    }
-                )
-                .border(
-                    width = 1.dp,
-                    color = if (achievement.unlocked) {
-                        achievement.tint.copy(alpha = 0.4f)
-                    } else {
-                        Color.Transparent
-                    },
-                    shape = RoundedCornerShape(14.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (achievement.unlocked) achievement.icon else Icons.Filled.Lock,
-                contentDescription = achievement.label,
-                tint = if (achievement.unlocked) {
-                    achievement.tint
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                },
-                modifier = Modifier.size(22.dp)
-            )
-        }
-
-        Text(
-            text = achievement.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
-    }
-}
-
-/**
- * Purely decorative, low-opacity tile grid echoing the Mines board — built
- * from shapes so no illustration asset is required. Approximate, not a
- * pixel-exact match of the isometric artwork.
- */
-@Composable
 private fun ProfileHeaderDecoration(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
@@ -1102,7 +1005,7 @@ private fun AvatarGridItem(
 private fun ProfileScreenPreview() {
     MinesTheme {
         ProfileScreen(
-            username = "Bhishan Sharma",
+            username = "Alan",
             tagline = "Mines Explorer",
             statistics = UserStatistics(
                 totalGames = 60,
