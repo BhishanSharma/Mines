@@ -1,6 +1,9 @@
 package com.genoma.mines
 
 import android.os.Bundle
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -58,6 +61,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(
+                WindowInsetsCompat.Type.statusBars() or
+                        WindowInsetsCompat.Type.navigationBars()
+            )
+
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
 
         enableEdgeToEdge()
 
@@ -297,10 +313,6 @@ fun MinesweeperApp(
                             screen = Screen.Game(selectedDifficulty)
                         },
 
-                        onHowToPlay = {
-                            selectedBottomNavItem = BottomNavItem.HOW_TO_PLAY
-                            screen = Screen.HowToPlay
-                        },
 
                         onOpenSettings = {
                             screen = Screen.Settings
