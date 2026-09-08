@@ -14,14 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 
-/**
- * App-wide bottom navigation bar.
- *
- * Keep this component outside individual screens so it can be displayed
- * consistently throughout the application.
- *
- * The Game screen should not render this component.
- */
+
 @Composable
 fun BottomNavbar(
     selectedItem: BottomNavItem,

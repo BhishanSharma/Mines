@@ -1,9 +1,6 @@
 package com.genoma.mines
 
 import android.os.Bundle
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -22,6 +19,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.genoma.mines.auth.GoogleAuthManager
 import com.genoma.mines.auth.GoogleSignInResult
@@ -30,18 +30,19 @@ import com.genoma.mines.data.GameHistoryItem
 import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.data.remote.FirestoreGameRepository
 import com.genoma.mines.game.Difficulty
+import com.genoma.mines.ui.components.BottomNavItem
+import com.genoma.mines.ui.components.BottomNavbar
+import com.genoma.mines.ui.screens.AchievementScreen
 import com.genoma.mines.ui.screens.CellUiState
 import com.genoma.mines.ui.screens.FeedbackScreen
 import com.genoma.mines.ui.screens.GameScreen
-import com.genoma.mines.ui.screens.GuestHistoryScreen
+import com.genoma.mines.ui.screens.HistoryScreen
 import com.genoma.mines.ui.screens.HomeScreen
 import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
 import com.genoma.mines.ui.screens.ProfileScreen
 import com.genoma.mines.ui.screens.SettingsScreen
 import com.genoma.mines.ui.screens.ThemePreference
-import com.genoma.mines.ui.components.BottomNavItem
-import com.genoma.mines.ui.components.BottomNavbar
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
 import kotlinx.coroutines.flow.first
@@ -53,7 +54,8 @@ private sealed class Screen {
     object Settings : Screen()
     object HowToPlay : Screen()
     object Profile : Screen()
-    object GuestHistory : Screen()
+    object History : Screen()
+    object Achievements : Screen()
     object Feedback : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
@@ -75,11 +77,11 @@ class MainActivity : ComponentActivity() {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
+        enableEdgeToEdge()
+
         setContent {
             val viewModel: MinesweeperViewModel = viewModel()
 
-            // Null means "no saved preference" — fall back to the system
-            // setting until the user explicitly picks one in Settings.
             val darkThemePreference by viewModel.darkTheme.collectAsState()
             val systemInDarkTheme = isSystemInDarkTheme()
             val darkTheme = darkThemePreference ?: systemInDarkTheme
@@ -135,11 +137,11 @@ fun MinesweeperApp(
         mutableStateOf(false)
     }
 
-    var guestHistory by remember {
+    var gameHistory by remember {
         mutableStateOf<List<GameHistoryItem>>(emptyList())
     }
 
-    var guestHistoryLoading by remember {
+    var historyLoading by remember {
         mutableStateOf(true)
     }
 
@@ -162,6 +164,9 @@ fun MinesweeperApp(
     val themePreference =
         ThemePreference.fromDarkThemeFlag(darkThemePreference)
 
+    /*
+     * Restore the saved session.
+     */
     LaunchedEffect(Unit) {
         val savedProfile = sessionStore.userProfile.first()
 
@@ -172,15 +177,20 @@ fun MinesweeperApp(
         sessionLoaded = true
     }
 
+    /*
+     * Load data when entering screens that need it.
+     */
     LaunchedEffect(screen) {
         when (screen) {
-            is Screen.GuestHistory -> {
-                guestHistoryLoading = true
-                guestHistory = viewModel.loadGameHistory()
-                guestHistoryLoading = false
+
+            is Screen.History -> {
+                historyLoading = true
+                gameHistory = viewModel.loadGameHistory()
+                historyLoading = false
             }
 
-            is Screen.Profile, is Screen.Home -> {
+            is Screen.Profile,
+            is Screen.Home -> {
                 statisticsLoading = true
                 userStatistics = viewModel.loadStatistics()
                 statisticsLoading = false
@@ -194,10 +204,14 @@ fun MinesweeperApp(
         return
     }
 
+    /*
+     * Android system back handling.
+     */
     BackHandler(
         enabled = screen !is Screen.Home && screen !is Screen.Login
     ) {
         when (screen) {
+
             is Screen.Game -> {
                 viewModel.goBackToHome()
                 screen = Screen.Home
@@ -206,7 +220,8 @@ fun MinesweeperApp(
             is Screen.Settings,
             is Screen.HowToPlay,
             is Screen.Profile,
-            is Screen.GuestHistory -> {
+            is Screen.History,
+            is Screen.Achievements -> {
                 screen = Screen.Home
             }
 
@@ -215,36 +230,40 @@ fun MinesweeperApp(
             }
 
             else -> {
-                // Unreachable: Home/Login are excluded via `enabled` above.
+                // Home/Login are excluded above.
             }
         }
     }
 
     Scaffold(
         bottomBar = {
-            // Login is an authentication screen, so it does not show the
-            // app navigation. Game is also excluded as requested.
+
+
             if (screen !is Screen.Login && screen !is Screen.Game) {
+
                 BottomNavbar(
                     selectedItem = selectedBottomNavItem,
 
+                    /*
+                     * HOW TO PLAY
+                     */
                     onHowToPlay = {
                         selectedBottomNavItem = BottomNavItem.HOW_TO_PLAY
                         screen = Screen.HowToPlay
                     },
 
+                    /*
+                     * STATISTICS
+                     */
                     onOpenStatistics = {
                         selectedBottomNavItem = BottomNavItem.STATISTICS
-                        // ProfileScreen already loads and displays UserStatistics.
                         screen = Screen.Profile
                     },
 
+
                     onOpenAchievements = {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Achievements screen is not added yet.",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        selectedBottomNavItem = BottomNavItem.ACHIEVEMENTS
+                        screen = Screen.Achievements
                     },
 
                     onOpenMoreGames = {
@@ -262,11 +281,17 @@ fun MinesweeperApp(
         Box(
             modifier = Modifier.padding(innerPadding)
         ) {
+
             when (screen) {
 
+                /*
+                 * LOGIN
+                 */
                 is Screen.Login -> {
+
                     LoginScreen(
                         onGoogleSignInClick = {
+
                             scope.launch {
 
                                 val result = authManager.signIn(
@@ -277,6 +302,7 @@ fun MinesweeperApp(
                                 when (result) {
 
                                     is GoogleSignInResult.Success -> {
+
                                         sessionStore.save(result.profile)
 
                                         firestoreRepository.ensureUserDocument(
@@ -290,6 +316,7 @@ fun MinesweeperApp(
                                     }
 
                                     is GoogleSignInResult.Failure -> {
+
                                         android.widget.Toast.makeText(
                                             context,
                                             result.message,
@@ -298,6 +325,7 @@ fun MinesweeperApp(
                                     }
 
                                     GoogleSignInResult.Cancelled -> {
+                                        // User cancelled sign-in.
                                     }
                                 }
                             }
@@ -309,7 +337,11 @@ fun MinesweeperApp(
                     )
                 }
 
+                /*
+                 * HOME
+                 */
                 is Screen.Home -> {
+
                     HomeScreen(
                         selectedDifficulty = selectedDifficulty,
 
@@ -321,7 +353,6 @@ fun MinesweeperApp(
                             viewModel.startGame(selectedDifficulty)
                             screen = Screen.Game(selectedDifficulty)
                         },
-
 
                         onOpenSettings = {
                             screen = Screen.Settings
@@ -336,11 +367,14 @@ fun MinesweeperApp(
                         selectedAvatar = selectedAvatar,
                         photoUrl = userProfile?.photoUrl,
                         gamesWon = userStatistics.totalScore
-
                     )
                 }
 
+                /*
+                 * SETTINGS
+                 */
                 is Screen.Settings -> {
+
                     SettingsScreen(
                         soundEnabled = soundEnabled,
                         hapticsEnabled = hapticsEnabled,
@@ -365,6 +399,7 @@ fun MinesweeperApp(
                         },
 
                         onSignOut = {
+
                             scope.launch {
 
                                 authManager.signOut()
@@ -384,7 +419,11 @@ fun MinesweeperApp(
                     )
                 }
 
+                /*
+                 * FEEDBACK
+                 */
                 is Screen.Feedback -> {
+
                     val isSubmittingFeedback by
                     viewModel.isSubmittingFeedback.collectAsState()
 
@@ -395,7 +434,9 @@ fun MinesweeperApp(
                     viewModel.feedbackSubmitted.collectAsState()
 
                     LaunchedEffect(feedbackSubmitted) {
+
                         if (feedbackSubmitted) {
+
                             android.widget.Toast.makeText(
                                 context,
                                 "Thanks for the feedback!",
@@ -403,6 +444,7 @@ fun MinesweeperApp(
                             ).show()
 
                             viewModel.resetFeedbackSubmitted()
+
                             screen = Screen.Settings
                         }
                     }
@@ -414,6 +456,7 @@ fun MinesweeperApp(
                         submitError = feedbackError,
 
                         onSubmit = { data ->
+
                             viewModel.submitFeedback(
                                 data,
                                 userId = userProfile?.id
@@ -426,7 +469,11 @@ fun MinesweeperApp(
                     )
                 }
 
+                /*
+                 * HOW TO PLAY
+                 */
                 is Screen.HowToPlay -> {
+
                     HowToPlayScreen(
                         onBack = {
                             screen = Screen.Home
@@ -434,14 +481,31 @@ fun MinesweeperApp(
                     )
                 }
 
+                /*
+                 * ACHIEVEMENTS
+                 *
+                 * This is now a primary bottom-navigation destination.
+                 */
+                is Screen.Achievements -> {
+
+                    AchievementScreen()
+                }
+
+                /*
+                 * GAME
+                 */
                 is Screen.Game -> {
+
                     val state = gameState
 
                     if (state != null) {
+
                         GameScreen(
+
                             difficulty = state.difficulty,
 
                             cells = state.cells.mapIndexed { index, cell ->
+
                                 CellUiState(
                                     isRevealed = cell.isRevealed,
                                     isFlagged = cell.isFlagged,
@@ -455,6 +519,7 @@ fun MinesweeperApp(
                             flagsPlaced = state.flagsPlaced,
                             elapsedSeconds = state.elapsedSeconds,
                             status = state.status,
+
                             isNewBestTime = isNewBestTime,
                             previousBestSeconds = previousBestSeconds,
 
@@ -479,11 +544,16 @@ fun MinesweeperApp(
                                 viewModel.togglePause()
                             }
                         )
+
                     } else {
+
                         screen = Screen.Home
                     }
                 }
 
+                /*
+                 * PROFILE / STATISTICS
+                 */
                 is Screen.Profile -> {
 
                     ProfileScreen(
@@ -497,19 +567,27 @@ fun MinesweeperApp(
                             viewModel.setAvatar(avatar)
                         },
 
+                        onSeeAllHistory = {
+                            screen =Screen.History
+                        },
+
                         onBack = {
                             screen = Screen.Home
                         }
                     )
                 }
 
-                is Screen.GuestHistory -> {
-                    GuestHistoryScreen(
-                        isLoading = guestHistoryLoading,
-                        history = guestHistory,
+                /*
+                 * FULL GAME HISTORY
+                 */
+                is Screen.History -> {
+
+                    HistoryScreen(
+                        isLoading = historyLoading,
+                        history = gameHistory,
 
                         onBack = {
-                            screen = Screen.Home
+                            screen = Screen.Profile
                         }
                     )
                 }
