@@ -1,5 +1,6 @@
 package com.genoma.mines.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,10 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -26,7 +29,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -45,7 +62,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -67,14 +90,44 @@ private object ProfileSpacing {
     val large = 22.dp
 }
 
+/** A single achievement badge shown in the "Achievements" strip. */
+data class Achievement(
+    val label: String,
+    val icon: ImageVector,
+    val tint: Color,
+    val unlocked: Boolean
+)
+
+private fun defaultAchievements(): List<Achievement> = listOf(
+    Achievement("First Flag", Icons.Filled.Flag, Color(0xFFE05353), unlocked = true),
+    Achievement("5 Wins", Icons.Filled.MilitaryTech, Color(0xFFF2A63D), unlocked = false),
+    Achievement("Win Streak", Icons.Filled.Whatshot, Color(0xFFFF7A45), unlocked = false),
+    Achievement("Speedster", Icons.Filled.Bolt, Color(0xFF3B82F6), unlocked = false),
+    Achievement("Perfection", Icons.Filled.Star, Color(0xFF22A06B), unlocked = false)
+)
+
 @Composable
 fun ProfileScreen(
     username: String = "Player",
+    tagline: String = "Mines Explorer",
     statistics: UserStatistics = UserStatistics.EMPTY,
     isLoading: Boolean = false,
     selectedAvatar: AvatarOption = AvatarOption.Default,
     photoUrl: String? = null,
+    level: Int = 8,
+    currentXp: Int = 320,
+    xpForNextLevel: Int = 500,
+    keepGoingMessage: String = "Play more to unlock new achievements.",
+    bestTimeOverall: String? = "00:42",
+    bestTimeDifficultyLabel: String = "Easy",
+    bestTimes: Map<String, String> = mapOf("Easy" to "00:42", "Medium" to "01:28"),
+    highlightedDifficultyLabel: String = "Easy",
+    achievements: List<Achievement> = defaultAchievements(),
     onAvatarSelected: (AvatarOption) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onKeepGoingClick: () -> Unit = {},
+    onDifficultyClick: (String) -> Unit = {},
+    onSeeAllAchievements: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     var showAvatarPicker by remember {
@@ -85,236 +138,321 @@ fun ProfileScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
-        ) {
-            Row(
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // Faint decorative grid, built from shapes only (no image asset
+            // required) — echoes the Mines tiles behind the header, like
+            // in the reference design.
+            ProfileHeaderDecoration(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = ProfileSpacing.screenHorizontal,
-                        vertical = ProfileSpacing.screenTop
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                Text(
-                    text = "Profile",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-                return@Column
-            }
+                    .align(Alignment.TopEnd)
+                    .offset(x = 30.dp, y = 6.dp)
+            )
 
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = ProfileSpacing.screenHorizontal)
-                    .padding(
-                        bottom = WindowInsets.navigationBars
-                            .asPaddingValues()
-                            .calculateBottomPadding() + ProfileSpacing.screenBottom
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(WindowInsets.safeDrawing.asPaddingValues())
             ) {
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.medium)
-                )
-
-                Box(
-                    modifier = Modifier.size(112.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = ProfileSpacing.screenHorizontal,
+                            vertical = ProfileSpacing.screenTop
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+
+                    Text(
+                        text = "Profile",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
+                if (isLoading) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = CircleShape
-                            )
-                            .border(
-                                width = 3.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = CircleShape
-                            ),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (photoUrl != null) {
-                            AsyncImage(
-                                model = photoUrl,
-                                contentDescription = "Profile picture",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(4.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Image(
-                                painter = painterResource(
-                                    id = selectedAvatar.drawableRes
-                                ),
-                                contentDescription = "Profile picture",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(4.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                        CircularProgressIndicator()
                     }
-
-                    // Only let guests pick a stand-in avatar; Google users' photo
-                    // comes from their account and isn't user-editable here.
-                    if (photoUrl == null) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                                .border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.background,
-                                    shape = CircleShape
-                                )
-                                .clickable {
-                                    showAvatarPicker = true
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = "Change profile picture",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+                    return@Column
                 }
-
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.medium)
-                )
-
-                Text(
-                    text = username,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.large)
-                )
-
-                Text(
-                    text = "OVERALL",
-                    modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(ProfileSpacing.small))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        ProfileSpacing.small
-                    )
-                ) {
-                    ProfileStatCard(
-                        value = statistics.totalGames.toString(),
-                        label = "Played",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    ProfileStatCard(
-                        value = statistics.totalWins.toString(),
-                        label = "Won",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    ProfileStatCard(
-                        value = statistics.totalLosses.toString(),
-                        label = "Lost",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.small)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        ProfileSpacing.small
-                    )
-                ) {
-                    ProfileStatCard(
-                        value = "${statistics.winRatio}%",
-                        label = "Win rate",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    ProfileStatCard(
-                        value = statistics.totalScore.toString(),
-                        label = "Total score",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.large)
-                )
-
-                Text(
-                    text = "BY DIFFICULTY",
-                    modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(ProfileSpacing.small))
 
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(ProfileSpacing.small)
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = ProfileSpacing.screenHorizontal)
+                        .padding(
+                            bottom = WindowInsets.navigationBars
+                                .asPaddingValues()
+                                .calculateBottomPadding() + ProfileSpacing.screenBottom
+                        )
                 ) {
-                    DifficultyStatRow(label = "Easy", stats = statistics.easy)
-                    DifficultyStatRow(label = "Medium", stats = statistics.medium)
-                    DifficultyStatRow(label = "Hard", stats = statistics.hard)
-                }
+                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
 
-                Spacer(
-                    modifier = Modifier.height(ProfileSpacing.medium)
-                )
+                    // ---------- Avatar + name + level ----------
+                    Row(verticalAlignment = Alignment.Top) {
+                        Box(
+                            modifier = Modifier.size(96.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = CircleShape
+                                    )
+                                    .border(
+                                        width = 3.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (photoUrl != null) {
+                                    AsyncImage(
+                                        model = photoUrl,
+                                        contentDescription = "Profile picture",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(4.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(id = selectedAvatar.drawableRes),
+                                        contentDescription = "Profile picture",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(4.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+
+                            // Only let guests pick a stand-in avatar; Google users'
+                            // photo comes from their account and isn't editable here.
+                            if (photoUrl == null) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                        .border(
+                                            width = 2.dp,
+                                            color = MaterialTheme.colorScheme.background,
+                                            shape = CircleShape
+                                        )
+                                        .clickable { showAvatarPicker = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Edit,
+                                        contentDescription = "Change profile picture",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = username,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = tagline,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            LevelXpRow(
+                                level = level,
+                                currentXp = currentXp,
+                                xpForNextLevel = xpForNextLevel
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.large))
+
+                    // ---------- Keep going banner ----------
+                    KeepGoingCard(
+                        message = keepGoingMessage,
+                        onClick = onKeepGoingClick
+                    )
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.large))
+
+                    // ---------- Overview ----------
+                    Text(
+                        text = "OVERVIEW",
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(ProfileSpacing.small)
+                    ) {
+                        StatIconCard(
+                            icon = Icons.Filled.SportsEsports,
+                            iconTint = MaterialTheme.colorScheme.primary,
+                            value = statistics.totalGames.toString(),
+                            label = "Played",
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatIconCard(
+                            icon = Icons.Filled.EmojiEvents,
+                            iconTint = Color(0xFFF2A63D),
+                            value = statistics.totalWins.toString(),
+                            label = "Won",
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatIconCard(
+                            icon = Icons.Filled.WbSunny,
+                            iconTint = Color(0xFFE05353),
+                            value = statistics.totalLosses.toString(),
+                            label = "Lost",
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatIconCard(
+                            icon = Icons.Filled.BarChart,
+                            iconTint = MaterialTheme.colorScheme.primary,
+                            value = "%,d".format(statistics.totalScore),
+                            label = "Total Score",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
+
+                    WinRateSummaryCard(
+                        winRatio = statistics.winRatio,
+                        totalWins = statistics.totalWins,
+                        totalGames = statistics.totalGames,
+                        bestTimeOverall = bestTimeOverall,
+                        bestTimeDifficultyLabel = bestTimeDifficultyLabel
+                    )
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.large))
+
+                    // ---------- By difficulty ----------
+                    Text(
+                        text = "BY DIFFICULTY",
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(ProfileSpacing.small)
+                    ) {
+                        DifficultyStatRow(
+                            label = "Easy",
+                            stats = statistics.easy,
+                            accent = Color(0xFF22A06B),
+                            bestTime = bestTimes["Easy"],
+                            highlighted = highlightedDifficultyLabel == "Easy",
+                            onClick = { onDifficultyClick("Easy") }
+                        )
+                        DifficultyStatRow(
+                            label = "Medium",
+                            stats = statistics.medium,
+                            accent = Color(0xFF3B82F6),
+                            bestTime = bestTimes["Medium"],
+                            highlighted = highlightedDifficultyLabel == "Medium",
+                            onClick = { onDifficultyClick("Medium") }
+                        )
+                        DifficultyStatRow(
+                            label = "Hard",
+                            stats = statistics.hard,
+                            accent = Color(0xFFE05353),
+                            bestTime = bestTimes["Hard"],
+                            highlighted = highlightedDifficultyLabel == "Hard",
+                            onClick = { onDifficultyClick("Hard") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.large))
+
+                    // ---------- Achievements ----------
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ACHIEVEMENTS",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "See all",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable(onClick = onSeeAllAchievements)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        achievements.take(5).forEach { achievement ->
+                            AchievementBadge(
+                                achievement = achievement,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(ProfileSpacing.medium))
+                }
             }
         }
     }
@@ -330,6 +468,501 @@ fun ProfileScreen(
                 showAvatarPicker = false
             }
         )
+    }
+}
+
+@Composable
+private fun LevelXpRow(
+    level: Int,
+    currentXp: Int,
+    xpForNextLevel: Int
+) {
+    val progress = if (xpForNextLevel > 0) {
+        (currentXp.toFloat() / xpForNextLevel.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "Lv $level",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(fraction = progress)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Text(
+            text = "$currentXp / $xpForNextLevel XP",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun KeepGoingCard(
+    message: String,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.WorkspacePremium,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Keep Going!",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatIconCard(
+    icon: ImageVector,
+    iconTint: Color,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(22.dp)
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun WinRateSummaryCard(
+    winRatio: Int,
+    totalWins: Int,
+    totalGames: Int,
+    bestTimeOverall: String?,
+    bestTimeDifficultyLabel: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            WinRateRing(percentage = winRatio)
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Win Rate",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "$totalWins wins out of $totalGames games",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(40.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant)
+            )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Timer,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Best Time",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = bestTimeOverall ?: "--:--",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = bestTimeDifficultyLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WinRateRing(
+    percentage: Int,
+    modifier: Modifier = Modifier
+) {
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val progressColor = MaterialTheme.colorScheme.primary
+    val clamped = percentage.coerceIn(0, 100)
+
+    Box(
+        modifier = modifier.size(72.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 8.dp.toPx()
+            drawArc(
+                color = trackColor,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = progressColor,
+                startAngle = -90f,
+                sweepAngle = 360f * (clamped / 100f),
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+        Text(
+            text = "$clamped%",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+    }
+}
+
+@Composable
+private fun DifficultyBadge(accent: Color) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(2) {
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(accent)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DifficultyStatRow(
+    label: String,
+    stats: DifficultyStatistics,
+    accent: Color,
+    bestTime: String?,
+    highlighted: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (highlighted) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DifficultyBadge(accent = accent)
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${stats.games} played \u00B7 ${stats.winRatio}% won",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = if (stats.games > 0) "%,d".format(stats.score) else "\u2014",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (highlighted) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onBackground
+                    }
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (stats.games > 0 && bestTime != null) {
+                        "Best: $bestTime"
+                    } else {
+                        "Not played yet"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AchievementBadge(
+    achievement: Achievement,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .aspectRatio(1f)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    if (achievement.unlocked) {
+                        MaterialTheme.colorScheme.surface
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
+                )
+                .border(
+                    width = 1.dp,
+                    color = if (achievement.unlocked) {
+                        achievement.tint.copy(alpha = 0.4f)
+                    } else {
+                        Color.Transparent
+                    },
+                    shape = RoundedCornerShape(14.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (achievement.unlocked) achievement.icon else Icons.Filled.Lock,
+                contentDescription = achievement.label,
+                tint = if (achievement.unlocked) {
+                    achievement.tint
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                },
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        Text(
+            text = achievement.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+    }
+}
+
+/**
+ * Purely decorative, low-opacity tile grid echoing the Mines board — built
+ * from shapes so no illustration asset is required. Approximate, not a
+ * pixel-exact match of the isometric artwork.
+ */
+@Composable
+private fun ProfileHeaderDecoration(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(120.dp)
+            .rotate(-12f)
+            .alpha(0.35f),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                DecorTile()
+                DecorTile(text = "1", textColor = Color(0xFF3B82F6))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                DecorTile(icon = Icons.Filled.Flag, iconTint = Color(0xFFE05353))
+                DecorTile(text = "2", textColor = Color(0xFF22A06B))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DecorTile(
+    text: String? = null,
+    textColor: Color = Color.Unspecified,
+    icon: ImageVector? = null,
+    iconTint: Color = Color.Unspecified
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            icon != null -> Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(16.dp)
+            )
+            text != null -> Text(
+                text = text,
+                color = textColor,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -463,100 +1096,6 @@ private fun AvatarGridItem(
     }
 }
 
-@Composable
-private fun ProfileStatCard(
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    vertical = 14.dp,
-                    horizontal = 8.dp
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(
-                modifier = Modifier.height(3.dp)
-            )
-
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun DifficultyStatRow(
-    label: String,
-    stats: DifficultyStatistics
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "${stats.games} played",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "${stats.winRatio}% won",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "${stats.score} pts",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End
-            )
-        }
-    }
-}
-
 @Preview(
     showBackground = true
 )
@@ -564,16 +1103,24 @@ private fun DifficultyStatRow(
 private fun ProfileScreenPreview() {
     MinesTheme {
         ProfileScreen(
-            username = "Alex",
+            username = "Bhishan Sharma",
+            tagline = "Mines Explorer",
             statistics = UserStatistics(
-                totalGames = 42,
-                totalWins = 29,
-                totalLosses = 13,
-                totalScore = 18450,
-                easy = DifficultyStatistics(20, 16, 5200),
-                medium = DifficultyStatistics(15, 10, 7100),
-                hard = DifficultyStatistics(7, 3, 6150)
+                totalGames = 60,
+                totalWins = 8,
+                totalLosses = 52,
+                totalScore = 22793,
+                easy = DifficultyStatistics(58, 13, 20489),
+                medium = DifficultyStatistics(2, 0, 2304),
+                hard = DifficultyStatistics(0, 0, 0)
             ),
+            level = 8,
+            currentXp = 320,
+            xpForNextLevel = 500,
+            bestTimeOverall = "00:42",
+            bestTimeDifficultyLabel = "Easy",
+            bestTimes = mapOf("Easy" to "00:42", "Medium" to "01:28"),
+            highlightedDifficultyLabel = "Easy",
             onBack = {}
         )
     }
