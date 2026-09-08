@@ -152,7 +152,6 @@ fun ProfileScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(WindowInsets.safeDrawing.asPaddingValues())
             ) {
                 Row(
                     modifier = Modifier

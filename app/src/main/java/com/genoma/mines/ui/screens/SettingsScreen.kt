@@ -81,7 +81,6 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .padding(horizontal = SettingsSpacing.screenHorizontal)
                 .padding(
                     top = SettingsSpacing.screenTop,

@@ -116,7 +116,6 @@ fun FeedbackScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .imePadding()
                 .padding(horizontal = 16.dp)
         ) {

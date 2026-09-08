@@ -88,7 +88,6 @@ fun HowToPlayScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .padding(horizontal = HowToPlaySpacing.screenHorizontal)
                 .padding(
                     top = HowToPlaySpacing.screenTop,

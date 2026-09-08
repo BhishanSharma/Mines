@@ -137,7 +137,6 @@ fun GameScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(WindowInsets.safeDrawing.asPaddingValues())
                     .padding(
                         horizontal = GameSpacing.screenHorizontal
                     )

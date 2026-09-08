@@ -88,7 +88,6 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .padding(horizontal = Spacing.screenHorizontal)
                 .padding(
                     top = Spacing.screenTop,

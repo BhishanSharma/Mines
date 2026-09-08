@@ -75,8 +75,6 @@ class MainActivity : ComponentActivity() {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-        enableEdgeToEdge()
-
         setContent {
             val viewModel: MinesweeperViewModel = viewModel()
 
