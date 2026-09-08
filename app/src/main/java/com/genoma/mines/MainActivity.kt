@@ -26,10 +26,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.genoma.mines.auth.GoogleAuthManager
 import com.genoma.mines.auth.GoogleSignInResult
 import com.genoma.mines.auth.UserSessionStore
+import com.genoma.mines.data.AchievementCalculator
 import com.genoma.mines.data.GameHistoryItem
 import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.data.remote.FirestoreGameRepository
 import com.genoma.mines.game.Difficulty
+import com.genoma.mines.game.GameResultType
+import com.genoma.mines.game.LevelCalculator
 import com.genoma.mines.ui.components.BottomNavItem
 import com.genoma.mines.ui.components.BottomNavbar
 import com.genoma.mines.ui.screens.AchievementScreen
@@ -164,9 +167,6 @@ fun MinesweeperApp(
     val themePreference =
         ThemePreference.fromDarkThemeFlag(darkThemePreference)
 
-    /*
-     * Restore the saved session.
-     */
     LaunchedEffect(Unit) {
         val savedProfile = sessionStore.userProfile.first()
 
@@ -177,19 +177,25 @@ fun MinesweeperApp(
         sessionLoaded = true
     }
 
-    /*
-     * Load data when entering screens that need it.
-     */
     LaunchedEffect(screen) {
         when (screen) {
 
-            is Screen.History -> {
+            is Screen.History,
+            is Screen.Achievements -> {
                 historyLoading = true
                 gameHistory = viewModel.loadGameHistory()
                 historyLoading = false
             }
 
-            is Screen.Profile,
+            is Screen.Profile -> {
+                historyLoading = true
+                statisticsLoading = true
+                gameHistory = viewModel.loadGameHistory()
+                userStatistics = viewModel.loadStatistics()
+                historyLoading = false
+                statisticsLoading = false
+            }
+
             is Screen.Home -> {
                 statisticsLoading = true
                 userStatistics = viewModel.loadStatistics()
@@ -200,13 +206,22 @@ fun MinesweeperApp(
         }
     }
 
+    val levelProgress = remember(gameHistory) {
+        val wins = gameHistory.count { it.result == GameResultType.WIN }
+        val losses = gameHistory.size - wins
+        LevelCalculator.calculateProgress(
+            LevelCalculator.calculateTotalXp(wins, losses)
+        )
+    }
+
+    val achievementTracks = remember(gameHistory) {
+        AchievementCalculator.calculate(gameHistory)
+    }
+
     if (!sessionLoaded) {
         return
     }
 
-    /*
-     * Android system back handling.
-     */
     BackHandler(
         enabled = screen !is Screen.Home && screen !is Screen.Login
     ) {
@@ -284,9 +299,7 @@ fun MinesweeperApp(
 
             when (screen) {
 
-                /*
-                 * LOGIN
-                 */
+
                 is Screen.Login -> {
 
                     LoginScreen(
@@ -337,9 +350,7 @@ fun MinesweeperApp(
                     )
                 }
 
-                /*
-                 * HOME
-                 */
+
                 is Screen.Home -> {
 
                     HomeScreen(
@@ -370,9 +381,7 @@ fun MinesweeperApp(
                     )
                 }
 
-                /*
-                 * SETTINGS
-                 */
+
                 is Screen.Settings -> {
 
                     SettingsScreen(
@@ -487,8 +496,10 @@ fun MinesweeperApp(
                  * This is now a primary bottom-navigation destination.
                  */
                 is Screen.Achievements -> {
-
-                    AchievementScreen()
+                    AchievementScreen(
+                        tracks = achievementTracks,
+                        isLoading = historyLoading
+                    )
                 }
 
                 /*
@@ -559,16 +570,22 @@ fun MinesweeperApp(
                     ProfileScreen(
                         username = userProfile?.displayName ?: "Player",
                         statistics = userStatistics,
-                        isLoading = statisticsLoading,
+                        isLoading = statisticsLoading || historyLoading,
                         selectedAvatar = selectedAvatar,
                         photoUrl = userProfile?.photoUrl,
+
+                        history = gameHistory,
+
+                        level = levelProgress.level,
+                        currentXp = levelProgress.currentXp,
+                        xpForNextLevel = levelProgress.xpForNextLevel,
 
                         onAvatarSelected = { avatar ->
                             viewModel.setAvatar(avatar)
                         },
 
                         onSeeAllHistory = {
-                            screen =Screen.History
+                            screen = Screen.History
                         },
 
                         onBack = {
