@@ -1,5 +1,6 @@
 package com.genoma.mines.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -39,12 +40,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SentimentSatisfied
-import androidx.compose.material.icons.filled.SentimentVeryDissatisfied
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,8 +55,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +68,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -82,11 +84,7 @@ import com.genoma.mines.ui.theme.CountSix
 import com.genoma.mines.ui.theme.CountThree
 import com.genoma.mines.ui.theme.CountTwo
 import com.genoma.mines.ui.theme.MinesTheme
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.platform.LocalContext
 
 data class CellUiState(
     val isRevealed: Boolean = false,
@@ -120,7 +118,9 @@ fun GameScreen(
     onCellLongPress: (index: Int) -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
-    onPause: () -> Unit
+    onPause: () -> Unit,
+    onSettings: () -> Unit = {},
+    onHowToPlay: () -> Unit = {}
 ) {
     // Local UI-only state: which action a plain tap performs. This never
     // needs to reach the ViewModel — it doesn't affect game logic, only
@@ -149,8 +149,7 @@ fun GameScreen(
 
                 GameTopBar(
                     onBack = onBack,
-                    onNewGame = onReset,
-                    onQuit = onBack
+                    onSettings = onSettings
                 )
 
                 Spacer(
@@ -160,23 +159,13 @@ fun GameScreen(
                 GameStatusBar(
                     minesRemaining = difficulty.mines - flagsPlaced,
                     elapsedSeconds = elapsedSeconds,
-                    status = status,
-                    onReset = onReset,
-                    onPause = onPause
-                )
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
-                FlagModeRow(
                     isFlagMode = isFlagMode,
                     enabled = status == GameStatus.PLAYING,
-                    onToggle = { isFlagMode = it }
+                    onToggleFlagMode = { isFlagMode = !isFlagMode }
                 )
 
                 Spacer(
-                    modifier = Modifier.height(GameSpacing.barToBoard - 12.dp)
+                    modifier = Modifier.height(GameSpacing.barToBoard)
                 )
 
                 Box(
@@ -252,6 +241,17 @@ fun GameScreen(
                         }
                     }
                 }
+
+                Spacer(
+                    modifier = Modifier.height(14.dp)
+                )
+
+                GameBottomActions(
+                    status = status,
+                    onPauseToggle = onPause,
+                    onRestart = onReset,
+                    onHowToPlay = onHowToPlay
+                )
             }
         }
 
@@ -263,55 +263,9 @@ fun GameScreen(
 }
 
 @Composable
-private fun FlagModeRow(
-    isFlagMode: Boolean,
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Flag,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Text(
-            text = "Flag mode",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
-        )
-
-        Switch(
-            checked = isFlagMode,
-            onCheckedChange = onToggle,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        )
-    }
-}
-
-@Composable
 private fun GameTopBar(
     onBack: () -> Unit,
-    onNewGame: () -> Unit,
-    onQuit: () -> Unit
+    onSettings: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -336,62 +290,26 @@ private fun GameTopBar(
             modifier = Modifier.weight(1f)
         )
 
-        Box {
-            var menuExpanded by remember { mutableStateOf(false) }
-
-            IconButton(
-                onClick = { menuExpanded = true }
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "More options",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("New game") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.RestartAlt,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onNewGame()
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = { Text("Quit") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onQuit()
-                    }
-                )
-            }
+        IconButton(
+            onClick = onSettings
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Settings,
+                contentDescription = "Settings",
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
+
 @Composable
 private fun GameStatusBar(
     minesRemaining: Int,
     elapsedSeconds: Int,
-    status: GameStatus,
-    onReset: () -> Unit,
-    onPause: () -> Unit
+    isFlagMode: Boolean,
+    enabled: Boolean,
+    onToggleFlagMode: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -416,16 +334,10 @@ private fun GameStatusBar(
                 .padStart(3, '0')
         )
 
-        ResetButton(
-            status = status,
-            onClick = {
-                when (status) {
-                    GameStatus.PLAYING,
-                    GameStatus.PAUSED -> onPause()
-
-                    else -> onReset()
-                }
-            }
+        FlagModeButton(
+            isFlagMode = isFlagMode,
+            enabled = enabled,
+            onClick = onToggleFlagMode
         )
 
         StatusReadout(
@@ -435,6 +347,72 @@ private fun GameStatusBar(
     }
 }
 
+/**
+ * Center button in the status bar. Shows a flag icon in normal (dig) mode —
+ * tapping it switches into flag-placing mode, at which point it swaps to a
+ * pickaxe-style icon; tapping again switches back to normal mode.
+ *
+ * Material Icons has no literal pickaxe glyph, so `Construction` (crossed
+ * tools) stands in for it here — swap in a custom drawable if you want
+ * something more literal.
+ */
+@Composable
+private fun FlagModeButton(
+    isFlagMode: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(
+                if (isFlagMode) {
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
+            )
+            .clickable(
+                enabled = enabled,
+                onClick = {
+                    onClick()
+
+                    Toast.makeText(
+                        context,
+                        if (isFlagMode) {
+                            "Flag mode deactivated"
+                        } else {
+                            "Flag mode activated"
+                        },
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (isFlagMode) {
+                Icons.Filled.Construction
+            } else {
+                Icons.Filled.Flag
+            },
+            contentDescription = if (isFlagMode) {
+                "Flag mode on — tap to switch back to digging"
+            } else {
+                "Tap to switch to flag mode"
+            },
+            tint = if (isFlagMode) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            },
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
 /**
  * Formats a running game timer as MM:SS. The 99:59 ceiling is just a
  * display safety net — in practice the game auto-quits at 30:00 (see
@@ -448,13 +426,6 @@ private fun formatElapsedTime(totalSeconds: Int): String {
     return "%02d:%02d".format(minutes, seconds)
 }
 
-/**
- * Compact win/loss banner pinned to the bottom of the board. Deliberately
- * slim (icon + two lines of text + a button, in a single row) so it only
- * covers a strip at the bottom of the grid instead of the board's center —
- * the point of showing it over the board at all is so a loss reveals where
- * every mine was, which a big centered card would otherwise hide.
- */
 @Composable
 private fun ResultBanner(
     title: String,
@@ -573,14 +544,6 @@ private fun ResultBanner(
     }
 }
 
-/**
- * A small pill comparing this win's time against the player's best at this
- * difficulty. It pops in with a bouncy scale + fade entrance so it draws
- * the eye right after the banner appears, then settles into a slow,
- * continuous pulse — a stronger gold glow for a new record, a gentler one
- * otherwise — so it keeps reading as "live" feedback rather than static
- * text.
- */
 @Composable
 private fun TimeComparisonChip(
     isNewBestTime: Boolean,
@@ -720,61 +683,83 @@ private fun StatusReadout(
     }
 }
 
+/**
+ * Bottom action row: play/pause, restart, and how-to-play. Replaces the
+ * old status-bar pause/reset button now that the status bar's center
+ * button is dedicated to the flag/dig mode toggle.
+ */
 @Composable
-private fun ResetButton(
+private fun GameBottomActions(
     status: GameStatus,
-    onClick: () -> Unit
+    onPauseToggle: () -> Unit,
+    onRestart: () -> Unit,
+    onHowToPlay: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(
-                MaterialTheme.colorScheme.primaryContainer
-            )
-            .clickable(
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
+    val canPause = status == GameStatus.PLAYING || status == GameStatus.PAUSED
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val iconColor = MaterialTheme.colorScheme.onPrimaryContainer
+        GameActionButton(
+            icon = if (status == GameStatus.PLAYING) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            label = if (status == GameStatus.PLAYING) "Pause" else "Play",
+            onClick = onPauseToggle,
+            enabled = canPause,
+            modifier = Modifier.weight(1f)
+        )
 
-        when (status) {
-            GameStatus.READY -> Icon(
-                imageVector = Icons.Filled.SentimentSatisfied,
-                contentDescription = "Start game",
-                tint = iconColor,
-                modifier = Modifier.size(22.dp)
-            )
+        GameActionButton(
+            icon = Icons.Filled.RestartAlt,
+            label = "Restart",
+            onClick = onRestart,
+            modifier = Modifier.weight(1f)
+        )
 
-            GameStatus.PLAYING -> Icon(
-                imageVector = Icons.Filled.Pause,
-                contentDescription = "Pause game",
-                tint = iconColor,
-                modifier = Modifier.size(22.dp)
-            )
+        GameActionButton(
+            icon = Icons.AutoMirrored.Outlined.HelpOutline,
+            label = "How to Play",
+            onClick = onHowToPlay,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
 
-            GameStatus.PAUSED -> Icon(
-                imageVector = Icons.Filled.PlayArrow,
-                contentDescription = "Resume game",
-                tint = iconColor,
-                modifier = Modifier.size(22.dp)
-            )
+@Composable
+private fun GameActionButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    val contentColor = if (enabled) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+    }
 
-            GameStatus.WON -> Icon(
-                imageVector = Icons.Filled.EmojiEvents,
-                contentDescription = "You won, tap to play again",
-                tint = iconColor,
-                modifier = Modifier.size(22.dp)
-            )
-
-            GameStatus.LOST -> Icon(
-                imageVector = Icons.Filled.SentimentVeryDissatisfied,
-                contentDescription = "Game over, tap to play again",
-                tint = iconColor,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = contentColor
+        )
     }
 }
 
@@ -1053,7 +1038,9 @@ private fun GameScreenPreview() {
                     } else {
                         GameStatus.PLAYING
                     }
-            }
+            },
+            onSettings = {},
+            onHowToPlay = {}
         )
     }
 }
