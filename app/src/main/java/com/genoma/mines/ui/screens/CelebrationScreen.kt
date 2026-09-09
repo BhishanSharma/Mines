@@ -1,12 +1,18 @@
 package com.genoma.mines.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,18 +39,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.genoma.mines.feedback.CelebrationEvent
 import com.genoma.mines.game.BadgeTier
+import com.genoma.mines.ui.theme.MinesTheme
+import kotlin.math.cos
+import kotlin.math.sin
 
 private object CelebrationSpacing {
     val screenHorizontal = 24.dp
-    val iconSize = 108.dp
-    val iconToTitle = 28.dp
+    val iconToTitle = 12.dp
     val titleToSubtitle = 8.dp
     val subtitleToButton = 40.dp
 }
@@ -55,6 +67,13 @@ private data class CelebrationContent(
     val eyebrow: String,
     val title: String,
     val subtitle: String
+)
+
+private data class Sparkle(
+    val angle: Float,
+    val distance: Float,
+    val size: Float,
+    val alpha: Float
 )
 
 private fun colorForTier(tier: BadgeTier): Color = when (tier) {
@@ -78,7 +97,7 @@ private fun contentFor(event: CelebrationEvent): CelebrationContent = when (even
         icon = Icons.Filled.EmojiEvents,
         iconTint = colorForTier(event.tier),
         eyebrow = "ACHIEVEMENT UNLOCKED",
-        title = "${event.tier.displayName} \u2014 ${event.trackTitle}",
+        title = "${event.tier.displayName} — ${event.trackTitle}",
         subtitle = "A new badge has been added to your collection."
     )
 }
@@ -87,12 +106,8 @@ private fun contentFor(event: CelebrationEvent): CelebrationContent = when (even
  * A full, dedicated screen that acknowledges the level-ups and/or
  * achievement unlocks earned by the game the player just finished.
  *
- * Rather than an overlay squeezed on top of the game board, this takes over
- * the whole screen — confetti, a big badge, and a clear headline — so a
- * milestone gets the same weight as any other main destination in the app
- * instead of competing with the board for attention. [events] is shown one
- * at a time; [onContinue] advances to the next one, and once the last is
- * dismissed the caller is expected to navigate away (typically back Home).
+ * Each event is shown one at a time. The caller is responsible for
+ * advancing the event list and navigating away after the final event.
  */
 @Composable
 fun CelebrationScreen(
@@ -103,7 +118,9 @@ fun CelebrationScreen(
     val current = events.firstOrNull() ?: return
     val remaining = events.size
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -116,39 +133,39 @@ fun CelebrationScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Keyed on the event itself so back-to-back milestones (a
-                // level-up immediately followed by an achievement, say)
-                // each get a fresh pop-in rather than silently swapping text
-                // underneath a single static icon.
                 AnimatedContent(
                     targetState = current,
                     transitionSpec = {
-                        (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.85f)) togetherWith
-                                (fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.85f))
+                        (
+                                fadeIn(
+                                    animationSpec = tween(220)
+                                ) +
+                                        scaleIn(
+                                            animationSpec = tween(220),
+                                            initialScale = 0.85f
+                                        )
+                                ) togetherWith (
+                                fadeOut(
+                                    animationSpec = tween(150)
+                                ) +
+                                        scaleOut(
+                                            animationSpec = tween(150),
+                                            targetScale = 0.85f
+                                        )
+                                )
                     },
                     label = "celebration_content"
                 ) { event ->
+
                     val animatedContent = contentFor(event)
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(CelebrationSpacing.iconSize)
-                                .background(
-                                    animatedContent.iconTint.copy(alpha = 0.15f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = animatedContent.icon,
-                                contentDescription = null,
-                                tint = animatedContent.iconTint,
-                                modifier = Modifier.size(56.dp)
-                            )
-                        }
+                        CelebrationHero(
+                            icon = animatedContent.icon,
+                            iconTint = animatedContent.iconTint
+                        )
 
                         Text(
                             text = animatedContent.eyebrow,
@@ -156,7 +173,9 @@ fun CelebrationScreen(
                             fontWeight = FontWeight.Bold,
                             color = animatedContent.iconTint,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = CelebrationSpacing.iconToTitle)
+                            modifier = Modifier.padding(
+                                top = CelebrationSpacing.iconToTitle
+                            )
                         )
 
                         Text(
@@ -177,16 +196,20 @@ fun CelebrationScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = CelebrationSpacing.titleToSubtitle)
+                                .padding(
+                                    top = CelebrationSpacing.titleToSubtitle
+                                )
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(CelebrationSpacing.subtitleToButton))
+                Spacer(
+                    modifier = Modifier.height(
+                        CelebrationSpacing.subtitleToButton
+                    )
+                )
 
-                // Only shown when more than one milestone is queued from
-                // the same game, so the player knows another is coming
-                // right after this one.
+                // Only shown when more than one milestone is queued.
                 if (remaining > 1) {
                     Text(
                         text = "${remaining - 1} more to celebrate",
@@ -206,7 +229,11 @@ fun CelebrationScreen(
                     )
                 ) {
                     Text(
-                        text = if (remaining > 1) "Next" else "Continue",
+                        text = if (remaining > 1) {
+                            "Next"
+                        } else {
+                            "Continue"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -214,9 +241,254 @@ fun CelebrationScreen(
             }
         }
 
+        // Keep confetti visually behind the main content.
+        //
+        // ConfettiOverlay should ideally position most particles around
+        // the screen edges rather than over the central badge.
         ConfettiOverlay(
             visible = true,
             modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+/**
+ * Large celebration hero consisting of:
+ *
+ * - Soft radial glow
+ * - Decorative sparkles
+ * - Large central badge
+ * - Very subtle breathing/pulse animation
+ */
+@Composable
+private fun CelebrationHero(
+    icon: ImageVector,
+    iconTint: Color,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(
+        label = "celebration_hero"
+    )
+
+    val badgeScale = infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.045f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1400,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "badge_pulse"
+    )
+
+    Box(
+        modifier = modifier.size(180.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // -------------------------------------------------------------
+        // Soft radial glow
+        // -------------------------------------------------------------
+        Box(
+            modifier = Modifier
+                .size(176.dp)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            iconTint.copy(alpha = 0.22f),
+                            iconTint.copy(alpha = 0.08f),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        // -------------------------------------------------------------
+        // Small decorative sparkles
+        // -------------------------------------------------------------
+        CelebrationSparkles(
+            tint = iconTint,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // -------------------------------------------------------------
+        // Main badge
+        // -------------------------------------------------------------
+        Box(
+            modifier = Modifier
+                .size(136.dp)
+                .scale(badgeScale.value)
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Inner colored halo.
+            Box(
+                modifier = Modifier
+                    .size(116.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                iconTint.copy(alpha = 0.22f),
+                                iconTint.copy(alpha = 0.06f)
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // Icon background.
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .background(
+                            color = iconTint.copy(alpha = 0.14f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(64.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Draws a handful of subtle four-point sparkles around the badge.
+ *
+ * The sparkles deliberately sit outside the main 136dp badge so they
+ * decorate the hero without competing with the icon.
+ */
+@Composable
+private fun CelebrationSparkles(
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier
+    ) {
+        val center = Offset(
+            x = size.width / 2f,
+            y = size.height / 2f
+        )
+
+        val sparkles = listOf(
+            Sparkle(
+                angle = -55f,
+                distance = 72f,
+                size = 5f,
+                alpha = 0.90f
+            ),
+            Sparkle(
+                angle = 35f,
+                distance = 76f,
+                size = 4f,
+                alpha = 0.65f
+            ),
+            Sparkle(
+                angle = 145f,
+                distance = 75f,
+                size = 5f,
+                alpha = 0.75f
+            ),
+            Sparkle(
+                angle = 210f,
+                distance = 68f,
+                size = 3f,
+                alpha = 0.55f
+            )
+        )
+
+        sparkles.forEach { sparkle ->
+            val radians = Math.toRadians(
+                sparkle.angle.toDouble()
+            )
+
+            val x = center.x +
+                    cos(radians).toFloat() * sparkle.distance
+
+            val y = center.y +
+                    sin(radians).toFloat() * sparkle.distance
+
+            val sparkleSize = sparkle.size.dp.toPx()
+
+            drawLine(
+                color = tint.copy(alpha = sparkle.alpha),
+                start = Offset(
+                    x = x - sparkleSize,
+                    y = y
+                ),
+                end = Offset(
+                    x = x + sparkleSize,
+                    y = y
+                ),
+                strokeWidth = 2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+
+            drawLine(
+                color = tint.copy(alpha = sparkle.alpha),
+                start = Offset(
+                    x = x,
+                    y = y - sparkleSize
+                ),
+                end = Offset(
+                    x = x,
+                    y = y + sparkleSize
+                ),
+                strokeWidth = 2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+        }
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+private fun CelebrationScreenPreview() {
+    MinesTheme {
+        CelebrationScreen(
+            events = listOf(
+                CelebrationEvent.LevelUp(
+                    newLevel = 5
+                )
+            ),
+            onContinue = {},
+            modifier = Modifier
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+private fun CelebrationAchievementPreview() {
+    MinesTheme {
+        CelebrationScreen(
+            events = listOf(
+                CelebrationEvent.AchievementUnlocked(
+                    trackId = "minesweeper_master",
+                    tier = BadgeTier.GOLD,
+                    trackTitle = "Minesweeper Master"
+                )
+            ),
+            onContinue = {},
+            modifier = Modifier
         )
     }
 }
