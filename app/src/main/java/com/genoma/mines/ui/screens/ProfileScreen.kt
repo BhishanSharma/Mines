@@ -731,11 +731,8 @@ private fun DifficultyStatRow(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (highlighted) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
+            containerColor =
                 MaterialTheme.colorScheme.surface
-            }
         )
     ) {
         Row(
