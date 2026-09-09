@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
@@ -80,6 +81,7 @@ fun SettingsScreen(
     onSignInClick: () -> Unit,
     onDeleteAccount: () -> Unit,
     isDeletingAccount: Boolean = false,
+    onHowToPlayClick: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -284,6 +286,13 @@ fun SettingsScreen(
                     SettingsSpacing.rowGap
                 )
             ) {
+
+                SettingActionRow(
+                    icon= Icons.Filled.Help,
+                    title = "How to Play",
+                    subtitle = "Learn how to play Minesweeper",
+                    onClick = onHowToPlayClick
+                )
 
                 // Feedback
                 SettingActionRow(
@@ -775,6 +784,7 @@ private fun SettingsScreenPreview() {
             onSignOut = {},
             onSignInClick = {},
             onDeleteAccount = {},
+            onHowToPlayClick = {},
             onBack = {}
         )
     }

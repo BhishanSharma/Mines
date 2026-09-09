@@ -1,8 +1,6 @@
 package com.genoma.mines.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -20,10 +18,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 fun BottomNavbar(
     selectedItem: BottomNavItem,
     onHome: () -> Unit,
-    onHowToPlay: () -> Unit,
     onOpenSTORE: () -> Unit,
     onOpenAchievements: () -> Unit,
-    onOpenMoreGames: () -> Unit
+    onOpenMoreGames: () -> Unit,
+    onHowToPlay: () -> Unit
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -35,7 +33,6 @@ fun BottomNavbar(
                 onClick = {
                     when (item) {
                         BottomNavItem.HOME -> onHome()
-                        BottomNavItem.HOW_TO_PLAY -> onHowToPlay()
                         BottomNavItem.STORE -> onOpenSTORE()
                         BottomNavItem.ACHIEVEMENTS -> onOpenAchievements()
                         BottomNavItem.MORE_GAMES -> onOpenMoreGames()
@@ -69,10 +66,6 @@ enum class BottomNavItem(
     HOME(
         label = "Home",
         icon = Icons.Filled.Home
-    ),
-    HOW_TO_PLAY(
-        label = "How to Play",
-        icon = Icons.AutoMirrored.Outlined.HelpOutline
     ),
     STORE(
         label = "Store",

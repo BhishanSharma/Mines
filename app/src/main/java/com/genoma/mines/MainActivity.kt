@@ -360,7 +360,6 @@ fun MinesweeperApp(
                      * HOW TO PLAY
                      */
                     onHowToPlay = {
-                        selectedBottomNavItem = BottomNavItem.HOW_TO_PLAY
                         screen = Screen.HowToPlay
                     },
 
@@ -624,11 +623,17 @@ fun MinesweeperApp(
 
                         isDeletingAccount = isDeletingAccount,
 
+                        onHowToPlayClick = {
+                            screen = Screen.HowToPlay
+                        },
+
                         onBack = {
                             screen = Screen.Home
                         }
                     )
                 }
+
+
 
                 /*
                  * FEEDBACK
@@ -684,10 +689,9 @@ fun MinesweeperApp(
                  * HOW TO PLAY
                  */
                 is Screen.HowToPlay -> {
-
                     HowToPlayScreen(
                         onBack = {
-                            screen = Screen.Home
+                            screen = Screen.Settings
                         }
                     )
                 }
