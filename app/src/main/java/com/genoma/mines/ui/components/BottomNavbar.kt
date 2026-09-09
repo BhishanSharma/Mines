@@ -4,13 +4,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 @Composable
 fun BottomNavbar(
     selectedItem: BottomNavItem,
+    onHome: () -> Unit,
     onHowToPlay: () -> Unit,
     onOpenStatistics: () -> Unit,
     onOpenAchievements: () -> Unit,
@@ -32,6 +33,7 @@ fun BottomNavbar(
                 selected = selectedItem == item,
                 onClick = {
                     when (item) {
+                        BottomNavItem.HOME -> onHome()
                         BottomNavItem.HOW_TO_PLAY -> onHowToPlay()
                         BottomNavItem.STATISTICS -> onOpenStatistics()
                         BottomNavItem.ACHIEVEMENTS -> onOpenAchievements()
@@ -43,9 +45,6 @@ fun BottomNavbar(
                         imageVector = item.icon,
                         contentDescription = item.label
                     )
-                },
-                label = {
-                    Text(text = item.label)
                 },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -66,6 +65,10 @@ enum class BottomNavItem(
     val label: String,
     val icon: ImageVector
 ) {
+    HOME(
+        label = "Home",
+        icon = Icons.Filled.Home
+    ),
     HOW_TO_PLAY(
         label = "How to Play",
         icon = Icons.AutoMirrored.Outlined.HelpOutline

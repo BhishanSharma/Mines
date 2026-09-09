@@ -129,7 +129,7 @@ fun MinesweeperApp(
     }
 
     var selectedBottomNavItem by remember {
-        mutableStateOf(BottomNavItem.HOW_TO_PLAY)
+        mutableStateOf(BottomNavItem.HOME)
     }
 
     var selectedDifficulty by remember {
@@ -258,6 +258,14 @@ fun MinesweeperApp(
 
                 BottomNavbar(
                     selectedItem = selectedBottomNavItem,
+
+                    /*
+                     * HOME
+                     */
+                    onHome = {
+                        selectedBottomNavItem = BottomNavItem.HOME
+                        screen = Screen.Home
+                    },
 
                     /*
                      * HOW TO PLAY
