@@ -40,6 +40,7 @@ import com.genoma.mines.game.LevelCalculator
 import com.genoma.mines.ui.components.BottomNavItem
 import com.genoma.mines.ui.components.BottomNavbar
 import com.genoma.mines.ui.screens.AchievementScreen
+import com.genoma.mines.ui.screens.CelebrationScreen
 import com.genoma.mines.ui.screens.CellUiState
 import com.genoma.mines.ui.screens.FeedbackScreen
 import com.genoma.mines.ui.screens.GameScreen
@@ -73,6 +74,7 @@ private sealed class Screen {
     object History : Screen()
     object Achievements : Screen()
     object Feedback : Screen()
+    object Celebration : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
 
@@ -184,11 +186,26 @@ fun MinesweeperApp(
     val gameState by viewModel.gameState.collectAsState()
     val isNewBestTime by viewModel.isNewBestTime.collectAsState()
     val previousBestSeconds by viewModel.previousBestSeconds.collectAsState()
+    val celebrationEvents by viewModel.celebrationEvents.collectAsState()
     val selectedAvatar by viewModel.selectedAvatar.collectAsState()
 
     val darkThemePreference by viewModel.darkTheme.collectAsState()
     val themePreference =
         ThemePreference.fromDarkThemeFlag(darkThemePreference)
+
+    // Whenever the game just finished earns a level-up and/or an
+    // achievement unlock, take the player to a dedicated celebration
+    // screen instead of layering a dialog on top of the board. Once every
+    // queued milestone has been acknowledged, send them back Home.
+    LaunchedEffect(celebrationEvents, screen) {
+        if (screen is Screen.Game && celebrationEvents.isNotEmpty()) {
+            screen = Screen.Celebration
+        } else if (screen is Screen.Celebration && celebrationEvents.isEmpty()) {
+            viewModel.goBackToHome()
+            selectedBottomNavItem = BottomNavItem.HOME
+            screen = Screen.Home
+        }
+    }
 
     LaunchedEffect(Unit) {
         val savedProfile = sessionStore.userProfile.first()
@@ -311,7 +328,7 @@ fun MinesweeperApp(
         bottomBar = {
 
 
-            if (screen !is Screen.Login && screen !is Screen.Game) {
+            if (screen !is Screen.Login && screen !is Screen.Game && screen !is Screen.Celebration) {
 
                 BottomNavbar(
                     selectedItem = selectedBottomNavItem,
@@ -731,6 +748,19 @@ fun MinesweeperApp(
 
                         screen = Screen.Home
                     }
+                }
+
+                /*
+                 * CELEBRATION
+                 */
+                is Screen.Celebration -> {
+
+                    CelebrationScreen(
+                        events = celebrationEvents,
+                        onContinue = {
+                            viewModel.consumeCelebrationEvent()
+                        }
+                    )
                 }
 
                 /*

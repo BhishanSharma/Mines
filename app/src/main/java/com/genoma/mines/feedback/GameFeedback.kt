@@ -183,6 +183,66 @@ class GameFeedback(
         }
     }
 
+    /**
+     * Played when the game that just finished pushes the player's total XP
+     * into a new level (see `LevelCalculator`). Distinct from [win] so a
+     * level-up reads as its own milestone even when it lands on an
+     * otherwise ordinary win or loss.
+     */
+    fun levelUp(
+        soundEnabled: Boolean = true,
+        hapticsEnabled: Boolean = true
+    ) {
+        if (soundEnabled) {
+            feedbackScope.launch {
+                // Two quick ascending pairs — reads as a distinct "level
+                // up" jingle rather than the single rising run used for
+                // `win`.
+                val notes = intArrayOf(
+                    ToneGenerator.TONE_DTMF_5,
+                    ToneGenerator.TONE_DTMF_8,
+                    ToneGenerator.TONE_DTMF_8,
+                    ToneGenerator.TONE_DTMF_S
+                )
+
+                notes.forEach { note ->
+                    toneGenerator.startTone(note, 80)
+                    delay(75)
+                }
+            }
+        }
+
+        if (hapticsEnabled) {
+            vibrateWaveform(
+                timings = longArrayOf(0, 50, 50, 50, 50, 120),
+                amplitudes = intArrayOf(0, 150, 0, 150, 0, 255)
+            )
+        }
+    }
+
+    /**
+     * Played when the game that just finished unlocks a new achievement
+     * tier (see `AchievementCalculator`). A single bright chime plus a
+     * light double-tap haptic — deliberately lighter than [levelUp] since
+     * several achievement tiers can unlock from one game and shouldn't
+     * stack into a wall of sound.
+     */
+    fun achievementUnlocked(
+        soundEnabled: Boolean = true,
+        hapticsEnabled: Boolean = true
+    ) {
+        if (soundEnabled) {
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
+        }
+
+        if (hapticsEnabled) {
+            vibrateWaveform(
+                timings = longArrayOf(0, 40, 40, 80),
+                amplitudes = intArrayOf(0, 200, 0, 255)
+            )
+        }
+    }
+
     fun release() {
         toneGenerator.release()
         feedbackScope.cancel()

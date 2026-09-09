@@ -8,16 +8,19 @@ import com.genoma.mines.data.GameRepositoryImpl
 import com.genoma.mines.data.GameResult
 import com.genoma.mines.data.GameHistoryItem
 import com.genoma.mines.data.UserStatistics
+import com.genoma.mines.data.AchievementCalculator
 import com.genoma.mines.data.local.GuestGameDatabase
 import com.genoma.mines.data.local.GuestGameRepository
 import com.genoma.mines.data.remote.FirestoreGameRepository
 import com.genoma.mines.data.remote.FirestoreFeedbackRepository
 import com.genoma.mines.data.remote.FeedbackSubmission
+import com.genoma.mines.feedback.CelebrationEvent
 import com.genoma.mines.feedback.GameFeedback
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameState
 import com.genoma.mines.game.GameStatus
 import com.genoma.mines.game.GameResultType
+import com.genoma.mines.game.LevelCalculator
 import com.genoma.mines.game.MinesweeperGame
 import com.genoma.mines.game.ScoreCalculator
 import com.genoma.mines.session.SessionManager
@@ -85,6 +88,13 @@ class MinesweeperViewModel(
     // the current run compares, whether it's a new record or not.
     private val _previousBestSeconds = MutableStateFlow<Long?>(null)
     val previousBestSeconds: StateFlow<Long?> = _previousBestSeconds.asStateFlow()
+
+    // Milestones (level-ups, newly unlocked achievement tiers) earned by the
+    // most recently completed game, queued so the UI can acknowledge them
+    // one at a time instead of the change only showing up silently the next
+    // time the player opens Profile or Achievements.
+    private val _celebrationEvents = MutableStateFlow<List<CelebrationEvent>>(emptyList())
+    val celebrationEvents: StateFlow<List<CelebrationEvent>> = _celebrationEvents.asStateFlow()
 
     // Null = no saved preference yet; the UI falls back to the system
     // setting until the user explicitly picks light or dark.
@@ -373,11 +383,16 @@ class MinesweeperViewModel(
         )
 
         viewModelScope.launch {
+            // Fetched once up front: doubles as the "before this game"
+            // history used both for the best-time comparison below and for
+            // the level/achievement diff after saving.
+            val historyBeforeThisGame = gameRepository.getGameHistory()
+
             if (result == GameResultType.WIN) {
                 // Compare against past wins at this difficulty *before*
                 // saving the current one, so it's judged against previous
                 // attempts rather than against itself.
-                val previousBestSeconds = gameRepository.getGameHistory()
+                val previousBestSeconds = historyBeforeThisGame
                     .filter {
                         it.difficulty == state.difficulty &&
                                 it.result == GameResultType.WIN
@@ -401,8 +416,82 @@ class MinesweeperViewModel(
                 _previousBestSeconds.value = null
             }
 
+            // Snapshot level + achievement progress from *before* this game
+            // counts, so afterwards we can tell exactly what just changed.
+            val levelBefore = levelFor(historyBeforeThisGame)
+            val achievedTiersBefore = AchievementCalculator.calculate(historyBeforeThisGame)
+                .associate { it.id to it.achievedTier }
+
             gameRepository.saveGameResult(gameResult)
+
+            // Rather than re-querying the repository (which, for an
+            // authenticated user, could race with server-side write
+            // propagation), the just-saved game is appended locally to the
+            // same history snapshot used above — cheap, and guaranteed to
+            // reflect exactly what was just written.
+            val historyAfterThisGame = historyBeforeThisGame + GameHistoryItem(
+                difficulty = state.difficulty,
+                score = score,
+                result = result,
+                durationSeconds = state.elapsedSeconds.toLong(),
+                createdAtMillis = gameResult.createdAt
+            )
+
+            val levelAfter = levelFor(historyAfterThisGame)
+            val tracksAfter = AchievementCalculator.calculate(historyAfterThisGame)
+
+            val newCelebrations = mutableListOf<CelebrationEvent>()
+
+            if (levelAfter > levelBefore) {
+                newCelebrations += CelebrationEvent.LevelUp(newLevel = levelAfter)
+            }
+
+            tracksAfter.forEach { track ->
+                val tierAfter = track.achievedTier ?: return@forEach
+                val tierBefore = achievedTiersBefore[track.id]
+
+                if (tierBefore == null || tierAfter.ordinal > tierBefore.ordinal) {
+                    newCelebrations += CelebrationEvent.AchievementUnlocked(
+                        trackId = track.id,
+                        trackTitle = track.title,
+                        tier = tierAfter
+                    )
+                }
+            }
+
+            if (newCelebrations.isNotEmpty()) {
+                if (newCelebrations.any { it is CelebrationEvent.LevelUp }) {
+                    feedback.levelUp(
+                        soundEnabled = _soundEnabled.value,
+                        hapticsEnabled = _hapticsEnabled.value
+                    )
+                }
+
+                if (newCelebrations.any { it is CelebrationEvent.AchievementUnlocked }) {
+                    feedback.achievementUnlocked(
+                        soundEnabled = _soundEnabled.value,
+                        hapticsEnabled = _hapticsEnabled.value
+                    )
+                }
+
+                _celebrationEvents.value = _celebrationEvents.value + newCelebrations
+            }
         }
+    }
+
+    /** Player level implied by a completed history list, via total XP. */
+    private fun levelFor(history: List<GameHistoryItem>): Int {
+        val wins = history.count { it.result == GameResultType.WIN }
+        val losses = history.count { it.result == GameResultType.LOSS }
+
+        return LevelCalculator.calculateProgress(
+            LevelCalculator.calculateTotalXp(wins, losses)
+        ).level
+    }
+
+    /** Pops the front-most queued celebration once the UI has shown it. */
+    fun consumeCelebrationEvent() {
+        _celebrationEvents.value = _celebrationEvents.value.drop(1)
     }
 
     suspend fun loadGameHistory(): List<GameHistoryItem> {
