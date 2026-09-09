@@ -23,13 +23,17 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.genoma.mines.auth.AccountDeletionResult
 import com.genoma.mines.auth.GoogleAuthManager
 import com.genoma.mines.auth.GoogleSignInResult
 import com.genoma.mines.auth.UserSessionStore
 import com.genoma.mines.data.AchievementCalculator
 import com.genoma.mines.data.GameHistoryItem
 import com.genoma.mines.data.UserStatistics
+import com.genoma.mines.data.local.GuestGameDatabase
+import com.genoma.mines.data.local.GuestGameRepository
 import com.genoma.mines.data.remote.FirestoreGameRepository
+import com.google.firebase.auth.FirebaseAuth
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameResultType
 import com.genoma.mines.game.LevelCalculator
@@ -123,6 +127,16 @@ fun MinesweeperApp(
 
     val firestoreRepository = remember {
         FirestoreGameRepository()
+    }
+
+    val guestGameRepository = remember {
+        GuestGameRepository(
+            GuestGameDatabase.getInstance(context).guestGameDao()
+        )
+    }
+
+    var isDeletingAccount by remember {
+        mutableStateOf(false)
     }
 
     val userProfile by sessionStore.userProfile.collectAsState(
@@ -369,12 +383,40 @@ fun MinesweeperApp(
 
                                         sessionStore.save(result.profile)
 
-                                        firestoreRepository.ensureUserDocument(
-                                            uid = result.profile.id,
-                                            name = result.profile.displayName,
-                                            email = result.profile.email,
-                                            photoUrl = result.profile.photoUrl
-                                        )
+                                        val isFirstTimeAccount =
+                                            firestoreRepository.ensureUserDocument(
+                                                uid = result.profile.id,
+                                                name = result.profile.displayName,
+                                                email = result.profile.email,
+                                                photoUrl = result.profile.photoUrl
+                                            )
+
+                                        if (isFirstTimeAccount) {
+
+                                            val localGuestGames =
+                                                guestGameRepository.getHistory()
+
+                                            if (localGuestGames.isNotEmpty()) {
+                                                try {
+                                                    firestoreRepository.migrateGuestGames(
+                                                        uid = result.profile.id,
+                                                        guestGames = localGuestGames
+                                                    )
+                                                    guestGameRepository.clearHistory()
+                                                } catch (e: Exception) {
+                                                    // Local data is left in place so
+                                                    // nothing is lost — it'll be
+                                                    // retried on the next sign-in
+                                                    // attempt for this account.
+                                                    android.widget.Toast.makeText(
+                                                        context,
+                                                        "Signed in, but couldn't sync " +
+                                                                "your guest progress",
+                                                        android.widget.Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                            }
+                                        }
 
                                         screen = Screen.Home
                                     }
@@ -472,6 +514,84 @@ fun MinesweeperApp(
                         onSignInClick = {
                             screen = Screen.Login
                         },
+
+                        onDeleteAccount = {
+
+                            scope.launch {
+
+                                isDeletingAccount = true
+
+                                // Captured before deletion starts, since
+                                // deleting the Firebase user below clears
+                                // currentUser.
+                                val uid = FirebaseAuth.getInstance()
+                                    .currentUser?.uid
+
+                                if (uid == null) {
+                                    isDeletingAccount = false
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "No signed-in account to delete",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                    return@launch
+                                }
+
+                                try {
+                                    // Online data first — deleting it
+                                    // requires the still-valid auth
+                                    // credentials that get invalidated
+                                    // once the account itself is deleted.
+                                    firestoreRepository.deleteAllUserData(uid)
+
+                                    when (
+                                        val result = authManager.deleteAccount(
+                                            webClientId = webClientId,
+                                            activity = activity
+                                        )
+                                    ) {
+                                        is AccountDeletionResult.Success -> {
+
+                                            // Local data — any leftover
+                                            // on-device game history plus
+                                            // the cached profile.
+                                            guestGameRepository.clearHistory()
+                                            sessionStore.clear()
+
+                                            userStatistics = UserStatistics.EMPTY
+                                            gameHistory = emptyList()
+
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Your account has been deleted",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+
+                                            screen = Screen.Login
+                                        }
+
+                                        is AccountDeletionResult.Failure -> {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                result.message,
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        e.message ?: "Failed to delete account",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                } finally {
+                                    isDeletingAccount = false
+                                }
+                            }
+                        },
+
+                        isDeletingAccount = isDeletingAccount,
 
                         onBack = {
                             screen = Screen.Home

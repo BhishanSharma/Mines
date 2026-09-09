@@ -19,16 +19,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +43,10 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,10 +78,16 @@ fun SettingsScreen(
     onFeedbackClick: () -> Unit,
     onSignOut: () -> Unit,
     onSignInClick: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    isDeletingAccount: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val appVersion = getInstalledAppVersion(context)
+
+    var showDeleteConfirmation by remember {
+        mutableStateOf(false)
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -81,6 +96,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = SettingsSpacing.screenHorizontal)
                 .padding(
                     top = SettingsSpacing.screenTop,
@@ -283,6 +299,162 @@ fun SettingsScreen(
                     icon = Icons.Filled.Info,
                     title = "App version",
                     value = appVersion
+                )
+            }
+
+            if (isSignedIn) {
+
+                Spacer(
+                    modifier = Modifier.height(
+                        SettingsSpacing.barToContent
+                    )
+                )
+
+                // Danger Zone
+                Text(
+                    text = "DANGER ZONE",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error
+                )
+
+                Spacer(
+                    modifier = Modifier.height(
+                        SettingsSpacing.rowGap
+                    )
+                )
+
+                DeleteAccountRow(
+                    isDeleting = isDeletingAccount,
+                    onClick = { showDeleteConfirmation = true }
+                )
+            }
+        }
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDeletingAccount) {
+                    showDeleteConfirmation = false
+                }
+            },
+            title = {
+                Text("Delete account?")
+            },
+            text = {
+                Text(
+                    "This permanently deletes your account, your game " +
+                            "history, and your stats — on this device and " +
+                            "from our servers. This can't be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDeleteAccount()
+                    },
+                    enabled = !isDeletingAccount
+                ) {
+                    Text(
+                        "Delete",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteConfirmation = false },
+                    enabled = !isDeletingAccount
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DeleteAccountRow(
+    isDeleting: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isDeleting, onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.error
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 14.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.DeleteForever,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = if (isDeleting) {
+                        "Deleting account\u2026"
+                    } else {
+                        "Delete Account"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
+
+                Text(
+                    text = "Permanently delete your account and all data",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                        .copy(alpha = 0.8f)
                 )
             }
         }
@@ -603,6 +775,7 @@ private fun SettingsScreenPreview() {
             onFeedbackClick = {},
             onSignOut = {},
             onSignInClick = {},
+            onDeleteAccount = {},
             onBack = {}
         )
     }

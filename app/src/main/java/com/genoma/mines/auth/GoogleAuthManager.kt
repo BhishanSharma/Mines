@@ -11,6 +11,7 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 
@@ -18,6 +19,11 @@ sealed class GoogleSignInResult {
     data class Success(val profile: UserProfile) : GoogleSignInResult()
     data class Failure(val message: String) : GoogleSignInResult()
     object Cancelled : GoogleSignInResult()
+}
+
+sealed class AccountDeletionResult {
+    object Success : AccountDeletionResult()
+    data class Failure(val message: String) : AccountDeletionResult()
 }
 
 class GoogleAuthManager(
@@ -121,6 +127,80 @@ class GoogleAuthManager(
 
         } catch (e: Exception) {
             // Nothing to clear.
+        }
+    }
+
+    /**
+     * Permanently deletes the signed-in Firebase Auth user.
+     *
+     * Deleting an account is a "sensitive" Firebase operation that only
+     * succeeds shortly after the user last signed in. If the session has
+     * gone stale, Firebase reports that with
+     * [FirebaseAuthRecentLoginRequiredException] instead of deleting the
+     * account — in that case this silently re-runs Google sign-in to
+     * refresh the session, then retries the deletion once.
+     *
+     * Call this only after any account data (e.g. Firestore documents)
+     * has already been removed, since deleting the user invalidates the
+     * credentials needed to authorize those deletes.
+     */
+    suspend fun deleteAccount(
+        webClientId: String,
+        activity: Activity
+    ): AccountDeletionResult {
+
+        val user = firebaseAuth.currentUser
+            ?: return AccountDeletionResult.Failure("No signed-in user")
+
+        suspend fun clearLocalCredentialState() {
+            try {
+                credentialManager.clearCredentialState(
+                    ClearCredentialStateRequest()
+                )
+            } catch (e: Exception) {
+                // Nothing to clear.
+            }
+        }
+
+        return try {
+
+            user.delete().await()
+            clearLocalCredentialState()
+            AccountDeletionResult.Success
+
+        } catch (e: FirebaseAuthRecentLoginRequiredException) {
+
+            when (val reauth = signIn(webClientId, activity)) {
+
+                is GoogleSignInResult.Success -> {
+                    try {
+                        firebaseAuth.currentUser?.delete()?.await()
+                        clearLocalCredentialState()
+                        AccountDeletionResult.Success
+                    } catch (retryError: Exception) {
+                        AccountDeletionResult.Failure(
+                            retryError.message ?: "Failed to delete account"
+                        )
+                    }
+                }
+
+                is GoogleSignInResult.Failure -> {
+                    AccountDeletionResult.Failure(
+                        "Please sign in again to confirm account deletion"
+                    )
+                }
+
+                GoogleSignInResult.Cancelled -> {
+                    AccountDeletionResult.Failure(
+                        "Account deletion cancelled"
+                    )
+                }
+            }
+
+        } catch (e: Exception) {
+            AccountDeletionResult.Failure(
+                e.message ?: "Failed to delete account"
+            )
         }
     }
 }
