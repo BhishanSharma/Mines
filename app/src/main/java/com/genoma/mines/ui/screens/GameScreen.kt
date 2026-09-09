@@ -1,6 +1,5 @@
 package com.genoma.mines.ui.screens
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -24,14 +23,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -84,7 +80,6 @@ import com.genoma.mines.ui.theme.CountSix
 import com.genoma.mines.ui.theme.CountThree
 import com.genoma.mines.ui.theme.CountTwo
 import com.genoma.mines.ui.theme.MinesTheme
-import androidx.compose.ui.platform.LocalContext
 
 data class CellUiState(
     val isRevealed: Boolean = false,
@@ -99,7 +94,6 @@ private val BestTimeGold = Color(0xFFD4A017)
 
 private object GameSpacing {
     val screenHorizontal = 16.dp
-    val screenTop = 16.dp
     val screenBottom = 16.dp
     val barToBoard = 20.dp
     val cellGap = 3.dp
@@ -360,7 +354,6 @@ private fun FlagModeButton(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -377,16 +370,6 @@ private fun FlagModeButton(
                 enabled = enabled,
                 onClick = {
                     onClick()
-
-                    Toast.makeText(
-                        context,
-                        if (isFlagMode) {
-                            "Flag mode deactivated"
-                        } else {
-                            "Flag mode activated"
-                        },
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
             ),
         contentAlignment = Alignment.Center
@@ -411,12 +394,7 @@ private fun FlagModeButton(
         )
     }
 }
-/**
- * Formats a running game timer as MM:SS. The 99:59 ceiling is just a
- * display safety net — in practice the game auto-quits at 30:00 (see
- * MinesweeperViewModel's MAX_GAME_DURATION_SECONDS), so this never
- * actually gets exercised past 30:00.
- */
+
 private fun formatElapsedTime(totalSeconds: Int): String {
     val clamped = totalSeconds.coerceIn(0, 99 * 60 + 59)
     val minutes = clamped / 60

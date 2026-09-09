@@ -20,8 +20,7 @@ fun BottomNavbar(
     onHome: () -> Unit,
     onOpenSTORE: () -> Unit,
     onOpenAchievements: () -> Unit,
-    onOpenMoreGames: () -> Unit,
-    onHowToPlay: () -> Unit
+    onOpenMoreGames: () -> Unit
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,

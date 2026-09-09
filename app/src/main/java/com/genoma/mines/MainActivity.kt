@@ -343,7 +343,7 @@ fun MinesweeperApp(
         bottomBar = {
 
 
-            if (screen !is Screen.Login && screen !is Screen.Game && screen !is Screen.Celebration) {
+            if (screen !is Screen.Login && screen !is Screen.Game && screen !is Screen.Celebration && screen !is Screen.Feedback && screen !is Screen.HowToPlay && screen !is Screen.Settings && screen !is Screen.Tournament) {
 
                 BottomNavbar(
                     selectedItem = selectedBottomNavItem,
@@ -357,20 +357,12 @@ fun MinesweeperApp(
                     },
 
                     /*
-                     * HOW TO PLAY
-                     */
-                    onHowToPlay = {
-                        screen = Screen.HowToPlay
-                    },
-
-                    /*
                      * STATISTICS
                      */
                     onOpenSTORE = {
                         selectedBottomNavItem = BottomNavItem.STORE
                         screen = Screen.Store
                     },
-
 
                     onOpenAchievements = {
                         selectedBottomNavItem = BottomNavItem.ACHIEVEMENTS
