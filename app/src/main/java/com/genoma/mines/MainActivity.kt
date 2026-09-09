@@ -377,6 +377,7 @@ fun MinesweeperApp(
                     },
 
                     onOpenMoreGames = {
+                        selectedBottomNavItem = BottomNavItem.MORE_GAMES
                         screen = Screen.MoreGames
                     }
                 )
