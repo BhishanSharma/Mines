@@ -99,7 +99,6 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = SettingsSpacing.screenHorizontal)
                 .padding(
-                    top = SettingsSpacing.screenTop,
                     bottom = SettingsSpacing.screenBottom
                 )
         ) {

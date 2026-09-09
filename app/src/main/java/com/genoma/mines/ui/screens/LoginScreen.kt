@@ -79,7 +79,6 @@ fun LoginScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .padding(top = 24.dp, end = 24.dp),
             horizontalAlignment = Alignment.End
         ) {
