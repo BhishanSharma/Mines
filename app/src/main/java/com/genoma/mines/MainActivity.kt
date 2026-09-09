@@ -825,6 +825,17 @@ fun MinesweeperApp(
                     )
                 }
 
+                is Screen.Store -> {
+                    StoreScreen(
+                        onItemClick = { item ->
+                            // TODO: handle purchase / selection
+                        },
+                        onBack = {
+                            screen = Screen.Home
+                        }
+                    )
+                }
+
                 /*
                  * FULL GAME HISTORY
                  */
@@ -839,8 +850,6 @@ fun MinesweeperApp(
                         }
                     )
                 }
-
-                else -> {}
             }
         }
     }
