@@ -198,10 +198,6 @@ fun MinesweeperApp(
     val themePreference =
         ThemePreference.fromDarkThemeFlag(darkThemePreference)
 
-    // Whenever the game just finished earns a level-up and/or an
-    // achievement unlock, take the player to a dedicated celebration
-    // screen instead of layering a dialog on top of the board. Once every
-    // queued milestone has been acknowledged, send them back Home.
     LaunchedEffect(celebrationEvents, screen) {
         if (screen is Screen.Game && celebrationEvents.isNotEmpty()) {
             screen = Screen.Celebration
@@ -242,6 +238,8 @@ fun MinesweeperApp(
                 historyLoading = false
                 statisticsLoading = false
             }
+
+            is Screen.MoreGames,
 
             is Screen.Home -> {
                 statisticsLoading = true
