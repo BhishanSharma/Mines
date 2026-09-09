@@ -5,6 +5,7 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +21,7 @@ fun BottomNavbar(
     selectedItem: BottomNavItem,
     onHome: () -> Unit,
     onHowToPlay: () -> Unit,
-    onOpenStatistics: () -> Unit,
+    onOpenSTORE: () -> Unit,
     onOpenAchievements: () -> Unit,
     onOpenMoreGames: () -> Unit
 ) {
@@ -35,7 +36,7 @@ fun BottomNavbar(
                     when (item) {
                         BottomNavItem.HOME -> onHome()
                         BottomNavItem.HOW_TO_PLAY -> onHowToPlay()
-                        BottomNavItem.STATISTICS -> onOpenStatistics()
+                        BottomNavItem.STORE -> onOpenSTORE()
                         BottomNavItem.ACHIEVEMENTS -> onOpenAchievements()
                         BottomNavItem.MORE_GAMES -> onOpenMoreGames()
                     }
@@ -73,9 +74,9 @@ enum class BottomNavItem(
         label = "How to Play",
         icon = Icons.AutoMirrored.Outlined.HelpOutline
     ),
-    STATISTICS(
-        label = "Statistics",
-        icon = Icons.Filled.BarChart
+    STORE(
+        label = "Store",
+        icon = Icons.Filled.ShoppingCart
     ),
     ACHIEVEMENTS(
         label = "Achievements",

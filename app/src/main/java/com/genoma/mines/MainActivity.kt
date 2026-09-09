@@ -51,6 +51,7 @@ import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
 import com.genoma.mines.ui.screens.ProfileScreen
 import com.genoma.mines.ui.screens.SettingsScreen
+import com.genoma.mines.ui.screens.StoreScreen
 import com.genoma.mines.ui.screens.ThemePreference
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
@@ -75,6 +76,7 @@ private sealed class Screen {
     object Achievements : Screen()
     object Feedback : Screen()
     object Celebration : Screen()
+    object Store : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
 
@@ -227,6 +229,8 @@ fun MinesweeperApp(
                 historyLoading = false
             }
 
+            is Screen.Store,
+
             is Screen.Profile -> {
                 historyLoading = true
                 statisticsLoading = true
@@ -314,6 +318,10 @@ fun MinesweeperApp(
                 screen = Screen.Home
             }
 
+            is Screen.Store -> {
+                screen = Screen.Home
+            }
+
             is Screen.Feedback -> {
                 screen = Screen.Settings
             }
@@ -352,9 +360,9 @@ fun MinesweeperApp(
                     /*
                      * STATISTICS
                      */
-                    onOpenStatistics = {
-                        selectedBottomNavItem = BottomNavItem.STATISTICS
-                        screen = Screen.Profile
+                    onOpenSTORE = {
+                        selectedBottomNavItem = BottomNavItem.STORE
+                        screen = Screen.Store
                     },
 
 
@@ -480,7 +488,6 @@ fun MinesweeperApp(
                         },
 
                         onOpenProfile = {
-                            selectedBottomNavItem = BottomNavItem.STATISTICS
                             screen = Screen.Profile
                         },
 
@@ -832,6 +839,8 @@ fun MinesweeperApp(
                         }
                     )
                 }
+
+                else -> {}
             }
         }
     }

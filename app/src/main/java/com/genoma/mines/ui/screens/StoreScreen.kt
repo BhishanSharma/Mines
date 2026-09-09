@@ -1,0 +1,407 @@
+package com.genoma.mines.ui.screens
+
+import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.genoma.mines.store.AvatarStoreItem
+import com.genoma.mines.store.BoardThemeItem
+import com.genoma.mines.store.CellSkinItem
+import com.genoma.mines.store.StoreCatalog
+import com.genoma.mines.store.StoreCategory
+import com.genoma.mines.store.StoreItem
+import com.genoma.mines.ui.theme.MinesTheme
+
+private object StoreSpacing {
+    val screenHorizontal = 16.dp
+    val screenTop = 16.dp
+    val screenBottom = 16.dp
+    val barToContent = 20.dp
+    val sectionGap = 20.dp
+    val rowGap = 10.dp
+}
+
+/**
+ * Browses [StoreCatalog.allItems] grouped by category. `ownedItemIds` and
+ * `coinBalance` are passed in rather than read from anywhere here, since
+ * there's no wallet/ownership system wired up yet — the caller can pass
+ * real values once that exists. Until then this renders correctly with
+ * the defaults: every paid item shows as locked, balance shows as 0.
+ */
+@Composable
+fun StoreScreen(
+    items: List<StoreItem> = StoreCatalog.allItems,
+    ownedItemIds: Set<String> = emptySet(),
+    coinBalance: Int = 0,
+    onItemClick: (StoreItem) -> Unit = {},
+    onBack: () -> Unit = {}
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(WindowInsets.safeDrawing.asPaddingValues())
+                .padding(horizontal = StoreSpacing.screenHorizontal)
+                .padding(
+                    top = StoreSpacing.screenTop,
+                    bottom = StoreSpacing.screenBottom
+                )
+        ) {
+
+            // Top bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBack
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Text(
+                        text = "Store",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Diamond,
+                        contentDescription = "Coin balance",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(6.dp)
+                    )
+
+                    Text(
+                        text = "$coinBalance",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.height(StoreSpacing.barToContent)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                StoreCategory.entries.forEach { category ->
+                    val categoryItems = items.filter { it.category == category }
+
+                    if (categoryItems.isNotEmpty()) {
+                        Text(
+                            text = category.displayName.uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(StoreSpacing.rowGap)
+                        )
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(
+                                StoreSpacing.rowGap
+                            )
+                        ) {
+                            categoryItems.forEach { item ->
+                                StoreItemRow(
+                                    item = item,
+                                    owned = item.price == 0 ||
+                                            ownedItemIds.contains(item.id),
+                                    onClick = {
+                                        onItemClick(item)
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(
+                            modifier = Modifier.height(StoreSpacing.sectionGap)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreItemRow(
+    item: StoreItem,
+    owned: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StoreItemPreview(
+                item = item,
+                modifier = Modifier.size(48.dp)
+            )
+
+            Spacer(
+                modifier = Modifier.width(12.dp)
+            )
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(
+                    modifier = Modifier.height(2.dp)
+                )
+
+                Text(
+                    text = item.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.width(8.dp)
+            )
+
+            PriceBadge(
+                owned = owned,
+                price = item.price
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoreItemPreview(
+    item: StoreItem,
+    modifier: Modifier = Modifier
+) {
+    when (item) {
+        is BoardThemeItem -> {
+            Row(
+                modifier = modifier.clip(RoundedCornerShape(10.dp))
+            ) {
+                item.previewColorHex.forEach { hex ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(hex.toComposeColor())
+                    )
+                }
+            }
+        }
+
+        is CellSkinItem -> {
+            DrawableOrFallbackIcon(
+                drawableRes = item.previewDrawableRes,
+                fallbackIcon = Icons.Filled.GridView,
+                modifier = modifier
+            )
+        }
+
+        is AvatarStoreItem -> {
+            DrawableOrFallbackIcon(
+                drawableRes = item.previewDrawableRes,
+                fallbackIcon = Icons.Filled.Person,
+                modifier = modifier
+            )
+        }
+    }
+}
+
+@Composable
+private fun DrawableOrFallbackIcon(
+    drawableRes: Int?,
+    fallbackIcon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        if (drawableRes != null) {
+            Image(
+                painter = painterResource(id = drawableRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                imageVector = fallbackIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PriceBadge(
+    owned: Boolean,
+    price: Int
+) {
+    if (owned) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Owned",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Diamond,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp)
+            )
+
+            Spacer(
+                modifier = Modifier.width(4.dp)
+            )
+
+            Text(
+                text = "$price",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun String.toComposeColor(): Color {
+    return Color(AndroidColor.parseColor(this))
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun StoreScreenPreview() {
+    MinesTheme {
+        StoreScreen(
+            ownedItemIds = setOf("board_classic_teal"),
+            coinBalance = 420,
+            onItemClick = {},
+            onBack = {}
+        )
+    }
+}
