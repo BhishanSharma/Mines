@@ -141,7 +141,6 @@ fun GameScreen(
                         horizontal = GameSpacing.screenHorizontal
                     )
                     .padding(
-                        top = GameSpacing.screenTop,
                         bottom = GameSpacing.screenBottom
                     )
             ) {

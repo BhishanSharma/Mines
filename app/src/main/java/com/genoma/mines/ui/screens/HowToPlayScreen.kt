@@ -90,7 +90,6 @@ fun HowToPlayScreen(
                 .fillMaxSize()
                 .padding(horizontal = HowToPlaySpacing.screenHorizontal)
                 .padding(
-                    top = HowToPlaySpacing.screenTop,
                     bottom = HowToPlaySpacing.screenBottom
                 )
         ) {
