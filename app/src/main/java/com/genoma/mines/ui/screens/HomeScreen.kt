@@ -92,7 +92,6 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(horizontal = Spacing.screenHorizontal)
                 .padding(
-                    top = Spacing.screenTop,
                     bottom = Spacing.screenBottom
                 )
         ) {

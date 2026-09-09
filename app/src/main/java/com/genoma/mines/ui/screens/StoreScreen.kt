@@ -87,10 +87,8 @@ fun StoreScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
                 .padding(horizontal = StoreSpacing.screenHorizontal)
                 .padding(
-                    top = StoreSpacing.screenTop,
                     bottom = StoreSpacing.screenBottom
                 )
         ) {
