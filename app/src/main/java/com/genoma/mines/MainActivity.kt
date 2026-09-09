@@ -58,6 +58,7 @@ import com.genoma.mines.viewmodel.MinesweeperViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.genoma.mines.ui.screens.MoreGamesScreen
+import com.genoma.mines.ui.screens.TournamentScreen
 
 /** Formats a duration in seconds as mm:ss, for best-time display on Profile. */
 private fun formatBestTime(totalSeconds: Long): String {
@@ -80,6 +81,7 @@ private sealed class Screen {
 
     object MoreGames : Screen()
     object Store : Screen()
+    object Tournament : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
 
@@ -496,7 +498,10 @@ fun MinesweeperApp(
                         username = userProfile?.displayName ?: "Guest",
                         selectedAvatar = selectedAvatar,
                         photoUrl = userProfile?.photoUrl,
-                        gamesWon = userStatistics.totalScore
+                        gamesWon = userStatistics.totalScore,
+                        onOpenTournament = {
+                            screen = Screen.Tournament
+                        }
                     )
                 }
 
@@ -839,8 +844,12 @@ fun MinesweeperApp(
                 }
 
                 is Screen.MoreGames -> {
-                    MoreGamesScreen(
-                        onBack = {
+                    MoreGamesScreen()
+                }
+
+                is Screen.Tournament -> {
+                    TournamentScreen(
+                        onBackClick = {
                             screen = Screen.Home
                         }
                     )

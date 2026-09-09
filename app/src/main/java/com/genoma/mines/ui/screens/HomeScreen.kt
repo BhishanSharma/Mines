@@ -23,10 +23,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Card
@@ -77,7 +77,7 @@ fun HomeScreen(
     photoUrl: String? = null,
     gamesWon: Int = 0,
     gems: Int = 0,
-    onOpenPremium: () -> Unit = {}
+    onOpenTournament: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -156,8 +156,8 @@ fun HomeScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconPillButton(
-                        icon = Icons.Filled.WorkspacePremium,
-                        onClick = onOpenPremium,
+                        icon = Icons.Filled.EmojiEvents,
+                        onClick = onOpenTournament,
                         filled = true
                     )
                     IconPillButton(
@@ -555,6 +555,7 @@ private fun HomeScreenPreview() {
             onOpenSettings = {},
             onOpenProfile = {},
             username = "Alan",
+            onOpenTournament = {},
             gamesWon = 0
         )
     }
