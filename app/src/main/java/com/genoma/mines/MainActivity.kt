@@ -41,6 +41,7 @@ import com.genoma.mines.ui.screens.FeedbackScreen
 import com.genoma.mines.ui.screens.GameScreen
 import com.genoma.mines.ui.screens.HistoryScreen
 import com.genoma.mines.ui.screens.HomeScreen
+import com.genoma.mines.ui.screens.displayName
 import com.genoma.mines.ui.screens.HowToPlayScreen
 import com.genoma.mines.ui.screens.LoginScreen
 import com.genoma.mines.ui.screens.ProfileScreen
@@ -50,6 +51,14 @@ import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+/** Formats a duration in seconds as mm:ss, for best-time display on Profile. */
+private fun formatBestTime(totalSeconds: Long): String {
+    val clamped = totalSeconds.coerceIn(0, 99 * 60 + 59)
+    val minutes = clamped / 60
+    val seconds = clamped % 60
+    return "%02d:%02d".format(minutes, seconds)
+}
 
 private sealed class Screen {
     object Login : Screen()
@@ -212,6 +221,40 @@ fun MinesweeperApp(
         LevelCalculator.calculateProgress(
             LevelCalculator.calculateTotalXp(wins, losses)
         )
+    }
+
+    // Fastest win per difficulty, derived straight from game history — the
+    // Profile screen already accepts this shape, it just wasn't being fed
+    // real data before.
+    val bestSecondsByDifficulty = remember(gameHistory) {
+        gameHistory
+            .filter { it.result == GameResultType.WIN }
+            .groupBy { it.difficulty }
+            .mapValues { (_, wins) -> wins.minOf { it.durationSeconds } }
+    }
+
+    val bestTimesByDifficultyLabel = remember(bestSecondsByDifficulty) {
+        bestSecondsByDifficulty.mapKeys { (difficulty, _) ->
+            difficulty.displayName()
+        }.mapValues { (_, seconds) ->
+            formatBestTime(seconds)
+        }
+    }
+
+    val overallBestDifficulty = remember(bestSecondsByDifficulty) {
+        bestSecondsByDifficulty.entries.minByOrNull { it.value }?.key
+    }
+
+    val bestTimeOverall = remember(overallBestDifficulty, bestSecondsByDifficulty) {
+        overallBestDifficulty?.let { bestSecondsByDifficulty[it] }?.let(::formatBestTime)
+    }
+
+    val bestTimeDifficultyLabel = overallBestDifficulty?.displayName() ?: "Easy"
+
+    val keepGoingMessage = remember(levelProgress) {
+        val xpRemaining = (levelProgress.xpForNextLevel - levelProgress.currentXp)
+            .coerceAtLeast(0)
+        "Play more — $xpRemaining XP to level ${levelProgress.level + 1}."
     }
 
     val achievementTracks = remember(gameHistory) {
@@ -587,9 +630,32 @@ fun MinesweeperApp(
                         level = levelProgress.level,
                         currentXp = levelProgress.currentXp,
                         xpForNextLevel = levelProgress.xpForNextLevel,
+                        keepGoingMessage = keepGoingMessage,
+
+                        bestTimeOverall = bestTimeOverall,
+                        bestTimeDifficultyLabel = bestTimeDifficultyLabel,
+                        bestTimes = bestTimesByDifficultyLabel,
+                        highlightedDifficultyLabel = bestTimeDifficultyLabel,
 
                         onAvatarSelected = { avatar ->
                             viewModel.setAvatar(avatar)
+                        },
+
+                        onOpenSettings = {
+                            screen = Screen.Settings
+                        },
+
+                        onKeepGoingClick = {
+                            screen = Screen.Home
+                        },
+
+                        onDifficultyClick = { label ->
+                            val difficulty = Difficulty.entries.first {
+                                it.displayName() == label
+                            }
+                            selectedDifficulty = difficulty
+                            viewModel.startGame(difficulty)
+                            screen = Screen.Game(difficulty)
                         },
 
                         onSeeAllHistory = {

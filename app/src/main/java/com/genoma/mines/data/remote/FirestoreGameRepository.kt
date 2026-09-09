@@ -61,6 +61,21 @@ class FirestoreGameRepository(
         val isWin = gameResult.result == GameResultType.WIN
 
         firestore.runTransaction { transaction ->
+            // Read the current totals first — Firestore transactions
+            // require all reads before any writes.
+            val snapshot = transaction.get(userDocRef)
+
+            val currentTotalScore = snapshot.getLong("totalScore") ?: 0L
+            val currentDifficultyScore = snapshot.getLong(scoreField) ?: 0L
+
+            // Score is floored at zero as it's written, rather than only
+            // when displayed. Otherwise a losing streak leaves a negative
+            // balance stored server-side, and the next win has to "pay
+            // off" that debt before the total starts climbing again —
+            // instead it should just start counting up from zero.
+            val newTotalScore = (currentTotalScore + gameResult.score).coerceAtLeast(0L)
+            val newDifficultyScore = (currentDifficultyScore + gameResult.score).coerceAtLeast(0L)
+
             val historyDoc = hashMapOf(
                 "difficulty" to gameResult.difficulty.name,
                 "score" to gameResult.score,
@@ -72,9 +87,9 @@ class FirestoreGameRepository(
 
             val updates = mutableMapOf<String, Any>(
                 "totalGames" to FieldValue.increment(1),
-                "totalScore" to FieldValue.increment(gameResult.score.toLong()),
+                "totalScore" to newTotalScore,
                 gamesField to FieldValue.increment(1),
-                scoreField to FieldValue.increment(gameResult.score.toLong())
+                scoreField to newDifficultyScore
             )
 
             if (isWin) {

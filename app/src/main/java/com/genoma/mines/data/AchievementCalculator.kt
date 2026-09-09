@@ -37,7 +37,16 @@ object AchievementCalculator {
     fun calculate(history: List<GameHistoryItem>): List<AchievementTrack> {
         val gamesPlayed = history.size
         val gamesWon = history.count { it.result == GameResultType.WIN }
-        val totalScore = history.sumOf { it.score }
+        // Floored chronologically, same as the Profile screen's Total
+        // Score: once a losing streak drags the running total to zero,
+        // the next win counts up from zero rather than paying off debt.
+        val totalScore = run {
+            var running = 0
+            for (item in history.sortedBy { it.createdAtMillis }) {
+                running = (running + item.score).coerceAtLeast(0)
+            }
+            running
+        }
         val hardWins = history.count {
             it.difficulty == Difficulty.HARD && it.result == GameResultType.WIN
         }

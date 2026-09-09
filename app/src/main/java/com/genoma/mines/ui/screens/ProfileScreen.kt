@@ -797,7 +797,7 @@ private fun DifficultyStatRow(
                     text = if (stats.games > 0 && bestTime != null) {
                         "Best: $bestTime"
                     } else {
-                        "Not played yet"
+                        "Not won yet"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

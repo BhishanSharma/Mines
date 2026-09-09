@@ -275,6 +275,13 @@ fun RecentHistorySection(
 // Used by RecentHistorySection on Profile.
 // ============================================================================
 
+// Shown on both the Profile recent-history preview and the full History
+// screen — a win's score reads with a leading "+" so it's visually obvious
+// alongside a loss's "-", instead of only the loss carrying a sign.
+private fun formatSignedScore(score: Int): String {
+    return if (score > 0) "+$score" else score.toString()
+}
+
 @Composable
 private fun HistoryPreviewRow(
     entry: GameHistoryItem
@@ -328,7 +335,7 @@ private fun HistoryPreviewRow(
 
             // Score
             Text(
-                text = entry.score.toString(),
+                text = formatSignedScore(entry.score),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -428,7 +435,7 @@ private fun HistoryRow(
 
             // Score
             Text(
-                text = entry.score.toString(),
+                text = formatSignedScore(entry.score),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
