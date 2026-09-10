@@ -37,6 +37,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +77,8 @@ import com.genoma.mines.data.DifficultyStatistics
 import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.data.GameHistoryItem
+import com.genoma.mines.data.AchievementTrack
+import com.genoma.mines.game.BadgeTier
 
 private object ProfileSpacing {
     val screenHorizontal = 24.dp
@@ -90,6 +94,7 @@ private object ProfileSpacing {
 fun ProfileScreen(
     username: String = "Player",
     tagline: String = "Mines Explorer",
+    achievementTracks: List<AchievementTrack> = emptyList(),
     statistics: UserStatistics = UserStatistics.EMPTY,
     isLoading: Boolean = false,
     selectedAvatar: AvatarOption = AvatarOption.Default,
@@ -259,10 +264,9 @@ fun ProfileScreen(
                                     )
                                 }
                             }
-                            Text(
-                                text = tagline,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            BadgesRow(
+                                tracks = achievementTracks,
+                                modifier = Modifier.padding(top = 2.dp)
                             )
 
                             Spacer(modifier = Modifier.height(10.dp))
@@ -975,6 +979,64 @@ private fun AvatarGridItem(
             contentScale = ContentScale.Crop
         )
     }
+}
+
+@Composable
+private fun BadgesRow(
+    tracks: List<AchievementTrack>,
+    modifier: Modifier = Modifier
+) {
+    val earnedTracks = tracks.filter { it.achievedTier != null }
+
+    if (earnedTracks.isEmpty()) {
+        Text(
+            text = "No badges yet \u2014 play to earn your first one",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier
+        )
+        return
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        earnedTracks.take(5).forEach { track ->
+            val tier = track.achievedTier ?: return@forEach
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(colorForBadgeTier(tier)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = iconForTrack(track.id),
+                    contentDescription = "${track.title}: ${tier.displayName}",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun iconForTrack(trackId: String): ImageVector = when (trackId) {
+    "games_played" -> Icons.Filled.SportsEsports
+    "games_won" -> Icons.Filled.EmojiEvents
+    "win_streak" -> Icons.Filled.Whatshot
+    "total_score" -> Icons.Filled.BarChart
+    "hard_wins" -> Icons.Filled.MilitaryTech
+    else -> Icons.Filled.EmojiEvents
+}
+
+private fun colorForBadgeTier(tier: BadgeTier): Color = when (tier) {
+    BadgeTier.BRONZE -> Color(0xFFCD7F32)
+    BadgeTier.SILVER -> Color(0xFFB0BEC5)
+    BadgeTier.GOLD -> Color(0xFFFFC107)
+    BadgeTier.PLATINUM -> Color(0xFF66C2CE)
+    BadgeTier.DIAMOND -> Color(0xFF6FD8FF)
 }
 
 @Preview(

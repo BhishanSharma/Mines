@@ -47,7 +47,8 @@ import java.util.Locale
 fun HistoryScreen(
     isLoading: Boolean,
     history: List<GameHistoryItem>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    title: String = "Game history"
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -83,7 +84,7 @@ fun HistoryScreen(
                 }
 
                 Text(
-                    text = "Game history",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground

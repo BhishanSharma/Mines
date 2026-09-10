@@ -10,29 +10,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,18 +62,17 @@ private object StoreSpacing {
     val rowGap = 10.dp
 }
 
-/**
- * Browses [StoreCatalog.allItems] grouped by category. `ownedItemIds` and
- * `coinBalance` are passed in rather than read from anywhere here, since
- * there's no wallet/ownership system wired up yet — the caller can pass
- * real values once that exists. Until then this renders correctly with
- * the defaults: every paid item shows as locked, balance shows as 0.
- */
 @Composable
 fun StoreScreen(
     items: List<StoreItem> = StoreCatalog.allItems,
     ownedItemIds: Set<String> = emptySet(),
     coinBalance: Int = 0,
+    diamondBalance: Int = 0,
+    canRedeem: Boolean = false,
+    redemptionsUsedToday: Int = 0,
+    maxRedemptionsPerWindow: Int = 2,
+    nextUnlockMillis: Long? = null,
+    onRedeemClick: () -> Unit = {},
     onItemClick: (StoreItem) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
@@ -88,9 +84,7 @@ fun StoreScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = StoreSpacing.screenHorizontal)
-                .padding(
-                    bottom = StoreSpacing.screenBottom
-                )
+                .padding(bottom = StoreSpacing.screenBottom)
         ) {
 
             // Top bar
@@ -99,16 +93,12 @@ fun StoreScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Store",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
+                Text(
+                    text = "Store",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
 
                 Row(
                     modifier = Modifier
@@ -119,17 +109,13 @@ fun StoreScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Diamond,
-                        contentDescription = "Coin balance",
+                        contentDescription = "Diamond balance",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
-
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
-
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "$coinBalance",
+                        text = "$diamondBalance",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -137,9 +123,18 @@ fun StoreScreen(
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(StoreSpacing.barToContent)
+            Spacer(modifier = Modifier.height(StoreSpacing.barToContent))
+
+            RedeemCard(
+                coinBalance = coinBalance,
+                canRedeem = canRedeem,
+                redemptionsUsedToday = redemptionsUsedToday,
+                maxRedemptionsPerWindow = maxRedemptionsPerWindow,
+                nextUnlockMillis = nextUnlockMillis,
+                onRedeemClick = onRedeemClick
             )
+
+            Spacer(modifier = Modifier.height(StoreSpacing.sectionGap))
 
             Column(
                 modifier = Modifier
@@ -157,35 +152,118 @@ fun StoreScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(
-                            modifier = Modifier.height(StoreSpacing.rowGap)
-                        )
+                        Spacer(modifier = Modifier.height(StoreSpacing.rowGap))
 
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(
-                                StoreSpacing.rowGap
-                            )
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(StoreSpacing.rowGap)) {
                             categoryItems.forEach { item ->
                                 StoreItemRow(
                                     item = item,
-                                    owned = item.price == 0 ||
-                                            ownedItemIds.contains(item.id),
-                                    onClick = {
-                                        onItemClick(item)
-                                    }
+                                    owned = item.price == 0 || ownedItemIds.contains(item.id),
+                                    onClick = { onItemClick(item) }
                                 )
                             }
                         }
 
-                        Spacer(
-                            modifier = Modifier.height(StoreSpacing.sectionGap)
-                        )
+                        Spacer(modifier = Modifier.height(StoreSpacing.sectionGap))
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun RedeemCard(
+    coinBalance: Int,
+    canRedeem: Boolean,
+    redemptionsUsedToday: Int,
+    maxRedemptionsPerWindow: Int,
+    nextUnlockMillis: Long?,
+    onRedeemClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.MonetizationOn,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Redeem coins for diamonds",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "500 coins = 1 diamond \u00B7 up to $maxRedemptionsPerWindow times a day",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "$coinBalance coins",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = when {
+                            canRedeem ->
+                                "${maxRedemptionsPerWindow - redemptionsUsedToday} redemptions left today"
+                            nextUnlockMillis != null ->
+                                "Locked \u2014 more in ${formatRemaining(nextUnlockMillis)}"
+                            else -> "Not enough coins yet"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                    )
+                }
+
+                Button(
+                    onClick = onRedeemClick,
+                    enabled = canRedeem,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("Redeem")
+                }
+            }
+        }
+    }
+}
+
+private fun formatRemaining(unlockAtMillis: Long): String {
+    val remainingMs = (unlockAtMillis - System.currentTimeMillis()).coerceAtLeast(0)
+    val hours = remainingMs / (60 * 60 * 1000)
+    val minutes = (remainingMs / (60 * 1000)) % 60
+    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
 @Composable
@@ -202,10 +280,7 @@ private fun StoreItemRow(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant
-        )
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -213,29 +288,18 @@ private fun StoreItemRow(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StoreItemPreview(
-                item = item,
-                modifier = Modifier.size(48.dp)
-            )
+            StoreItemPreview(item = item, modifier = Modifier.size(48.dp))
 
-            Spacer(
-                modifier = Modifier.width(12.dp)
-            )
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
-                Spacer(
-                    modifier = Modifier.height(2.dp)
-                )
-
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.description,
                     style = MaterialTheme.typography.bodySmall,
@@ -245,28 +309,18 @@ private fun StoreItemRow(
                 )
             }
 
-            Spacer(
-                modifier = Modifier.width(8.dp)
-            )
+            Spacer(modifier = Modifier.width(8.dp))
 
-            PriceBadge(
-                owned = owned,
-                price = item.price
-            )
+            PriceBadge(owned = owned, price = item.price)
         }
     }
 }
 
 @Composable
-private fun StoreItemPreview(
-    item: StoreItem,
-    modifier: Modifier = Modifier
-) {
+private fun StoreItemPreview(item: StoreItem, modifier: Modifier = Modifier) {
     when (item) {
         is BoardThemeItem -> {
-            Row(
-                modifier = modifier.clip(RoundedCornerShape(10.dp))
-            ) {
+            Row(modifier = modifier.clip(RoundedCornerShape(10.dp))) {
                 item.previewColorHex.forEach { hex ->
                     Box(
                         modifier = Modifier
@@ -278,21 +332,17 @@ private fun StoreItemPreview(
             }
         }
 
-        is CellSkinItem -> {
-            DrawableOrFallbackIcon(
-                drawableRes = item.previewDrawableRes,
-                fallbackIcon = Icons.Filled.GridView,
-                modifier = modifier
-            )
-        }
+        is CellSkinItem -> DrawableOrFallbackIcon(
+            drawableRes = item.previewDrawableRes,
+            fallbackIcon = Icons.Filled.GridView,
+            modifier = modifier
+        )
 
-        is AvatarStoreItem -> {
-            DrawableOrFallbackIcon(
-                drawableRes = item.previewDrawableRes,
-                fallbackIcon = Icons.Filled.Person,
-                modifier = modifier
-            )
-        }
+        is AvatarStoreItem -> DrawableOrFallbackIcon(
+            drawableRes = item.previewDrawableRes,
+            fallbackIcon = Icons.Filled.Person,
+            modifier = modifier
+        )
     }
 }
 
@@ -312,9 +362,7 @@ private fun DrawableOrFallbackIcon(
             Image(
                 painter = painterResource(id = drawableRes),
                 contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(4.dp),
+                modifier = Modifier.fillMaxSize().padding(4.dp),
                 contentScale = ContentScale.Crop
             )
         } else {
@@ -329,10 +377,7 @@ private fun DrawableOrFallbackIcon(
 }
 
 @Composable
-private fun PriceBadge(
-    owned: Boolean,
-    price: Int
-) {
+private fun PriceBadge(owned: Boolean, price: Int) {
     if (owned) {
         Box(
             modifier = Modifier
@@ -361,11 +406,7 @@ private fun PriceBadge(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(14.dp)
             )
-
-            Spacer(
-                modifier = Modifier.width(4.dp)
-            )
-
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "$price",
                 style = MaterialTheme.typography.labelSmall,
@@ -376,9 +417,7 @@ private fun PriceBadge(
     }
 }
 
-private fun String.toComposeColor(): Color {
-    return Color(AndroidColor.parseColor(this))
-}
+private fun String.toComposeColor(): Color = Color(AndroidColor.parseColor(this))
 
 @Preview(showBackground = true)
 @Composable
@@ -386,9 +425,10 @@ private fun StoreScreenPreview() {
     MinesTheme {
         StoreScreen(
             ownedItemIds = setOf("board_classic_teal"),
-            coinBalance = 420,
-            onItemClick = {},
-            onBack = {}
+            coinBalance = 850,
+            diamondBalance = 3,
+            canRedeem = true,
+            redemptionsUsedToday = 0
         )
     }
 }

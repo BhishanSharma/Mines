@@ -37,6 +37,8 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 import com.genoma.mines.ui.screens.ThemePreference
 import com.genoma.mines.ui.screens.toDarkThemeFlag
+import com.genoma.mines.wallet.CoinWalletDataStore
+import com.genoma.mines.wallet.RedeemStatus
 
 class MinesweeperViewModel(
     application: Application
@@ -45,6 +47,7 @@ class MinesweeperViewModel(
     private companion object {
         /** A game that runs this long auto-quits back to the home screen. */
         const val MAX_GAME_DURATION_SECONDS = 30 * 60
+        const val COIN_REWARD_PER_WIN = 100
     }
 
     private var game: MinesweeperGame? = null
@@ -67,6 +70,20 @@ class MinesweeperViewModel(
     )
 
     private var gameResultSaved = false
+
+    private val wallet = CoinWalletDataStore(application)
+
+    private val _coins = MutableStateFlow(0)
+    val coins: StateFlow<Int> = _coins.asStateFlow()
+
+    private val _diamonds = MutableStateFlow(0)
+    val diamonds: StateFlow<Int> = _diamonds.asStateFlow()
+
+    private val _redeemStatus = MutableStateFlow<RedeemStatus?>(null)
+    val redeemStatus: StateFlow<RedeemStatus?> = _redeemStatus.asStateFlow()
+
+    private val _redeemResultMessage = MutableStateFlow<String?>(null)
+    val redeemResultMessage: StateFlow<String?> = _redeemResultMessage.asStateFlow()
 
     private val _gameState = MutableStateFlow<GameState?>(null)
     val gameState: StateFlow<GameState?> = _gameState.asStateFlow()
@@ -142,6 +159,14 @@ class MinesweeperViewModel(
                 settings.selectedAvatarId.collect { avatarId ->
                     _selectedAvatar.value = AvatarOption.fromId(avatarId)
                 }
+            }
+
+            launch {
+                wallet.coins.collect { _coins.value = it }
+            }
+
+            launch {
+                wallet.diamonds.collect { _diamonds.value = it }
             }
         }
     }
@@ -361,6 +386,12 @@ class MinesweeperViewModel(
         if (gameResultSaved) return
         gameResultSaved = true
 
+        if (result == GameResultType.WIN) {
+            viewModelScope.launch {
+                wallet.addCoins(COIN_REWARD_PER_WIN)
+            }
+        }
+
         val correctlyRevealedCells = state.cells.count { it.isRevealed && !it.isMine }
 
         val totalSafeCells = state.difficulty.rows * state.difficulty.columns - state.difficulty.mines
@@ -542,6 +573,24 @@ class MinesweeperViewModel(
 
     fun resetFeedbackSubmitted() {
         _feedbackSubmitted.value = false
+    }
+
+    fun refreshRedeemStatus() {
+        viewModelScope.launch {
+            _redeemStatus.value = wallet.getRedeemStatus()
+        }
+    }
+
+    fun redeemDiamond() {
+        viewModelScope.launch {
+            val result = wallet.redeemDiamond()
+            _redeemResultMessage.value = result.message
+            _redeemStatus.value = wallet.getRedeemStatus()
+        }
+    }
+
+    fun consumeRedeemResultMessage() {
+        _redeemResultMessage.value = null
     }
 
     override fun onCleared() {

@@ -24,9 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Card
@@ -75,7 +75,7 @@ fun HomeScreen(
     username: String = "Player",
     selectedAvatar: AvatarOption = AvatarOption.Default,
     photoUrl: String? = null,
-    gamesWon: Int = 0,
+    coins: Int = 0,
     gems: Int = 0,
     onOpenTournament: () -> Unit
 ) {
@@ -170,49 +170,17 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(Spacing.medium))
 
-            // ---------- Star / score pill ----------
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Score",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
+            // ---------- Diamond & coin pills ----------
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CurrencyPill(
+                    icon = Icons.Filled.Diamond,
+                    contentDescription = "Diamonds",
+                    value = gems
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "$gamesWon",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Diamond,
-                    contentDescription = "Gems",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "$gems",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                CurrencyPill(
+                    icon = Icons.Filled.MonetizationOn,
+                    contentDescription = "Coins",
+                    value = coins
                 )
             }
 
@@ -544,6 +512,36 @@ fun Difficulty.tagline(): String {
 }
 
 
+@Composable
+private fun CurrencyPill(
+    icon: ImageVector,
+    contentDescription: String,
+    value: Int
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "$value",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+    }
+}
+
+
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
@@ -556,7 +554,7 @@ private fun HomeScreenPreview() {
             onOpenProfile = {},
             username = "Alan",
             onOpenTournament = {},
-            gamesWon = 0
+            coins = 0
         )
     }
 }

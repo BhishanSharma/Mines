@@ -1,6 +1,7 @@
 package com.genoma.mines
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -74,7 +75,7 @@ private sealed class Screen {
     object Settings : Screen()
     object HowToPlay : Screen()
     object Profile : Screen()
-    object History : Screen()
+    data class History(val difficulty: Difficulty? = null) : Screen()
     object Achievements : Screen()
     object Feedback : Screen()
     object Celebration : Screen()
@@ -195,6 +196,17 @@ fun MinesweeperApp(
     val previousBestSeconds by viewModel.previousBestSeconds.collectAsState()
     val celebrationEvents by viewModel.celebrationEvents.collectAsState()
     val selectedAvatar by viewModel.selectedAvatar.collectAsState()
+    val coins by viewModel.coins.collectAsState()
+    val diamonds by viewModel.diamonds.collectAsState()
+    val redeemStatus by viewModel.redeemStatus.collectAsState()
+    val redeemResultMessage by viewModel.redeemResultMessage.collectAsState()
+
+    LaunchedEffect(redeemResultMessage) {
+        redeemResultMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.consumeRedeemResultMessage()
+        }
+    }
 
     val darkThemePreference by viewModel.darkTheme.collectAsState()
     val themePreference =
@@ -230,7 +242,15 @@ fun MinesweeperApp(
                 historyLoading = false
             }
 
-            is Screen.Store,
+            is Screen.Store -> {
+                historyLoading = true
+                statisticsLoading = true
+                gameHistory = viewModel.loadGameHistory()
+                userStatistics = viewModel.loadStatistics()
+                viewModel.refreshRedeemStatus()
+                historyLoading = false
+                statisticsLoading = false
+            }
 
             is Screen.Profile -> {
                 historyLoading = true
@@ -489,7 +509,8 @@ fun MinesweeperApp(
                         username = userProfile?.displayName ?: "Guest",
                         selectedAvatar = selectedAvatar,
                         photoUrl = userProfile?.photoUrl,
-                        gamesWon = userStatistics.totalScore,
+                        coins = coins,
+                        gems = diamonds,
                         onOpenTournament = {
                             screen = Screen.Tournament
                         }
@@ -777,65 +798,50 @@ fun MinesweeperApp(
                  * PROFILE / STATISTICS
                  */
                 is Screen.Profile -> {
-
                     ProfileScreen(
                         username = userProfile?.displayName ?: "Player",
+                        achievementTracks = achievementTracks,
                         statistics = userStatistics,
                         isLoading = statisticsLoading || historyLoading,
                         selectedAvatar = selectedAvatar,
                         photoUrl = userProfile?.photoUrl,
-
                         history = gameHistory,
-
                         level = levelProgress.level,
                         currentXp = levelProgress.currentXp,
                         xpForNextLevel = levelProgress.xpForNextLevel,
                         keepGoingMessage = keepGoingMessage,
-
                         bestTimeOverall = bestTimeOverall,
                         bestTimeDifficultyLabel = bestTimeDifficultyLabel,
                         bestTimes = bestTimesByDifficultyLabel,
                         highlightedDifficultyLabel = bestTimeDifficultyLabel,
-
-                        onAvatarSelected = { avatar ->
-                            viewModel.setAvatar(avatar)
-                        },
-
-                        onOpenSettings = {
-                            screen = Screen.Settings
-                        },
-
+                        onAvatarSelected = { avatar -> viewModel.setAvatar(avatar) },
+                        onOpenSettings = { screen = Screen.Settings },
                         onKeepGoingClick = {
-                            screen = Screen.Home
+                            selectedBottomNavItem = BottomNavItem.ACHIEVEMENTS
+                            screen = Screen.Achievements
                         },
-
                         onDifficultyClick = { label ->
-                            val difficulty = Difficulty.entries.first {
-                                it.displayName() == label
-                            }
-                            selectedDifficulty = difficulty
-                            viewModel.startGame(difficulty)
-                            screen = Screen.Game(difficulty)
+                            val difficulty = Difficulty.entries.first { it.displayName() == label }
+                            screen = Screen.History(difficulty)
                         },
-
-                        onSeeAllHistory = {
-                            screen = Screen.History
-                        },
-
-                        onBack = {
-                            screen = Screen.Home
-                        }
+                        onSeeAllHistory = { screen = Screen.History() },
+                        onBack = { screen = Screen.Home }
                     )
                 }
 
                 is Screen.Store -> {
                     StoreScreen(
+                        coinBalance = coins,
+                        diamondBalance = diamonds,
+                        canRedeem = redeemStatus?.canRedeem ?: false,
+                        redemptionsUsedToday = redeemStatus?.redemptionsUsedToday ?: 0,
+                        maxRedemptionsPerWindow = redeemStatus?.maxRedemptionsPerWindow ?: 2,
+                        nextUnlockMillis = redeemStatus?.nextUnlockMillis,
+                        onRedeemClick = { viewModel.redeemDiamond() },
                         onItemClick = { item ->
                             // TODO: handle purchase / selection
                         },
-                        onBack = {
-                            screen = Screen.Home
-                        }
+                        onBack = { screen = Screen.Home }
                     )
                 }
 
@@ -855,14 +861,17 @@ fun MinesweeperApp(
                  * FULL GAME HISTORY
                  */
                 is Screen.History -> {
+                    val historyScreen = screen as Screen.History
+                    val filteredHistory = historyScreen.difficulty?.let { diff ->
+                        gameHistory.filter { it.difficulty == diff }
+                    } ?: gameHistory
 
                     HistoryScreen(
                         isLoading = historyLoading,
-                        history = gameHistory,
-
-                        onBack = {
-                            screen = Screen.Profile
-                        }
+                        history = filteredHistory,
+                        title = historyScreen.difficulty?.let { "${it.displayName()} history" }
+                            ?: "Game history",
+                        onBack = { screen = Screen.Profile }
                     )
                 }
             }
