@@ -443,16 +443,16 @@ fun MinesweeperApp(
                                                         guestGames = localGuestGames
                                                     )
                                                     guestGameRepository.clearHistory()
-                                                } catch (e: Exception) {
+                                                } catch (_: Exception) {
                                                     // Local data is left in place so
                                                     // nothing is lost — it'll be
                                                     // retried on the next sign-in
                                                     // attempt for this account.
-                                                    android.widget.Toast.makeText(
+                                                    Toast.makeText(
                                                         context,
                                                         "Signed in, but couldn't sync " +
                                                                 "your guest progress",
-                                                        android.widget.Toast.LENGTH_LONG
+                                                        Toast.LENGTH_LONG
                                                     ).show()
                                                 }
                                             }
@@ -463,10 +463,10 @@ fun MinesweeperApp(
 
                                     is GoogleSignInResult.Failure -> {
 
-                                        android.widget.Toast.makeText(
+                                        Toast.makeText(
                                             context,
                                             result.message,
-                                            android.widget.Toast.LENGTH_LONG
+                                            Toast.LENGTH_LONG
                                         ).show()
                                     }
 
@@ -572,10 +572,10 @@ fun MinesweeperApp(
 
                                 if (uid == null) {
                                     isDeletingAccount = false
-                                    android.widget.Toast.makeText(
+                                    Toast.makeText(
                                         context,
                                         "No signed-in account to delete",
-                                        android.widget.Toast.LENGTH_LONG
+                                        Toast.LENGTH_LONG
                                     ).show()
                                     return@launch
                                 }
@@ -604,29 +604,29 @@ fun MinesweeperApp(
                                             userStatistics = UserStatistics.EMPTY
                                             gameHistory = emptyList()
 
-                                            android.widget.Toast.makeText(
+                                            Toast.makeText(
                                                 context,
                                                 "Your account has been deleted",
-                                                android.widget.Toast.LENGTH_LONG
+                                                Toast.LENGTH_LONG
                                             ).show()
 
                                             screen = Screen.Login
                                         }
 
                                         is AccountDeletionResult.Failure -> {
-                                            android.widget.Toast.makeText(
+                                            Toast.makeText(
                                                 context,
                                                 result.message,
-                                                android.widget.Toast.LENGTH_LONG
+                                                Toast.LENGTH_LONG
                                             ).show()
                                         }
                                     }
 
                                 } catch (e: Exception) {
-                                    android.widget.Toast.makeText(
+                                    Toast.makeText(
                                         context,
                                         e.message ?: "Failed to delete account",
-                                        android.widget.Toast.LENGTH_LONG
+                                        Toast.LENGTH_LONG
                                     ).show()
                                 } finally {
                                     isDeletingAccount = false
@@ -666,10 +666,10 @@ fun MinesweeperApp(
 
                         if (feedbackSubmitted) {
 
-                            android.widget.Toast.makeText(
+                            Toast.makeText(
                                 context,
                                 "Thanks for the feedback!",
-                                android.widget.Toast.LENGTH_LONG
+                                Toast.LENGTH_LONG
                             ).show()
 
                             viewModel.resetFeedbackSubmitted()
@@ -838,7 +838,7 @@ fun MinesweeperApp(
                         maxRedemptionsPerWindow = redeemStatus?.maxRedemptionsPerWindow ?: 2,
                         nextUnlockMillis = redeemStatus?.nextUnlockMillis,
                         onRedeemClick = { viewModel.redeemDiamond() },
-                        onItemClick = { item ->
+                        onItemClick = { _ ->
                             // TODO: handle purchase / selection
                         },
                         onBack = { screen = Screen.Home }
