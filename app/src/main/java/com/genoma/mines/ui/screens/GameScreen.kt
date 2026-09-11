@@ -63,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import com.genoma.mines.store.BoardThemeStyle
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -114,7 +115,9 @@ fun GameScreen(
     onBack: () -> Unit,
     onPause: () -> Unit,
     onSettings: () -> Unit = {},
-    onHowToPlay: () -> Unit = {}
+    onHowToPlay: () -> Unit = {},
+    boardTheme: BoardThemeStyle? = null,
+    frostCellSkinEquipped: Boolean = false
 ) {
     // Local UI-only state: which action a plain tap performs. This never
     // needs to reach the ViewModel — it doesn't affect game logic, only
@@ -184,6 +187,8 @@ fun GameScreen(
                             }
                         },
                         onCellLongPress = onCellLongPress,
+                        boardTheme = boardTheme,
+                        frostCellSkinEquipped = frostCellSkinEquipped,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -746,17 +751,19 @@ private fun MineBoard(
     interactionEnabled: Boolean,
     onCellTap: (Int) -> Unit,
     onCellLongPress: (Int) -> Unit,
+    boardTheme: BoardThemeStyle?,
+    frostCellSkinEquipped: Boolean,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = boardTheme?.boardColor ?: MaterialTheme.colorScheme.surfaceVariant
         ),
         border = BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.outlineVariant
+            boardTheme?.borderColor ?: MaterialTheme.colorScheme.outlineVariant
         )
     ) {
         LazyVerticalGrid(
@@ -781,7 +788,9 @@ private fun MineBoard(
                     },
                     onLongPress = {
                         onCellLongPress(index)
-                    }
+                    },
+                    boardTheme = boardTheme,
+                    frostCellSkinEquipped = frostCellSkinEquipped
                 )
             }
         }
@@ -793,17 +802,14 @@ private fun MineCell(
     state: CellUiState,
     enabled: Boolean,
     onTap: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    boardTheme: BoardThemeStyle?,
+    frostCellSkinEquipped: Boolean
 ) {
     val targetColor = when {
-        state.isDetonated ->
-            MaterialTheme.colorScheme.errorContainer
-
-        state.isRevealed ->
-            MaterialTheme.colorScheme.surface
-
-        else ->
-            MaterialTheme.colorScheme.primaryContainer
+        state.isDetonated -> boardTheme?.mineColor ?: MaterialTheme.colorScheme.errorContainer
+        state.isRevealed -> boardTheme?.revealedCellColor ?: MaterialTheme.colorScheme.surface
+        else -> boardTheme?.hiddenCellColor ?: MaterialTheme.colorScheme.primaryContainer
     }
 
     // Smoothly cross-fades when a cell flips from hidden to revealed,
@@ -817,7 +823,7 @@ private fun MineCell(
     // Unrevealed cells get a faint highlight border to read as
     // "raised" tiles waiting to be tapped; revealed cells sit flush.
     val borderColor = if (!state.isRevealed) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        (boardTheme?.borderColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.35f)
     } else {
         Color.Transparent
     }
@@ -828,8 +834,8 @@ private fun MineCell(
             .clip(RoundedCornerShape(6.dp))
             .background(backgroundColor)
             .border(
-                width = 1.dp,
-                color = borderColor,
+                width = if (frostCellSkinEquipped) 2.dp else 1.dp,
+                color = if (frostCellSkinEquipped) Color.White.copy(alpha = 0.65f) else borderColor,
                 shape = RoundedCornerShape(6.dp)
             )
             .combinedClickable(

@@ -66,6 +66,8 @@ private object StoreSpacing {
 fun StoreScreen(
     items: List<StoreItem> = StoreCatalog.allItems,
     ownedItemIds: Set<String> = emptySet(),
+    equippedBoardThemeId: String = "board_classic_teal",
+    equippedCellSkinId: String? = null,
     coinBalance: Int = 0,
     diamondBalance: Int = 0,
     canRedeem: Boolean = false,
@@ -159,6 +161,11 @@ fun StoreScreen(
                                 StoreItemRow(
                                     item = item,
                                     owned = item.price == 0 || ownedItemIds.contains(item.id),
+                                    equipped = when (item) {
+                                        is BoardThemeItem -> equippedBoardThemeId == item.id
+                                        is CellSkinItem -> equippedCellSkinId == item.id
+                                        is AvatarStoreItem -> false
+                                    },
                                     onClick = { onItemClick(item) }
                                 )
                             }
@@ -270,6 +277,7 @@ private fun formatRemaining(unlockAtMillis: Long): String {
 private fun StoreItemRow(
     item: StoreItem,
     owned: Boolean,
+    equipped: Boolean,
     onClick: () -> Unit
 ) {
     Card(
@@ -311,7 +319,7 @@ private fun StoreItemRow(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            PriceBadge(owned = owned, price = item.price)
+            PriceBadge(owned = owned, equipped = equipped, price = item.price)
         }
     }
 }
@@ -377,8 +385,8 @@ private fun DrawableOrFallbackIcon(
 }
 
 @Composable
-private fun PriceBadge(owned: Boolean, price: Int) {
-    if (owned) {
+private fun PriceBadge(owned: Boolean, equipped: Boolean, price: Int) {
+    if (equipped) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
@@ -386,10 +394,24 @@ private fun PriceBadge(owned: Boolean, price: Int) {
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
             Text(
-                text = "Owned",
+                text = "Applied",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    } else if (owned) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Owned",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     } else {

@@ -54,6 +54,7 @@ import com.genoma.mines.ui.screens.LoginScreen
 import com.genoma.mines.ui.screens.ProfileScreen
 import com.genoma.mines.ui.screens.SettingsScreen
 import com.genoma.mines.ui.screens.StoreScreen
+import com.genoma.mines.store.StoreCatalog
 import com.genoma.mines.ui.screens.ThemePreference
 import com.genoma.mines.ui.theme.MinesTheme
 import com.genoma.mines.viewmodel.MinesweeperViewModel
@@ -210,6 +211,12 @@ fun MinesweeperApp(
     val diamonds by viewModel.diamonds.collectAsState()
     val redeemStatus by viewModel.redeemStatus.collectAsState()
     val redeemResultMessage by viewModel.redeemResultMessage.collectAsState()
+    val ownedStoreItemIds by viewModel.ownedStoreItemIds.collectAsState()
+    val equippedBoardThemeId by viewModel.equippedBoardThemeId.collectAsState()
+    val equippedCellSkinId by viewModel.equippedCellSkinId.collectAsState()
+
+    val equippedBoardTheme = StoreCatalog.boardThemeById(equippedBoardThemeId)
+    val equippedCellSkin = StoreCatalog.cellSkinById(equippedCellSkinId)
 
     LaunchedEffect(redeemResultMessage) {
         redeemResultMessage?.let { message ->
@@ -780,6 +787,8 @@ fun MinesweeperApp(
 
                             isNewBestTime = isNewBestTime,
                             previousBestSeconds = previousBestSeconds,
+                            boardTheme = equippedBoardTheme?.style,
+                            frostCellSkinEquipped = equippedCellSkin?.id == "cellskin_frost",
 
                             onCellTap = { index ->
                                 viewModel.revealCell(index)
@@ -866,8 +875,11 @@ fun MinesweeperApp(
                         maxRedemptionsPerWindow = redeemStatus?.maxRedemptionsPerWindow ?: 2,
                         nextUnlockMillis = redeemStatus?.nextUnlockMillis,
                         onRedeemClick = { viewModel.redeemDiamond() },
-                        onItemClick = { _ ->
-                            // TODO: handle purchase / selection
+                        ownedItemIds = ownedStoreItemIds,
+                        equippedBoardThemeId = equippedBoardThemeId,
+                        equippedCellSkinId = equippedCellSkinId,
+                        onItemClick = { item ->
+                            viewModel.purchaseOrEquipStoreItem(item)
                         },
                         onBack = { screen = Screen.Home }
                     )

@@ -8,4 +8,6 @@ interface WalletRepository {
     suspend fun addCoins(amount: Int)
     suspend fun getRedeemStatus(): RedeemStatus
     suspend fun redeemDiamond(): RedeemResult
+
+    suspend fun spendDiamonds(amount: Int): RedeemResult
 }

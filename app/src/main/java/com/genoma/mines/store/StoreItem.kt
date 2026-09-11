@@ -24,7 +24,8 @@ data class BoardThemeItem(
     override val name: String,
     override val description: String,
     override val price: Int,
-    val previewColorHex: List<String>
+    val previewColorHex: List<String>,
+    val style: BoardThemeStyle
 ) : StoreItem {
     override val category = StoreCategory.BOARD_THEME
 }

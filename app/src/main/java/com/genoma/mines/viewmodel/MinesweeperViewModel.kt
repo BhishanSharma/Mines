@@ -26,6 +26,8 @@ import com.genoma.mines.game.MinesweeperGame
 import com.genoma.mines.game.ScoreCalculator
 import com.genoma.mines.session.SessionManager
 import com.genoma.mines.settings.SettingsDataStore
+import com.genoma.mines.store.StoreDataStore
+import com.genoma.mines.store.StoreItem
 import com.genoma.mines.ui.screens.AvatarOption
 import com.genoma.mines.ui.screens.FeedbackData
 import kotlinx.coroutines.Job
@@ -58,6 +60,7 @@ class MinesweeperViewModel(
 
     private val feedback = GameFeedback(application)
     private val settings = SettingsDataStore(application)
+    private val storeDataStore = StoreDataStore(application)
 
     private val sessionManager = SessionManager()
     private val scoreCalculator = ScoreCalculator()
@@ -128,6 +131,17 @@ class MinesweeperViewModel(
     private val _selectedAvatar = MutableStateFlow(AvatarOption.Default)
     val selectedAvatar: StateFlow<AvatarOption> = _selectedAvatar.asStateFlow()
 
+    private val _ownedStoreItemIds = MutableStateFlow<Set<String>>(emptySet())
+    val ownedStoreItemIds: StateFlow<Set<String>> = _ownedStoreItemIds.asStateFlow()
+
+    private val _equippedBoardThemeId = MutableStateFlow("board_classic_teal")
+    val equippedBoardThemeId: StateFlow<String> = _equippedBoardThemeId.asStateFlow()
+
+    private val _equippedCellSkinId = MutableStateFlow<String?>(null)
+    val equippedCellSkinId: StateFlow<String?> = _equippedCellSkinId.asStateFlow()
+
+
+
     private val _isSubmittingFeedback = MutableStateFlow(false)
     val isSubmittingFeedback: StateFlow<Boolean> = _isSubmittingFeedback.asStateFlow()
 
@@ -166,6 +180,18 @@ class MinesweeperViewModel(
                 settings.selectedAvatarId.collect { avatarId ->
                     _selectedAvatar.value = AvatarOption.fromId(avatarId)
                 }
+            }
+
+            launch {
+                storeDataStore.ownedItemIds.collect { _ownedStoreItemIds.value = it }
+            }
+
+            launch {
+                storeDataStore.equippedBoardThemeId.collect { _equippedBoardThemeId.value = it }
+            }
+
+            launch {
+                storeDataStore.equippedCellSkinId.collect { _equippedCellSkinId.value = it }
             }
 
             launch {
@@ -211,6 +237,30 @@ class MinesweeperViewModel(
 
         viewModelScope.launch {
             settings.setSelectedAvatarId(avatar.id)
+        }
+    }
+
+    fun purchaseOrEquipStoreItem(item: StoreItem) {
+        viewModelScope.launch {
+            val owned = item.price == 0 || storeDataStore.isOwned(item.id)
+
+            if (!owned) {
+                val result = wallet.spendDiamonds(item.price)
+                if (!result.success) {
+                    _redeemResultMessage.value = result.message
+                    return@launch
+                }
+                storeDataStore.addOwnedItem(item.id)
+            }
+
+            when (item) {
+                is com.genoma.mines.store.BoardThemeItem -> storeDataStore.equipBoardTheme(item.id)
+                is com.genoma.mines.store.CellSkinItem -> storeDataStore.equipCellSkin(item.id)
+                is com.genoma.mines.store.AvatarStoreItem -> {
+                    // Avatar artwork is not yet part of AvatarOption. Ownership is
+                    // still saved, but no fake visual mapping is introduced.
+                }
+            }
         }
     }
 
