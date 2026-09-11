@@ -12,6 +12,7 @@ import com.genoma.mines.data.AchievementCalculator
 import com.genoma.mines.data.local.GuestGameDatabase
 import com.genoma.mines.data.local.GuestGameRepository
 import com.genoma.mines.data.remote.FirestoreGameRepository
+import com.genoma.mines.data.remote.FirestoreWalletRepository
 import com.genoma.mines.data.remote.FirestoreFeedbackRepository
 import com.genoma.mines.data.remote.FeedbackSubmission
 import com.genoma.mines.feedback.CelebrationEvent
@@ -39,6 +40,8 @@ import com.genoma.mines.ui.screens.ThemePreference
 import com.genoma.mines.ui.screens.toDarkThemeFlag
 import com.genoma.mines.wallet.CoinWalletDataStore
 import com.genoma.mines.wallet.RedeemStatus
+import com.genoma.mines.wallet.WalletRepository
+import com.genoma.mines.wallet.WalletRepositoryImpl
 
 class MinesweeperViewModel(
     application: Application
@@ -71,7 +74,11 @@ class MinesweeperViewModel(
 
     private var gameResultSaved = false
 
-    private val wallet = CoinWalletDataStore(application)
+    private val wallet: WalletRepository = WalletRepositoryImpl(
+        sessionManager = sessionManager,
+        guestWallet = CoinWalletDataStore(application),
+        firestoreWallet = FirestoreWalletRepository()
+    )
 
     private val _coins = MutableStateFlow(0)
     val coins: StateFlow<Int> = _coins.asStateFlow()

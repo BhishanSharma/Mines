@@ -34,6 +34,7 @@ import com.genoma.mines.data.UserStatistics
 import com.genoma.mines.data.local.GuestGameDatabase
 import com.genoma.mines.data.local.GuestGameRepository
 import com.genoma.mines.data.remote.FirestoreGameRepository
+import com.genoma.mines.data.remote.FirestoreWalletRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.genoma.mines.game.Difficulty
 import com.genoma.mines.game.GameResultType
@@ -60,6 +61,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.genoma.mines.ui.screens.MoreGamesScreen
 import com.genoma.mines.ui.screens.TournamentScreen
+import com.genoma.mines.wallet.CoinWalletDataStore
 
 /** Formats a duration in seconds as mm:ss, for best-time display on Profile. */
 private fun formatBestTime(totalSeconds: Long): String {
@@ -137,6 +139,14 @@ fun MinesweeperApp(
 
     val firestoreRepository = remember {
         FirestoreGameRepository()
+    }
+
+    val firestoreWalletRepository = remember {
+        FirestoreWalletRepository()
+    }
+
+    val guestWalletStore = remember {
+        CoinWalletDataStore(context)
     }
 
     val guestGameRepository = remember {
@@ -454,6 +464,24 @@ fun MinesweeperApp(
                                                                 "your guest progress",
                                                         Toast.LENGTH_LONG
                                                     ).show()
+                                                }
+                                            }
+
+                                            // Fold any coins/diamonds earned as a guest into the new account too,
+                                            // so the wallet doesn't get left behind on this device at sign-in.
+                                            val guestCoins = guestWalletStore.coins.first()
+                                            val guestDiamonds = guestWalletStore.diamonds.first()
+
+                                            if (guestCoins > 0 || guestDiamonds > 0) {
+                                                try {
+                                                    firestoreWalletRepository.migrateGuestWallet(
+                                                        uid = result.profile.id,
+                                                        coins = guestCoins,
+                                                        diamonds = guestDiamonds
+                                                    )
+                                                    guestWalletStore.clear()
+                                                } catch (_: Exception) {
+                                                    // Left in place locally — retried on the next sign-in attempt.
                                                 }
                                             }
                                         }

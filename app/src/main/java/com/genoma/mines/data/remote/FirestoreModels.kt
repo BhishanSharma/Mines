@@ -26,6 +26,10 @@ data class UserStats(
     val hardWins: Int = 0,
     val hardScore: Int = 0,
 
+    val coins: Int = 0,
+    val diamonds: Int = 0,
+    val redeemTimestamps: List<Long> = emptyList(),
+
     @ServerTimestamp
     val createdAt: Date? = null
 ) {

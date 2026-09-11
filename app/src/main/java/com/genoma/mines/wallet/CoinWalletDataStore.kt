@@ -15,6 +15,11 @@ data class RedeemResult(
     val message: String
 )
 
+data class WalletSnapshot(
+    val coins: Int,
+    val diamonds: Int
+)
+
 /** Current balances + redeem availability, refreshed when the Store screen opens. */
 data class RedeemStatus(
     val coins: Int,
@@ -28,7 +33,7 @@ data class RedeemStatus(
                 coins >= CoinWalletDataStore.COST_PER_DIAMOND
 }
 
-class CoinWalletDataStore(private val context: Context) {
+class CoinWalletDataStore(private val context: Context) : WalletRepository {
 
     companion object {
         const val COST_PER_DIAMOND = 500
@@ -40,10 +45,10 @@ class CoinWalletDataStore(private val context: Context) {
         private val REDEEM_TIMESTAMPS = stringPreferencesKey("redeem_timestamps")
     }
 
-    val coins: Flow<Int> = context.walletDataStore.data.map { it[COINS] ?: 0 }
-    val diamonds: Flow<Int> = context.walletDataStore.data.map { it[DIAMONDS] ?: 0 }
+    override val coins: Flow<Int> = context.walletDataStore.data.map { it[COINS] ?: 0 }
+    override val diamonds: Flow<Int> = context.walletDataStore.data.map { it[DIAMONDS] ?: 0 }
 
-    suspend fun addCoins(amount: Int) {
+    override suspend fun addCoins(amount: Int) {
         if (amount <= 0) return
 
         context.walletDataStore.edit { prefs ->
@@ -51,7 +56,7 @@ class CoinWalletDataStore(private val context: Context) {
         }
     }
 
-    suspend fun getRedeemStatus(): RedeemStatus {
+    override suspend fun getRedeemStatus(): RedeemStatus {
         val prefs = context.walletDataStore.data.first()
         val activeTimestamps = parseTimestamps(prefs[REDEEM_TIMESTAMPS]).filterActive()
 
@@ -69,7 +74,7 @@ class CoinWalletDataStore(private val context: Context) {
     }
 
     /** Spends [COST_PER_DIAMOND] coins for one diamond, if allowed. */
-    suspend fun redeemDiamond(): RedeemResult {
+    override suspend fun redeemDiamond(): RedeemResult {
         var result = RedeemResult(success = false, message = "")
 
         context.walletDataStore.edit { prefs ->
@@ -102,6 +107,20 @@ class CoinWalletDataStore(private val context: Context) {
         }
 
         return result
+    }
+
+    /**
+     * Clears the local balance entirely. Called after a guest's
+     * coins/diamonds have been folded into a Firestore account on first
+     * sign-in, so this device's DataStore doesn't double-count them if
+     * anything ever falls back to reading it.
+     */
+    suspend fun clear() {
+        context.walletDataStore.edit { prefs ->
+            prefs.remove(COINS)
+            prefs.remove(DIAMONDS)
+            prefs.remove(REDEEM_TIMESTAMPS)
+        }
     }
 
     private fun parseTimestamps(raw: String?): List<Long> {

@@ -53,6 +53,9 @@ class FirestoreGameRepository(
             "hardGames" to 0,
             "hardWins" to 0,
             "hardScore" to 0,
+            "coins" to 0,
+            "diamonds" to 0,
+            "redeemTimestamps" to emptyList<Long>(),
             "createdAt" to FieldValue.serverTimestamp()
         )
 
