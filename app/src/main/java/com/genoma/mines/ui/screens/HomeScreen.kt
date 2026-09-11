@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -77,6 +78,13 @@ fun HomeScreen(
     photoUrl: String? = null,
     coins: Int = 0,
     gems: Int = 0,
+
+    // XP / level information
+    hasPlayedGame: Boolean = false,
+    level: Int = 1,
+    currentXp: Int = 0,
+    xpForNextLevel: Int = 100,
+
     onOpenTournament: () -> Unit
 ) {
     Surface(
@@ -110,7 +118,9 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 shape = CircleShape
                             )
-                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .background(
+                                MaterialTheme.colorScheme.primaryContainer
+                            )
                             .clickable(onClick = onOpenProfile),
                         contentAlignment = Alignment.Center
                     ) {
@@ -140,26 +150,87 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
+
                         Text(
                             text = username,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
-                        Text(
-                            text = "Ready to explore?",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+
+                        // -------------------------------------------------
+                        // First-time user:
+                        // Show "Ready to explore?"
+                        //
+                        // After the first game:
+                        // Show level + XP progress bar.
+                        // -------------------------------------------------
+                        if (!hasPlayedGame) {
+
+                            Text(
+                                text = "Ready to explore?",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                        } else {
+
+                            val xpProgress = if (xpForNextLevel > 0) {
+                                (
+                                        currentXp.toFloat() /
+                                                xpForNextLevel.toFloat()
+                                        ).coerceIn(0f, 1f)
+                            } else {
+                                0f
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+
+                                Text(
+                                    text = "Level $level",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                LinearProgressIndicator(
+                                    progress = { xpProgress },
+                                    modifier = Modifier
+                                        .width(90.dp)
+                                        .height(6.dp)
+                                        .clip(
+                                            RoundedCornerShape(50)
+                                        ),
+                                    trackColor = MaterialTheme
+                                        .colorScheme
+                                        .surfaceVariant
+                                )
+
+                                Text(
+                                    text = "$currentXp / $xpForNextLevel XP",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+
                     IconPillButton(
                         icon = Icons.Filled.EmojiEvents,
                         onClick = onOpenTournament,
                         filled = true
                     )
+
                     IconPillButton(
                         icon = Icons.Filled.Settings,
                         onClick = onOpenSettings,
@@ -168,15 +239,21 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.medium))
+            Spacer(
+                modifier = Modifier.height(Spacing.medium)
+            )
 
             // ---------- Diamond & coin pills ----------
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
                 CurrencyPill(
                     icon = Icons.Filled.Diamond,
                     contentDescription = "Diamonds",
                     value = gems
                 )
+
                 CurrencyPill(
                     icon = Icons.Filled.MonetizationOn,
                     contentDescription = "Coins",
@@ -184,50 +261,73 @@ fun HomeScreen(
                 )
             }
 
-
-            Spacer(modifier = Modifier.height(Spacing.large))
+            Spacer(
+                modifier = Modifier.height(Spacing.large)
+            )
 
             // ---------- Hero: copy on the left, illustration on the right ----------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+
                     Text(
                         text = "CLASSIC PUZZLE",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Spacer(
+                        modifier = Modifier.height(4.dp)
+                    )
+
                     Text(
                         text = "Mines",
-                        style = MaterialTheme.typography.headlineLarge.copy(fontSize = 36.sp),
+                        style = MaterialTheme.typography
+                            .headlineLarge
+                            .copy(fontSize = 36.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Spacer(
+                        modifier = Modifier.height(2.dp)
+                    )
+
                     Text(
                         text = "Think. Uncover. Win.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
 
+                    Spacer(
+                        modifier = Modifier.height(12.dp)
+                    )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(
+                    modifier = Modifier.width(16.dp)
+                )
 
                 MinesHeroIllustration()
             }
 
-            Spacer(modifier = Modifier.weight(0.5f))
+            Spacer(
+                modifier = Modifier.weight(0.5f)
+            )
+
             // ---------- Difficulty section header ----------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
                 Text(
                     text = "CHOOSE DIFFICULTY",
                     style = MaterialTheme.typography.labelMedium,
@@ -236,7 +336,9 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(Spacing.optionGap))
+            Spacer(
+                modifier = Modifier.height(Spacing.optionGap)
+            )
 
             // ---------- Difficulty cards ----------
             Row(
@@ -245,17 +347,23 @@ fun HomeScreen(
                     .selectableGroup(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+
                 Difficulty.entries.forEach { difficulty ->
+
                     DifficultyOption(
                         difficulty = difficulty,
                         selected = selectedDifficulty == difficulty,
-                        onClick = { onDifficultySelected(difficulty) },
+                        onClick = {
+                            onDifficultySelected(difficulty)
+                        },
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.large))
+            Spacer(
+                modifier = Modifier.height(Spacing.large)
+            )
 
             // ---------- Start game ----------
             Row(
@@ -263,18 +371,25 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .height(56.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(
+                        MaterialTheme.colorScheme.primary
+                    )
                     .clickable(onClick = onStartGame),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
                 Icon(
                     imageVector = Icons.Filled.PlayArrow,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+
+                Spacer(
+                    modifier = Modifier.width(8.dp)
+                )
+
                 Text(
                     text = "Start Game",
                     style = MaterialTheme.typography.labelLarge,
@@ -283,9 +398,9 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(0.5f))
-
-
+            Spacer(
+                modifier = Modifier.weight(0.5f)
+            )
         }
     }
 }
@@ -303,10 +418,14 @@ private fun IconPillButton(
             .clip(RoundedCornerShape(12.dp))
             .then(
                 if (filled) {
-                    Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                    Modifier.background(
+                        MaterialTheme.colorScheme.primaryContainer
+                    )
                 } else {
                     Modifier
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(
+                            MaterialTheme.colorScheme.surface
+                        )
                         .border(
                             width = 1.dp,
                             color = MaterialTheme.colorScheme.outlineVariant,
@@ -317,6 +436,7 @@ private fun IconPillButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
+
         Icon(
             imageVector = icon,
             contentDescription = null,
@@ -331,48 +451,61 @@ private fun IconPillButton(
 }
 
 
-/**
- * Small illustrative widget built entirely from shapes + icons (no extra
- * drawable assets required): a soft blob backdrop, a 2x2 tile grid with a
- * flag and two number tiles, and a bomb badge with a spark. Swap this out
- * for a real illustration drawable if/when you have one.
- */
 @Composable
-private fun MinesHeroIllustration(modifier: Modifier = Modifier) {
+private fun MinesHeroIllustration(
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier.size(220.dp),
         contentAlignment = Alignment.Center
     ) {
 
-            Image(
-                painter = painterResource(
-                    id = R.drawable.home_banner
-                ),
-                contentDescription = "Mines logo",
-                contentScale = ContentScale.FillBounds
-            )
+        Image(
+            painter = painterResource(
+                id = R.drawable.home_banner
+            ),
+            contentDescription = "Mines logo",
+            contentScale = ContentScale.FillBounds
+        )
     }
 }
 
 
-
-
 @Composable
-private fun MiniGridIcon(selected: Boolean) {
+private fun MiniGridIcon(
+    selected: Boolean
+) {
     val dotColor = if (selected) {
         MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.outline
     }
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+
         repeat(3) {
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+
                 repeat(3) {
+
                     Box(
                         modifier = Modifier
                             .size(7.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(dotColor.copy(alpha = if (selected) 0.9f else 0.35f))
+                            .background(
+                                dotColor.copy(
+                                    alpha = if (selected) {
+                                        0.9f
+                                    } else {
+                                        0.35f
+                                    }
+                                )
+                            )
                     )
                 }
             }
@@ -388,7 +521,8 @@ fun DifficultyOption(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource =
+        remember { MutableInteractionSource() }
 
     Card(
         modifier = modifier
@@ -425,17 +559,23 @@ fun DifficultyOption(
             }
         )
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                MiniGridIcon(selected = selected)
+
+                MiniGridIcon(
+                    selected = selected
+                )
+
                 Icon(
                     imageVector = if (selected) {
                         Icons.Outlined.RadioButtonChecked
@@ -452,7 +592,9 @@ fun DifficultyOption(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(
+                modifier = Modifier.height(10.dp)
+            )
 
             Text(
                 text = difficulty.displayName(),
@@ -465,8 +607,9 @@ fun DifficultyOption(
                 }
             )
 
-            Spacer(modifier = Modifier.height(2.dp))
-
+            Spacer(
+                modifier = Modifier.height(2.dp)
+            )
 
             Text(
                 text = "${difficulty.mines} mines",
@@ -474,16 +617,24 @@ fun DifficultyOption(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(
+                modifier = Modifier.height(8.dp)
+            )
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f)
+                        MaterialTheme.colorScheme
+                            .onSurfaceVariant
+                            .copy(alpha = 0.08f)
                     )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(
+                        horizontal = 8.dp,
+                        vertical = 4.dp
+                    )
             ) {
+
                 Text(
                     text = difficulty.tagline(),
                     style = MaterialTheme.typography.labelSmall,
@@ -503,6 +654,7 @@ fun Difficulty.displayName(): String {
     }
 }
 
+
 fun Difficulty.tagline(): String {
     return when (this) {
         Difficulty.EASY -> "Good for beginners"
@@ -521,17 +673,27 @@ private fun CurrencyPill(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .background(
+                MaterialTheme.colorScheme.primaryContainer
+            )
+            .padding(
+                horizontal = 14.dp,
+                vertical = 8.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
+
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(16.dp)
         )
-        Spacer(modifier = Modifier.width(6.dp))
+
+        Spacer(
+            modifier = Modifier.width(6.dp)
+        )
+
         Text(
             text = "$value",
             style = MaterialTheme.typography.labelMedium,
@@ -546,6 +708,7 @@ private fun CurrencyPill(
 @Composable
 private fun HomeScreenPreview() {
     MinesTheme {
+
         HomeScreen(
             selectedDifficulty = Difficulty.EASY,
             onDifficultySelected = {},
