@@ -23,33 +23,79 @@ class WalletRepositoryImpl(
                     firestoreWallet.observeWallet(session.firebaseUid)
 
                 UserSession.Guest ->
-                    combine(guestWallet.coins, guestWallet.diamonds) { coins, diamonds ->
-                        WalletSnapshot(coins = coins, diamonds = diamonds)
+                    combine(
+                        guestWallet.coins,
+                        guestWallet.diamonds
+                    ) { coins, diamonds ->
+                        WalletSnapshot(
+                            coins = coins,
+                            diamonds = diamonds
+                        )
                     }
             }
         }
 
-    override val coins: Flow<Int> = walletSnapshot.map { it.coins }
-    override val diamonds: Flow<Int> = walletSnapshot.map { it.diamonds }
+    override val coins: Flow<Int> =
+        walletSnapshot.map { it.coins }
+
+    override val diamonds: Flow<Int> =
+        walletSnapshot.map { it.diamonds }
 
     override suspend fun addCoins(amount: Int) {
         when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated -> firestoreWallet.addCoins(session.firebaseUid, amount)
-            UserSession.Guest -> guestWallet.addCoins(amount)
+            is UserSession.Authenticated ->
+                firestoreWallet.addCoins(
+                    session.firebaseUid,
+                    amount
+                )
+
+            UserSession.Guest ->
+                guestWallet.addCoins(amount)
         }
     }
 
     override suspend fun getRedeemStatus(): RedeemStatus {
         return when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated -> firestoreWallet.getRedeemStatus(session.firebaseUid)
-            UserSession.Guest -> guestWallet.getRedeemStatus()
+            is UserSession.Authenticated ->
+                firestoreWallet.getRedeemStatus(
+                    session.firebaseUid
+                )
+
+            UserSession.Guest ->
+                guestWallet.getRedeemStatus()
+        }
+    }
+
+    /**
+     * Spends diamonds when purchasing a Store item.
+     *
+     * Logged-in users use the Firestore wallet.
+     * Guest users use the local DataStore wallet.
+     */
+    override suspend fun spendDiamonds(
+        amount: Int
+    ): RedeemResult {
+        return when (val session = sessionManager.currentSession) {
+            is UserSession.Authenticated ->
+                firestoreWallet.spendDiamonds(
+                    session.firebaseUid,
+                    amount
+                )
+
+            UserSession.Guest ->
+                guestWallet.spendDiamonds(amount)
         }
     }
 
     override suspend fun redeemDiamond(): RedeemResult {
         return when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated -> firestoreWallet.redeemDiamond(session.firebaseUid)
-            UserSession.Guest -> guestWallet.redeemDiamond()
+            is UserSession.Authenticated ->
+                firestoreWallet.redeemDiamond(
+                    session.firebaseUid
+                )
+
+            UserSession.Guest ->
+                guestWallet.redeemDiamond()
         }
     }
 }

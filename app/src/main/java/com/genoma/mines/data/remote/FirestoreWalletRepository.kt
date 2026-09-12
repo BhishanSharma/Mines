@@ -105,6 +105,25 @@ class FirestoreWalletRepository(
         }.await()
     }
 
+    suspend fun spendDiamonds(uid: String, amount: Int): RedeemResult {
+        if (amount <= 0) return RedeemResult(success = true, message = "")
+
+        return firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(userDoc(uid))
+            val currentDiamonds = snapshot.getLong("diamonds") ?: 0L
+
+            if (currentDiamonds < amount) {
+                RedeemResult(
+                    success = false,
+                    message = "You need $amount diamonds to buy this item."
+                )
+            } else {
+                transaction.update(userDoc(uid), "diamonds", currentDiamonds - amount)
+                RedeemResult(success = true, message = "Purchase successful!")
+            }
+        }.await()
+    }
+
     suspend fun migrateGuestWallet(uid: String, coins: Int, diamonds: Int) {
         if (coins <= 0 && diamonds <= 0) return
 

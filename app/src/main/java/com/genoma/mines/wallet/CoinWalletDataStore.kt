@@ -109,6 +109,32 @@ class CoinWalletDataStore(private val context: Context) : WalletRepository {
         return result
     }
 
+    override suspend fun spendDiamonds(amount: Int): RedeemResult {
+        if (amount <= 0) return RedeemResult(true, "")
+
+        var result = RedeemResult(false, "")
+
+        context.walletDataStore.edit { prefs ->
+            val current = prefs[DIAMONDS] ?: 0
+
+            result = if (current < amount) {
+                RedeemResult(
+                    false,
+                    "You need $amount diamonds to buy this item."
+                )
+            } else {
+                prefs[DIAMONDS] = current - amount
+
+                RedeemResult(
+                    true,
+                    "Purchase successful!"
+                )
+            }
+        }
+
+        return result
+    }
+
     /**
      * Clears the local balance entirely. Called after a guest's
      * coins/diamonds have been folded into a Firestore account on first
