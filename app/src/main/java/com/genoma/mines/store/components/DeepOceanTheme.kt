@@ -1,11 +1,24 @@
 package com.genoma.mines.store.components
 
+import androidx.compose.ui.graphics.Color
 import com.genoma.mines.store.BoardThemeItem
+import com.genoma.mines.store.BoardThemeStyle
 
 val deepOceanTheme = BoardThemeItem(
     id = "board_deep_ocean",
     name = "Deep Ocean",
     description = "A cool blue palette for the board and cells.",
     price = 150,
-    previewColorHex = listOf("#1B4B66", "#7FC7E8")
+    previewColorHex = listOf(
+        "#1B4B66",
+        "#7FC7E8"
+    ),
+    style = BoardThemeStyle(
+        boardColor = Color(0xFF12384D),
+        hiddenCellColor = Color(0xFF1B4B66),
+        revealedCellColor = Color(0xFFE4F5FC),
+        borderColor = Color(0xFF7FC7E8),
+        flagColor = Color(0xFFFF8066),
+        mineColor = Color(0xFF17313F)
+    )
 )
