@@ -46,3 +46,27 @@ val CountFive = Color(0xFFC2410C)
 val CountSix = Color(0xFF0D9488)
 val CountSeven = Color(0xFF1F2937)
 val CountEight = Color(0xFF6B7280)
+
+// ---- Deep Ocean brand ----
+val OceanPrimaryLight = Color(0xFF1B4B66)
+val OceanPrimaryDark = Color(0xFF7FC7E8)
+
+// ---- Deep Ocean light surfaces ----
+val OceanLightBackground = Color(0xFFEAF6FB)
+val OceanLightSurface = Color(0xFFFFFFFF)
+val OceanLightSurfaceVariant = Color(0xFFDCEEF5)
+val OceanLightOnBackground = Color(0xFF0B1E27)
+val OceanLightOnSurfaceVariant = Color(0xFF3E6377)
+val OceanLightOutline = Color(0xFFA9CBDA)
+val OceanLightPrimaryContainer = Color(0xFFBEE4F5)
+val OceanLightOnPrimaryContainer = Color(0xFF00202C)
+
+// ---- Deep Ocean dark surfaces ----
+val OceanDarkBackground = Color(0xFF061419)
+val OceanDarkSurface = Color(0xFF0D2530)
+val OceanDarkSurfaceVariant = Color(0xFF123240)
+val OceanDarkOnBackground = Color(0xFFE4F5FC)
+val OceanDarkOnSurfaceVariant = Color(0xFFA9CBDA)
+val OceanDarkOutline = Color(0xFF2F5568)
+val OceanDarkPrimaryContainer = Color(0xFF1B4B66)
+val OceanDarkOnPrimaryContainer = Color(0xFFE4F5FC)

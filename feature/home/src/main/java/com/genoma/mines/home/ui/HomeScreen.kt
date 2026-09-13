@@ -54,6 +54,7 @@ import coil.compose.AsyncImage
 import com.genoma.mines.home.R
 import com.genoma.mines.game.domain.Difficulty
 import com.genoma.mines.core.theme.MinesTheme
+import com.genoma.mines.core.theme.MinesThemeVariant
 import com.genoma.mines.profile.domain.AvatarOption
 
 
@@ -85,7 +86,8 @@ fun HomeScreen(
     currentXp: Int = 0,
     xpForNextLevel: Int = 100,
 
-    onOpenTournament: () -> Unit
+    onOpenTournament: () -> Unit,
+    themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),

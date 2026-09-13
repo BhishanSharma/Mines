@@ -56,6 +56,7 @@ import com.genoma.mines.store.ui.StoreScreen
 import com.genoma.mines.store.data.StoreCatalog
 import com.genoma.mines.settings.ui.ThemePreference
 import com.genoma.mines.core.theme.MinesTheme
+import com.genoma.mines.core.theme.MinesThemeVariant
 import com.genoma.mines.presentation.viewmodel.MinesweeperViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -114,7 +115,11 @@ class MainActivity : ComponentActivity() {
             val systemInDarkTheme = isSystemInDarkTheme()
             val darkTheme = darkThemePreference ?: systemInDarkTheme
 
-            MinesTheme(darkTheme = darkTheme) {
+            val equippedBoardThemeId by viewModel.equippedBoardThemeId.collectAsState()
+            val themeVariant = StoreCatalog.boardThemeById(equippedBoardThemeId)
+                ?.style?.themeVariant ?: MinesThemeVariant.CLASSIC_TEAL
+
+            MinesTheme(darkTheme = darkTheme, themeVariant = themeVariant) {
                 MinesweeperApp(viewModel = viewModel)
             }
         }
@@ -213,6 +218,7 @@ fun MinesweeperApp(
     val ownedStoreItemIds by viewModel.ownedStoreItemIds.collectAsState()
     val equippedBoardThemeId by viewModel.equippedBoardThemeId.collectAsState()
     val equippedCellSkinId by viewModel.equippedCellSkinId.collectAsState()
+    val themeVariant = StoreCatalog.boardThemeById(equippedBoardThemeId)?.style?.themeVariant ?: MinesThemeVariant.CLASSIC_TEAL
 
     val equippedBoardTheme = StoreCatalog.boardThemeById(equippedBoardThemeId)
     val equippedCellSkin = StoreCatalog.cellSkinById(equippedCellSkinId)
@@ -547,7 +553,8 @@ fun MinesweeperApp(
                         gems = diamonds,
                         onOpenTournament = {
                             screen = Screen.Tournament
-                        }
+                        },
+                        themeVariant = themeVariant
                     )
                 }
 

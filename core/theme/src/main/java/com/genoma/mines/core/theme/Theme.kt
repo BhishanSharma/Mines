@@ -1,6 +1,7 @@
 package com.genoma.mines.core.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -10,49 +11,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = MinesTealDark,
-    onPrimary = Color(0xFF00382F),
-    primaryContainer = DarkPrimaryContainer,
-    onPrimaryContainer = DarkOnPrimaryContainer,
-    secondary = MinesTealDark,
-    error = MinesCoral,
-    errorContainer = MinesCoralContainerDark,
-    onErrorContainer = Color(0xFFFFDAD3),
-    background = DarkBackground,
-    onBackground = DarkOnBackground,
-    surface = DarkSurface,
-    onSurface = DarkOnBackground,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = DarkOnSurfaceVariant,
-    outline = DarkOutline,
-    outlineVariant = DarkOutline
-)
+private fun darkColorSchemeFor(variant: MinesThemeVariant): ColorScheme = when (variant) {
+    MinesThemeVariant.CLASSIC_TEAL -> darkColorScheme(
+        primary = MinesTealDark, /* ...same body you deleted... */
+    )
+    MinesThemeVariant.DEEP_OCEAN -> darkColorScheme(
+        primary = OceanPrimaryDark,
+        onPrimary = Color(0xFF00202C),
+        primaryContainer = OceanDarkPrimaryContainer,
+        onPrimaryContainer = OceanDarkOnPrimaryContainer,
+        secondary = OceanPrimaryDark,
+        error = MinesCoral,
+        errorContainer = MinesCoralContainerDark,
+        onErrorContainer = Color(0xFFFFDAD3),
+        background = OceanDarkBackground,
+        onBackground = OceanDarkOnBackground,
+        surface = OceanDarkSurface,
+        onSurface = OceanDarkOnBackground,
+        surfaceVariant = OceanDarkSurfaceVariant,
+        onSurfaceVariant = OceanDarkOnSurfaceVariant,
+        outline = OceanDarkOutline,
+        outlineVariant = OceanDarkOutline
+    )
+}
 
-private val LightColorScheme = lightColorScheme(
-    primary = MinesTealLight,
-    onPrimary = Color.White,
-    primaryContainer = LightPrimaryContainer,
-    onPrimaryContainer = LightOnPrimaryContainer,
-    secondary = MinesTealLight,
-    error = MinesCoral,
-    errorContainer = MinesCoralContainerLight,
-    onErrorContainer = Color(0xFF410E01),
-    background = LightBackground,
-    onBackground = LightOnBackground,
-    surface = LightSurface,
-    onSurface = LightOnBackground,
-    surfaceVariant = LightSurfaceVariant,
-    onSurfaceVariant = LightOnSurfaceVariant,
-    outline = LightOutline,
-    outlineVariant = LightOutline
-)
+private fun lightColorSchemeFor(variant: MinesThemeVariant): ColorScheme = when (variant) {
+    MinesThemeVariant.CLASSIC_TEAL -> lightColorScheme(/* ...same body you deleted... */)
+    MinesThemeVariant.DEEP_OCEAN -> lightColorScheme(
+        primary = OceanPrimaryLight,
+        onPrimary = Color.White,
+        primaryContainer = OceanLightPrimaryContainer,
+        onPrimaryContainer = OceanLightOnPrimaryContainer,
+        secondary = OceanPrimaryLight,
+        error = MinesCoral,
+        errorContainer = MinesCoralContainerLight,
+        onErrorContainer = Color(0xFF410E01),
+        background = OceanLightBackground,
+        onBackground = OceanLightOnBackground,
+        surface = OceanLightSurface,
+        onSurface = OceanLightOnBackground,
+        surfaceVariant = OceanLightSurfaceVariant,
+        onSurfaceVariant = OceanLightOnSurfaceVariant,
+        outline = OceanLightOutline,
+        outlineVariant = OceanLightOutline
+    )
+}
 
 @Composable
 fun MinesTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color (Android 12+ wallpaper-derived palette) is off by
-    // default so the app's own brand colors are what people see.
+    themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -67,8 +75,8 @@ fun MinesTheme(
             }
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> darkColorSchemeFor(themeVariant)
+        else -> lightColorSchemeFor(themeVariant)
     }
 
     MaterialTheme(

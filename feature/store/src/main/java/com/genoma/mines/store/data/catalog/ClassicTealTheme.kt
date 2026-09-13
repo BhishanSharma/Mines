@@ -2,6 +2,7 @@ package com.genoma.mines.store.data.catalog
 import androidx.compose.ui.graphics.Color
 import com.genoma.mines.store.domain.BoardThemeItem
 import com.genoma.mines.store.domain.BoardThemeStyle
+import com.genoma.mines.core.theme.MinesThemeVariant
 
 /**
  * The board theme every player already has — included here mainly as a
@@ -22,6 +23,7 @@ val classicTealTheme = BoardThemeItem(
         revealedCellColor = Color.White,
         borderColor = Color(0xFF3FA9A0),
         flagColor = Color(0xFFE8604C),
-        mineColor = Color(0xFF5A6A68)
+        mineColor = Color(0xFF5A6A68),
+        themeVariant = MinesThemeVariant.CLASSIC_TEAL
     )
 )
