@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
 }
 
@@ -38,14 +37,26 @@ android {
 }
 
 dependencies {
-    implementation("androidx.credentials:credentials:1.5.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
-    implementation("androidx.datastore:datastore-preferences:1.1.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    // --- Core (shared, no feature ever lives here) ---
+    implementation(project(":core:theme"))
+    implementation(project(":core:ui"))
+    implementation(project(":core:session"))
+
+    // --- Features (the app module only wires these together) ---
+    implementation(project(":feature:auth"))
+    implementation(project(":feature:settings"))
+    implementation(project(":feature:store"))
+    implementation(project(":feature:wallet"))
+    implementation(project(":feature:tournament"))
+    implementation(project(":feature:moregames"))
+    implementation(project(":feature:userfeedback"))
+    implementation(project(":feature:game"))
+    implementation(project(":feature:achievements"))
+    implementation(project(":feature:celebration"))
+    implementation(project(":feature:profile"))
+    implementation(project(":feature:home"))
+
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
@@ -55,17 +66,10 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // --- Firebase Auth + Firestore (authenticated users) ---
+    // --- Firebase (app needs FirebaseAuth directly for account deletion flow) ---
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
     implementation(libs.firebase.analytics)
-    implementation(libs.kotlinx.coroutines.play.services)
-
-    // --- Room (guest users) ---
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
