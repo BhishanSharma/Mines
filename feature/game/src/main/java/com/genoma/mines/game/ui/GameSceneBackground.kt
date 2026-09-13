@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.genoma.mines.core.theme.MinesThemeVariant
@@ -73,7 +75,11 @@ fun GameSceneBackground(
             painter = painterResource(id = R.drawable.bg_ocean_wreck),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize()
+            modifier = Modifier
+                .matchParentSize()
+                .offset(
+                    y = screenHeight * -0.105f
+                )
         )
 
         // 4. Sea floor — coral/seaweed/treasure chest band, static.
@@ -81,7 +87,11 @@ fun GameSceneBackground(
             painter = painterResource(id = R.drawable.bg_ocean_floor),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize()
+            modifier = Modifier
+                .matchParentSize()
+                .offset(
+                    y = screenHeight * 0.25f
+                )
         )
 
         // 5. Small silhouette fish school, drifting left-to-right and
@@ -126,22 +136,22 @@ fun GameSceneBackground(
                 .size(width = 150.dp, height = 100.dp)
                 .offset(
                     x = screenWidth * 0.06f,
-                    y = screenHeight * 0.33f + diverBob.dp
+                    y = screenHeight * 0.15f + diverBob.dp
                 )
         )
 
         // 7. Foreground fish — idle wander near the sea floor band.
         IdleWanderingFish(
             drawableRes = R.drawable.fish_clownfish,
-            anchorX = screenWidth * 0.14f,
-            anchorY = screenHeight * 0.86f,
+            anchorX = screenWidth * 0.19f,
+            anchorY = screenHeight * 0.76f,
             fishSize = 56.dp,
             wanderPeriodMs = 4200
         )
         IdleWanderingFish(
             drawableRes = R.drawable.fish_yellowtang,
-            anchorX = screenWidth * 0.68f,
-            anchorY = screenHeight * 0.9f,
+            anchorX = screenWidth * 0.63f,
+            anchorY = screenHeight * 0.84f,
             fishSize = 46.dp,
             wanderPeriodMs = 5100,
             phaseOffset = 0.5f
@@ -207,11 +217,7 @@ private fun DriftingSilhouetteFish(
     )
 }
 
-/**
- * A small foreground fish that idles near [anchorX]/[anchorY] with a gentle
- * looping figure-eight-ish wander instead of a straight path, so it reads
- * as "swimming in place" rather than commuting across the screen.
- */
+
 @Composable
 private fun IdleWanderingFish(
     drawableRes: Int,
@@ -311,4 +317,12 @@ private fun BubbleField(modifier: Modifier = Modifier, bubbleCount: Int = 26) {
             drawBubble(bubble, elapsedMs)
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun GameSceneBackgroundPreview(){
+
+    GameSceneBackground(themeVariant = MinesThemeVariant.DEEP_OCEAN, modifier = Modifier.fillMaxSize())
+
 }

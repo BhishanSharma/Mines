@@ -119,7 +119,7 @@ fun GameScreen(
     onHowToPlay: () -> Unit = {},
     boardTheme: BoardThemeStyle? = null,
     frostCellSkinEquipped: Boolean = false,
-    themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL,
+    themeVariant: MinesThemeVariant = MinesThemeVariant.DEEP_OCEAN,
 ) {
     // Local UI-only state: which action a plain tap performs. This never
     // needs to reach the ViewModel — it doesn't affect game logic, only
