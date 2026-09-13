@@ -815,7 +815,8 @@ fun MinesweeperApp(
 
                             onPause = {
                                 viewModel.togglePause()
-                            }
+                            },
+                            themeVariant = themeVariant
                         )
 
                     } else {

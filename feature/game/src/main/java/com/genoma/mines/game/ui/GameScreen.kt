@@ -80,6 +80,7 @@ import com.genoma.mines.core.theme.CountSix
 import com.genoma.mines.core.theme.CountThree
 import com.genoma.mines.core.theme.CountTwo
 import com.genoma.mines.core.theme.MinesTheme
+import com.genoma.mines.core.theme.MinesThemeVariant
 import com.genoma.mines.core.ui.components.ConfettiOverlay
 
 data class CellUiState(
@@ -117,19 +118,21 @@ fun GameScreen(
     onSettings: () -> Unit = {},
     onHowToPlay: () -> Unit = {},
     boardTheme: BoardThemeStyle? = null,
-    frostCellSkinEquipped: Boolean = false
+    frostCellSkinEquipped: Boolean = false,
+    themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL,
 ) {
     // Local UI-only state: which action a plain tap performs. This never
     // needs to reach the ViewModel — it doesn't affect game logic, only
     // which of the two existing callbacks a tap is routed to below.
     var isFlagMode by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GameSceneBackground(themeVariant = themeVariant, modifier = Modifier.fillMaxSize())
+
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            color = if (themeVariant == MinesThemeVariant.DEEP_OCEAN) Color.Transparent
+            else MaterialTheme.colorScheme.background
         ) {
             Column(
                 modifier = Modifier

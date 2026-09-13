@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Small silhouette fish — flat single-color shape, facing right.
+    Recreated from small_fish.xml's shape spec as a real Android
+    Vector Drawable (body, forked tail, dorsal/ventral/pectoral fins,
+    no eye). Drop into res/drawable/ as-is.
+
+    Tint it per-theme in code instead of hardcoding fillColor if you
+    want it to react to theme changes automatically:
+      Icon(
+          painter = painterResource(id = R.drawable.fish_silhouette_small),
+          tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+          contentDescription = null
+      )
+    (Icon composables auto-tint vector drawables; Image does not.)
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="28dp"
+    android:viewportWidth="170"
+    android:viewportHeight="100">
+
+    <!-- forked tail -->
+    <path
+        android:fillColor="#064C70"
+        android:pathData="M0,50 L38,28 L30,50 L38,72 Z" />
+
+    <!-- body -->
+    <path
+        android:fillColor="#064C70"
+        android:pathData="M35,50
+            C35,32 60,20 95,20
+            C130,20 158,34 167,50
+            C158,66 130,80 95,80
+            C60,80 35,68 35,50 Z" />
+
+    <!-- dorsal fin -->
+    <path
+        android:fillColor="#064C70"
+        android:pathData="M85,20 L100,2 L112,22 Z" />
+
+    <!-- ventral fin -->
+    <path
+        android:fillColor="#064C70"
+        android:pathData="M90,80 L100,98 L110,80 Z" />
+
+    <!-- pectoral fin -->
+    <path
+        android:fillColor="#064C70"
+        android:pathData="M110,55 L130,68 L112,72 Z" />
+
+</vector>

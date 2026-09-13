@@ -13,7 +13,22 @@ import androidx.compose.ui.platform.LocalContext
 
 private fun darkColorSchemeFor(variant: MinesThemeVariant): ColorScheme = when (variant) {
     MinesThemeVariant.CLASSIC_TEAL -> darkColorScheme(
-        primary = MinesTealDark, /* ...same body you deleted... */
+        primary = MinesTealDark,
+        onPrimary = Color(0xFF00382F),
+        primaryContainer = DarkPrimaryContainer,
+        onPrimaryContainer = DarkOnPrimaryContainer,
+        secondary = MinesTealDark,
+        error = MinesCoral,
+        errorContainer = MinesCoralContainerDark,
+        onErrorContainer = Color(0xFFFFDAD3),
+        background = DarkBackground,
+        onBackground = DarkOnBackground,
+        surface = DarkSurface,
+        onSurface = DarkOnBackground,
+        surfaceVariant = DarkSurfaceVariant,
+        onSurfaceVariant = DarkOnSurfaceVariant,
+        outline = DarkOutline,
+        outlineVariant = DarkOutline
     )
     MinesThemeVariant.DEEP_OCEAN -> darkColorScheme(
         primary = OceanPrimaryDark,
@@ -36,7 +51,24 @@ private fun darkColorSchemeFor(variant: MinesThemeVariant): ColorScheme = when (
 }
 
 private fun lightColorSchemeFor(variant: MinesThemeVariant): ColorScheme = when (variant) {
-    MinesThemeVariant.CLASSIC_TEAL -> lightColorScheme(/* ...same body you deleted... */)
+    MinesThemeVariant.CLASSIC_TEAL -> lightColorScheme(
+        primary = MinesTealLight,
+        onPrimary = Color.White,
+        primaryContainer = LightPrimaryContainer,
+        onPrimaryContainer = LightOnPrimaryContainer,
+        secondary = MinesTealLight,
+        error = MinesCoral,
+        errorContainer = MinesCoralContainerLight,
+        onErrorContainer = Color(0xFF410E01),
+        background = LightBackground,
+        onBackground = LightOnBackground,
+        surface = LightSurface,
+        onSurface = LightOnBackground,
+        surfaceVariant = LightSurfaceVariant,
+        onSurfaceVariant = LightOnSurfaceVariant,
+        outline = LightOutline,
+        outlineVariant = LightOutline
+    )
     MinesThemeVariant.DEEP_OCEAN -> lightColorScheme(
         primary = OceanPrimaryLight,
         onPrimary = Color.White,
