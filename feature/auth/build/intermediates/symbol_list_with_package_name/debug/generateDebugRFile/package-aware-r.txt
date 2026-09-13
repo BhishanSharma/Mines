@@ -1,3 +1,0 @@
-com.genoma.mines.auth
-drawable ic_google_logo
-drawable mine_logo

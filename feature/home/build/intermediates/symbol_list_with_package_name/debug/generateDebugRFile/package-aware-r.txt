@@ -1,2 +1,0 @@
-com.genoma.mines.home
-drawable home_banner

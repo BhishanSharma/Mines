@@ -1,15 +1,31 @@
+# Files
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
 .DS_Store
-/build
+
+# Kotlin compiler cache
+.kotlin
+
+# Gradle
+.gradle
+**/build/
 /captures
+
+# Local configuration files (contain machine-specific paths/keys)
+/local.properties
+
+# IDE - ignore the whole .idea folder rather than picking individual files
+.idea/
+
+# Native build artifacts
 .externalNativeBuild
 .cxx
-local.properties
+
+# Log files
+*.log
+
+# Keystore files (never commit signing keys)
+*.jks
+*.keystore
+
+# Google services config (uncomment if this contains sensitive keys you don't want in git)
+# app/google-services.json
