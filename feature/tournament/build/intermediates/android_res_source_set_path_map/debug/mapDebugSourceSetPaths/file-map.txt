@@ -1,0 +1,9 @@
+com.genoma.mines.tournament-pngs-0 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\build\generated\res\pngs\debug
+com.genoma.mines.tournament-updated_navigation_xml-1 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\build\generated\updated_navigation_xml\debug
+com.genoma.mines.tournament-mergeDebugResources-2 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.genoma.mines.tournament-mergeDebugResources-3 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.genoma.mines.tournament-debug-4 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\build\intermediates\merged_res\debug\mergeDebugResources
+com.genoma.mines.tournament-debug-5 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\build\intermediates\packaged_res\debug\packageDebugResources
+com.genoma.mines.tournament-debug-6 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\src\debug\res
+com.genoma.mines.tournament-main-7 C:\Users\bhish\AndroidStudioProjects\Mines\feature\tournament\src\main\res
+gradleHome-0 C:\Users\bhish\.gradle

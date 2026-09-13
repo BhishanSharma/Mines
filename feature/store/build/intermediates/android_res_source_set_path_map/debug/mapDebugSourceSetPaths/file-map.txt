@@ -1,0 +1,9 @@
+com.genoma.mines.store-pngs-0 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\build\generated\res\pngs\debug
+com.genoma.mines.store-updated_navigation_xml-1 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\build\generated\updated_navigation_xml\debug
+com.genoma.mines.store-mergeDebugResources-2 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.genoma.mines.store-mergeDebugResources-3 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.genoma.mines.store-debug-4 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\build\intermediates\merged_res\debug\mergeDebugResources
+com.genoma.mines.store-debug-5 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\build\intermediates\packaged_res\debug\packageDebugResources
+com.genoma.mines.store-debug-6 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\src\debug\res
+com.genoma.mines.store-main-7 C:\Users\bhish\AndroidStudioProjects\Mines\feature\store\src\main\res
+gradleHome-0 C:\Users\bhish\.gradle

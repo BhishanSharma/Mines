@@ -1,0 +1,9 @@
+com.genoma.mines.achievements-pngs-0 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\build\generated\res\pngs\debug
+com.genoma.mines.achievements-updated_navigation_xml-1 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\build\generated\updated_navigation_xml\debug
+com.genoma.mines.achievements-mergeDebugResources-2 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.genoma.mines.achievements-mergeDebugResources-3 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.genoma.mines.achievements-debug-4 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\build\intermediates\merged_res\debug\mergeDebugResources
+com.genoma.mines.achievements-debug-5 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\build\intermediates\packaged_res\debug\packageDebugResources
+com.genoma.mines.achievements-debug-6 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\src\debug\res
+com.genoma.mines.achievements-main-7 C:\Users\bhish\AndroidStudioProjects\Mines\feature\achievements\src\main\res
+gradleHome-0 C:\Users\bhish\.gradle

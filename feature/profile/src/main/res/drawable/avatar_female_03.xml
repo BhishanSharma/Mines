@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M16,34 C12,28 15,22 19,21 C16,15 22,10 27,12 C30,7 37,8 40,12 C47,11 50,18 46,23 C51,27 48,34 44,37 L20,37 Z"/>
+
+    <path
+        android:fillColor="#B97859"
+        android:pathData="M20,26 C20,18 25,14 32,14 C40,14 44,19 44,27 L43,37 C42,45 37,50 32,50 C25,50 21,45 20,37 Z"/>
+
+    <path
+        android:fillColor="#B97859"
+        android:pathData="M26,47 L38,47 L40,58 L24,58 Z"/>
+
+    <path
+        android:fillColor="#8E7CC3"
+        android:pathData="M18,64 L20,56 C21,52 25,50 32,50 C39,50 43,52 44,56 L46,64 Z"/>
+
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M20,25 C25,18 35,18 44,25 L44,20 C36,13 27,13 20,20 Z"/>
+
+    <path
+        android:fillColor="#263238"
+        android:pathData="M23,31 C25,29 28,29 30,31 L29,33 C27,32 25,32 23,33 Z M34,31 C36,29 39,29 41,31 L41,33 C39,32 37,32 35,33 Z"/>
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M25,34 A2,2 0,1 0,25,30 A2,2 0,1 0,25,34 Z M39,34 A2,2 0,1 0,39,30 A2,2 0,1 0,39,34 Z"/>
+
+    <path
+        android:fillColor="#263238"
+        android:pathData="M25,33 A1,1 0,1 0,25,31 A1,1 0,1 0,25,33 Z M39,33 A1,1 0,1 0,39,31 A1,1 0,1 0,39,33 Z"/>
+
+    <path
+        android:fillColor="#B65F6A"
+        android:pathData="M28,41 C30,43 34,43 36,41 L35,40 C33,41 31,41 29,40 Z"/>
+</vector>

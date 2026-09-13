@@ -1,0 +1,7 @@
+com.genoma.mines.profile
+drawable avatar_female_01
+drawable avatar_female_02
+drawable avatar_female_03
+drawable avatar_male_01
+drawable avatar_male_02
+drawable avatar_male_03

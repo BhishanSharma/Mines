@@ -1,0 +1,6 @@
+int drawable avatar_female_01 0x0
+int drawable avatar_female_02 0x0
+int drawable avatar_female_03 0x0
+int drawable avatar_male_01 0x0
+int drawable avatar_male_02 0x0
+int drawable avatar_male_03 0x0

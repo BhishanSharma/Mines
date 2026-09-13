@@ -1,0 +1,9 @@
+com.genoma.mines.celebration-pngs-0 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\build\generated\res\pngs\debug
+com.genoma.mines.celebration-updated_navigation_xml-1 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\build\generated\updated_navigation_xml\debug
+com.genoma.mines.celebration-mergeDebugResources-2 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.genoma.mines.celebration-mergeDebugResources-3 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.genoma.mines.celebration-debug-4 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\build\intermediates\merged_res\debug\mergeDebugResources
+com.genoma.mines.celebration-debug-5 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\build\intermediates\packaged_res\debug\packageDebugResources
+com.genoma.mines.celebration-debug-6 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\src\debug\res
+com.genoma.mines.celebration-main-7 C:\Users\bhish\AndroidStudioProjects\Mines\feature\celebration\src\main\res
+gradleHome-0 C:\Users\bhish\.gradle
