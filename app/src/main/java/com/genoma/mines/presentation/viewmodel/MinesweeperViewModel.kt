@@ -46,6 +46,12 @@ import com.genoma.mines.wallet.data.CoinWalletDataStore
 import com.genoma.mines.wallet.data.RedeemStatus
 import com.genoma.mines.wallet.data.WalletRepository
 import com.genoma.mines.wallet.data.WalletRepositoryImpl
+import com.genoma.mines.life.data.LifeDataStore
+import com.genoma.mines.life.data.LifeRepository
+import com.genoma.mines.life.data.LifeRepositoryImpl
+import com.genoma.mines.life.data.remote.FirestoreLifeRepository
+import com.genoma.mines.life.domain.LifeRules
+import com.genoma.mines.life.domain.LifeSnapshot
 
 class MinesweeperViewModel(
     application: Application
@@ -89,6 +95,23 @@ class MinesweeperViewModel(
         guestWallet = CoinWalletDataStore(application),
         firestoreWallet = FirestoreWalletRepository()
     )
+
+    private val lives: LifeRepository = LifeRepositoryImpl(
+        sessionManager = sessionManager,
+        guestLife = LifeDataStore(application),
+        firestoreLife = FirestoreLifeRepository()
+    )
+
+    private var startGameJob: Job? = null
+
+    private val _lifeSnapshot = MutableStateFlow(LifeSnapshot.FULL)
+    val lifeSnapshot: StateFlow<LifeSnapshot> = _lifeSnapshot.asStateFlow()
+
+    private val _showHeartsDialog = MutableStateFlow(false)
+    val showHeartsDialog: StateFlow<Boolean> = _showHeartsDialog.asStateFlow()
+
+    private val _isRefillingHearts = MutableStateFlow(false)
+    val isRefillingHearts: StateFlow<Boolean> = _isRefillingHearts.asStateFlow()
 
     private val _coins = MutableStateFlow(0)
     val coins: StateFlow<Int> = _coins.asStateFlow()
@@ -208,6 +231,10 @@ class MinesweeperViewModel(
             launch {
                 wallet.diamonds.collect { _diamonds.value = it }
             }
+
+            launch {
+                lives.lifeSnapshot.collect { _lifeSnapshot.value = it }
+            }
         }
     }
 
@@ -271,7 +298,34 @@ class MinesweeperViewModel(
         }
     }
 
+    /**
+     * Spends a heart, then starts the game. With no hearts left the hearts
+     * dialog opens instead and [gameState] is left untouched.
+     *
+     * The heart is taken up front and handed back on a win, so losing,
+     * quitting, restarting mid-game, or the app being killed all cost exactly
+     * one heart without needing to detect each case.
+     */
     fun startGame(difficulty: Difficulty) {
+        if (startGameJob?.isActive == true) return
+
+        startGameJob = viewModelScope.launch {
+            val consumed = try {
+                lives.consumeHeart()
+            } catch (_: Exception) {
+                _redeemResultMessage.value = "Couldn't start the game. Check your connection and try again."
+                return@launch
+            }
+
+            if (consumed) {
+                beginGame(difficulty)
+            } else {
+                _showHeartsDialog.value = true
+            }
+        }
+    }
+
+    private fun beginGame(difficulty: Difficulty) {
         timerJob?.cancel()
 
         game = MinesweeperGame(difficulty)
@@ -453,6 +507,15 @@ class MinesweeperViewModel(
         if (result == GameResultType.WIN) {
             viewModelScope.launch {
                 wallet.addCoins(COIN_REWARD_PER_WIN)
+            }
+
+            // Winning keeps the heart that was spent to start this game.
+            viewModelScope.launch {
+                try {
+                    lives.refundHeart()
+                } catch (_: Exception) {
+                    _redeemResultMessage.value = "Couldn't return your heart. Check your connection."
+                }
             }
         }
 
@@ -650,6 +713,45 @@ class MinesweeperViewModel(
             val result = wallet.redeemDiamond()
             _redeemResultMessage.value = result.message
             _redeemStatus.value = wallet.getRedeemStatus()
+        }
+    }
+
+    fun openHeartsDialog() {
+        _showHeartsDialog.value = true
+    }
+
+    fun dismissHeartsDialog() {
+        if (_isRefillingHearts.value) return
+        _showHeartsDialog.value = false
+    }
+
+    /** Spends [LifeRules.REFILL_COST_DIAMONDS] gems to top hearts back up to full. */
+    fun refillHearts() {
+        if (_isRefillingHearts.value) return
+        _isRefillingHearts.value = true
+
+        viewModelScope.launch {
+            try {
+                if (lives.getStatus().isFull) {
+                    _redeemResultMessage.value = "Your hearts are already full."
+                    return@launch
+                }
+
+                val payment = wallet.spendDiamonds(LifeRules.REFILL_COST_DIAMONDS)
+                if (!payment.success) {
+                    _redeemResultMessage.value =
+                        "You need ${LifeRules.REFILL_COST_DIAMONDS} gems to refill your hearts."
+                    return@launch
+                }
+
+                lives.refillHearts()
+                _redeemResultMessage.value = "Hearts refilled!"
+                _showHeartsDialog.value = false
+            } catch (_: Exception) {
+                _redeemResultMessage.value = "Couldn't refill hearts. Check your connection and try again."
+            } finally {
+                _isRefillingHearts.value = false
+            }
         }
     }
 

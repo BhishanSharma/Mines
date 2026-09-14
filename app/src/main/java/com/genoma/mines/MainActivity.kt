@@ -65,6 +65,8 @@ import kotlinx.coroutines.launch
 import com.genoma.mines.moregames.ui.MoreGamesScreen
 import com.genoma.mines.tournament.ui.TournamentScreen
 import com.genoma.mines.wallet.data.CoinWalletDataStore
+import com.genoma.mines.life.ui.HeartsDialog
+import com.genoma.mines.life.ui.rememberLifeStatus
 
 /** Formats a duration in seconds as mm:ss, for best-time display on Profile. */
 private fun formatBestTime(totalSeconds: Long): String {
@@ -229,6 +231,10 @@ fun MinesweeperApp(
     val equippedBoardThemeId by viewModel.equippedBoardThemeId.collectAsState()
     val equippedCellSkinId by viewModel.equippedCellSkinId.collectAsState()
     val themeVariant = StoreCatalog.boardThemeById(equippedBoardThemeId)?.style?.themeVariant ?: MinesThemeVariant.CLASSIC_TEAL
+    val lifeSnapshot by viewModel.lifeSnapshot.collectAsState()
+    val lifeStatus = rememberLifeStatus(lifeSnapshot)
+    val showHeartsDialog by viewModel.showHeartsDialog.collectAsState()
+    val isRefillingHearts by viewModel.isRefillingHearts.collectAsState()
 
     val equippedBoardTheme = StoreCatalog.boardThemeById(equippedBoardThemeId)
     val equippedCellSkin = StoreCatalog.cellSkinById(equippedCellSkinId)
@@ -251,6 +257,16 @@ fun MinesweeperApp(
             viewModel.goBackToHome()
             selectedBottomNavItem = BottomNavItem.HOME
             screen = Screen.Home
+        }
+    }
+
+    // Starting a game first spends a heart asynchronously, so Home only moves
+    // to the board once the view model has actually created the game.
+    val hasActiveGame = gameState != null
+    LaunchedEffect(hasActiveGame, screen) {
+        val state = gameState
+        if (state != null && screen is Screen.Home) {
+            screen = Screen.Game(state.difficulty)
         }
     }
 
@@ -568,7 +584,6 @@ fun MinesweeperApp(
 
                         onStartGame = {
                             viewModel.startGame(selectedDifficulty)
-                            screen = Screen.Game(selectedDifficulty)
                         },
 
                         onOpenSettings = {
@@ -584,6 +599,10 @@ fun MinesweeperApp(
                         photoUrl = userProfile?.photoUrl,
                         coins = coins,
                         gems = diamonds,
+                        lifeStatus = lifeStatus,
+                        onHeartsClick = {
+                            viewModel.openHeartsDialog()
+                        },
                         onOpenTournament = {
                             screen = Screen.Tournament
                         },
@@ -954,6 +973,18 @@ fun MinesweeperApp(
                         onBack = { screen = Screen.Profile }
                     )
                 }
+            }
+
+            // Drawn over whichever screen asked for it: Home (tapped the
+            // hearts / Start with none left) or Game (Restart with none left).
+            if (showHeartsDialog) {
+                HeartsDialog(
+                    status = lifeStatus,
+                    diamondBalance = diamonds,
+                    isRefilling = isRefillingHearts,
+                    onRefill = { viewModel.refillHearts() },
+                    onDismiss = { viewModel.dismissHeartsDialog() }
+                )
             }
         }
     }

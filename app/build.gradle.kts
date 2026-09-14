@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:store"))
     implementation(project(":feature:wallet"))
+    implementation(project(":feature:life"))
     implementation(project(":feature:tournament"))
     implementation(project(":feature:moregames"))
     implementation(project(":feature:userfeedback"))

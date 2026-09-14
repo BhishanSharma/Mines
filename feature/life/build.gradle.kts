@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.genoma.mines.home"
+    namespace = "com.genoma.mines.life"
     compileSdk { version = release(37) }
     defaultConfig { minSdk = 24 }
     compileOptions {
@@ -16,16 +16,19 @@ android {
 
 dependencies {
     implementation(project(":core:theme"))
-    implementation(project(":core:ui"))
-    api(project(":feature:profile"))
-    api(project(":feature:game"))
-    api(project(":feature:life"))
+    implementation(project(":core:session"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    implementation(libs.coil.compose)
+    api(libs.androidx.datastore.preferences)
+    api(platform(libs.firebase.bom))
+    api(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    testImplementation(libs.junit)
 }

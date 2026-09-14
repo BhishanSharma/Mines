@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +56,8 @@ import com.genoma.mines.home.R
 import com.genoma.mines.game.domain.Difficulty
 import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.core.theme.MinesThemeVariant
+import com.genoma.mines.life.domain.LifeStatus
+import com.genoma.mines.life.ui.HeartsIndicator
 import com.genoma.mines.profile.domain.AvatarOption
 
 
@@ -79,6 +82,8 @@ fun HomeScreen(
     photoUrl: String? = null,
     coins: Int = 0,
     gems: Int = 0,
+    lifeStatus: LifeStatus = LifeStatus.FULL,
+    onHeartsClick: () -> Unit = {},
 
     // XP / level information
     hasPlayedGame: Boolean = false,
@@ -246,10 +251,17 @@ fun HomeScreen(
                 modifier = Modifier.height(Spacing.medium)
             )
 
-            // ---------- Diamond & coin pills ----------
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // ---------- Hearts, diamond & coin pills ----------
+            // FlowRow so the pills wrap instead of clipping on narrow phones.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+
+                HeartsIndicator(
+                    status = lifeStatus,
+                    onClick = onHeartsClick
+                )
 
                 CurrencyPill(
                     icon = Icons.Filled.Diamond,
