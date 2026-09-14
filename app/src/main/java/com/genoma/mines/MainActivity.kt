@@ -54,6 +54,8 @@ import com.genoma.mines.profile.ui.ProfileScreen
 import com.genoma.mines.settings.ui.SettingsScreen
 import com.genoma.mines.store.ui.StoreScreen
 import com.genoma.mines.store.data.StoreCatalog
+import com.genoma.mines.store.data.StoreDataStore
+import com.genoma.mines.store.data.remote.FirestoreStoreRepository
 import com.genoma.mines.settings.ui.ThemePreference
 import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.core.theme.MinesThemeVariant
@@ -152,6 +154,14 @@ fun MinesweeperApp(
 
     val guestWalletStore = remember {
         CoinWalletDataStore(context)
+    }
+
+    val firestoreStoreRepository = remember {
+        FirestoreStoreRepository()
+    }
+
+    val guestStoreDataStore = remember {
+        StoreDataStore(context)
     }
 
     val guestGameRepository = remember {
@@ -492,6 +502,29 @@ fun MinesweeperApp(
                                                         diamonds = guestDiamonds
                                                     )
                                                     guestWalletStore.clear()
+                                                } catch (_: Exception) {
+                                                    // Left in place locally — retried on the next sign-in attempt.
+                                                }
+                                            }
+
+                                            // Fold any owned store items/equipped selections
+                                            // earned as a guest into the new account too.
+                                            val guestOwnedItemIds =
+                                                guestStoreDataStore.ownedItemIds.first()
+                                            val guestEquippedBoardThemeId =
+                                                guestStoreDataStore.equippedBoardThemeId.first()
+                                            val guestEquippedCellSkinId =
+                                                guestStoreDataStore.equippedCellSkinId.first()
+
+                                            if (guestOwnedItemIds.isNotEmpty()) {
+                                                try {
+                                                    firestoreStoreRepository.migrateGuestStoreItems(
+                                                        uid = result.profile.id,
+                                                        ownedItemIds = guestOwnedItemIds,
+                                                        equippedBoardThemeId = guestEquippedBoardThemeId,
+                                                        equippedCellSkinId = guestEquippedCellSkinId
+                                                    )
+                                                    guestStoreDataStore.clear()
                                                 } catch (_: Exception) {
                                                     // Left in place locally — retried on the next sign-in attempt.
                                                 }

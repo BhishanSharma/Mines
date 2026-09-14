@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.map
 
 private val Context.storeDataStore by preferencesDataStore(name = "store_inventory")
 
-/** Persists owned store items and the currently equipped cosmetic selections. */
-class StoreDataStore(private val context: Context) {
+/** Persists owned store items and the currently equipped cosmetic selections, for guest sessions. */
+class StoreDataStore(private val context: Context) : StoreRepository {
 
     companion object {
         private val OWNED_ITEMS = stringPreferencesKey("owned_item_ids")
@@ -19,7 +19,7 @@ class StoreDataStore(private val context: Context) {
         private const val DEFAULT_BOARD_THEME = "board_classic_teal"
     }
 
-    val ownedItemIds: Flow<Set<String>> = context.storeDataStore.data.map { prefs ->
+    override val ownedItemIds: Flow<Set<String>> = context.storeDataStore.data.map { prefs ->
         prefs[OWNED_ITEMS]
             .orEmpty()
             .split(',')
@@ -27,15 +27,15 @@ class StoreDataStore(private val context: Context) {
             .toSet()
     }
 
-    val equippedBoardThemeId: Flow<String> = context.storeDataStore.data.map { prefs ->
+    override val equippedBoardThemeId: Flow<String> = context.storeDataStore.data.map { prefs ->
         prefs[EQUIPPED_BOARD_THEME] ?: DEFAULT_BOARD_THEME
     }
 
-    val equippedCellSkinId: Flow<String?> = context.storeDataStore.data.map { prefs ->
+    override val equippedCellSkinId: Flow<String?> = context.storeDataStore.data.map { prefs ->
         prefs[EQUIPPED_CELL_SKIN]
     }
 
-    suspend fun addOwnedItem(itemId: String) {
+    override suspend fun addOwnedItem(itemId: String) {
         context.storeDataStore.edit { prefs ->
             val owned = prefs[OWNED_ITEMS]
                 .orEmpty()
@@ -47,24 +47,38 @@ class StoreDataStore(private val context: Context) {
         }
     }
 
-    suspend fun equipBoardTheme(itemId: String) {
+    override suspend fun equipBoardTheme(itemId: String) {
         context.storeDataStore.edit { prefs ->
             prefs[EQUIPPED_BOARD_THEME] = itemId
         }
     }
 
-    suspend fun equipCellSkin(itemId: String) {
+    override suspend fun equipCellSkin(itemId: String) {
         context.storeDataStore.edit { prefs ->
             prefs[EQUIPPED_CELL_SKIN] = itemId
         }
     }
 
-    suspend fun unequipCellSkin() {
+    override suspend fun unequipCellSkin() {
         context.storeDataStore.edit { prefs ->
             prefs.remove(EQUIPPED_CELL_SKIN)
         }
     }
 
-    suspend fun isOwned(itemId: String): Boolean =
+    override suspend fun isOwned(itemId: String): Boolean =
         ownedItemIds.first().contains(itemId)
+
+    /**
+     * Clears everything stored locally. Called after a guest's owned
+     * items/equipped selections have been folded into a Firestore account
+     * on first sign-in, so this device's DataStore doesn't resurface stale
+     * guest state if anything ever falls back to reading it.
+     */
+    suspend fun clear() {
+        context.storeDataStore.edit { prefs ->
+            prefs.remove(OWNED_ITEMS)
+            prefs.remove(EQUIPPED_BOARD_THEME)
+            prefs.remove(EQUIPPED_CELL_SKIN)
+        }
+    }
 }

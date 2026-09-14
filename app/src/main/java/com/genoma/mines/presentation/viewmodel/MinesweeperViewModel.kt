@@ -26,6 +26,9 @@ import com.genoma.mines.game.domain.ScoreCalculator
 import com.genoma.mines.session.SessionManager
 import com.genoma.mines.settings.data.SettingsDataStore
 import com.genoma.mines.store.data.StoreDataStore
+import com.genoma.mines.store.data.StoreRepository
+import com.genoma.mines.store.data.StoreRepositoryImpl
+import com.genoma.mines.store.data.remote.FirestoreStoreRepository
 import com.genoma.mines.store.domain.StoreItem
 import com.genoma.mines.profile.domain.AvatarOption
 import com.genoma.mines.userfeedback.ui.FeedbackData
@@ -59,10 +62,15 @@ class MinesweeperViewModel(
 
     private val feedback = GameFeedback(application)
     private val settings = SettingsDataStore(application)
-    private val storeDataStore = StoreDataStore(application)
 
     private val sessionManager = SessionManager()
     private val scoreCalculator = ScoreCalculator()
+
+    private val storeDataStore: StoreRepository = StoreRepositoryImpl(
+        sessionManager = sessionManager,
+        guestStore = StoreDataStore(application),
+        firestoreStore = FirestoreStoreRepository()
+    )
 
     private val feedbackRepository = FirestoreFeedbackRepository()
 

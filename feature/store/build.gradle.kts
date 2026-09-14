@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:theme"))
+    implementation(project(":core:session"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -24,4 +25,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     api(libs.androidx.datastore.preferences)
+    api(platform(libs.firebase.bom))
+    api(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
 }
