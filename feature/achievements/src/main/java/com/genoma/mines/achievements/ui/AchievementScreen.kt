@@ -1,5 +1,5 @@
 package com.genoma.mines.achievements.ui
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -88,6 +91,12 @@ fun AchievementScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
+                if (tracks.isNotEmpty()) {
+                    item(key = "summary") {
+                        AchievementSummaryCard(tracks = tracks)
+                    }
+                }
+
                 items(tracks, key = { it.id }) { track ->
                     AchievementTrackCard(track = track)
                 }
@@ -113,28 +122,106 @@ private fun colorFor(tier: BadgeTier): Color = when (tier) {
     BadgeTier.DIAMOND -> Color(0xFF6FD8FF)
 }
 
+/** Total tiers earned across every track vs. every tier that exists — a single overall score. */
+@Composable
+private fun AchievementSummaryCard(tracks: List<AchievementTrack>) {
+    val unlockedTracks = tracks.count { it.achievedTier != null }
+    val totalTiers = tracks.sumOf { it.tiers.size }
+    val unlockedTiers = tracks.sumOf { track -> track.achievedTier?.let { it.ordinal + 1 } ?: 0 }
+    val overallProgress = if (totalTiers > 0) unlockedTiers.toFloat() / totalTiers else 0f
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OverallProgressRing(progress = overallProgress)
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column {
+                Text(
+                    text = "$unlockedTracks of ${tracks.size} unlocked",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = if (unlockedTracks == tracks.size) {
+                        "Every track has at least one tier — nice work"
+                    } else {
+                        "Keep playing to unlock more tiers"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverallProgressRing(progress: Float) {
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val progressColor = MaterialTheme.colorScheme.primary
+    val clamped = progress.coerceIn(0f, 1f)
+
+    Box(
+        modifier = Modifier.size(56.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 6.dp.toPx()
+            drawArc(
+                color = trackColor,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = progressColor,
+                startAngle = -90f,
+                sweepAngle = 360f * clamped,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+        Text(
+            text = "${(clamped * 100).toInt()}%",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+    }
+}
+
 @Composable
 private fun AchievementTrackCard(
     track: AchievementTrack
 ) {
     val achievedTier = track.achievedTier
-    val badgeColor = achievedTier?.let { colorFor(it) }
-        ?: MaterialTheme.colorScheme.surfaceVariant
-    val iconTint = if (achievedTier != null) {
-        Color.White
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val tint = achievedTier?.let { colorFor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            containerColor = if (achievedTier != null) {
+                colorFor(achievedTier).copy(alpha = 0.06f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
         )
     ) {
         Column(
@@ -148,14 +235,20 @@ private fun AchievementTrackCard(
                 Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(CircleShape)
-                        .background(badgeColor),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (achievedTier != null) {
+                                colorFor(achievedTier).copy(alpha = 0.18f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = iconFor(track.id),
                         contentDescription = track.title,
-                        tint = iconTint,
+                        tint = tint,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -165,12 +258,12 @@ private fun AchievementTrackCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = track.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
                         text = track.description,
@@ -179,13 +272,9 @@ private fun AchievementTrackCard(
                     )
                 }
 
-                Text(
-                    text = achievedTier?.displayName ?: "Locked",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = achievedTier?.let { colorFor(it) }
-                        ?: MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(modifier = Modifier.width(8.dp))
+
+                TierStatusChip(tier = achievedTier)
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -200,14 +289,17 @@ private fun AchievementTrackCard(
                     text = if (next != null) {
                         "${track.currentValue} / ${next.threshold}"
                     } else {
-                        "${track.currentValue} \u2014 Maxed out"
+                        "${track.currentValue} — Maxed out"
                     },
                     style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
-                    text = next?.let { "Next: ${it.tier.displayName}" } ?: "All tiers cleared",
+                    text = next?.let {
+                        "${(it.threshold - track.currentValue).coerceAtLeast(0)} to ${it.tier.displayName}"
+                    } ?: "All tiers cleared",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -219,46 +311,75 @@ private fun AchievementTrackCard(
                 progress = { track.progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = achievedTier?.let { colorFor(it) }
-                    ?: MaterialTheme.colorScheme.primary,
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = tint,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // One dot per tier, filled once reached — Bronze through Diamond.
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                track.tiers.forEach { tier ->
-                    val unlocked = achievedTier != null &&
-                            tier.tier.ordinal <= achievedTier.ordinal
+            TierLadder(track = track)
+        }
+    }
+}
 
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (unlocked) {
-                                    colorFor(tier.tier)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                }
-                            )
-                            .then(
-                                if (!unlocked) {
-                                    Modifier.border(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant,
-                                        shape = CircleShape
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                    )
+@Composable
+private fun TierStatusChip(tier: BadgeTier?) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (tier != null) {
+                    colorFor(tier).copy(alpha = 0.18f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
                 }
-            }
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = tier?.displayName ?: "Locked",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = tier?.let { colorFor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** One segment per tier — filled once reached, ringed on the tier currently being chased. */
+@Composable
+private fun TierLadder(track: AchievementTrack) {
+    val achievedTier = track.achievedTier
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        track.tiers.forEach { tier ->
+            val unlocked = achievedTier != null && tier.tier.ordinal <= achievedTier.ordinal
+            val isNext = !unlocked && track.nextTier?.tier == tier.tier
+
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (unlocked) {
+                            colorFor(tier.tier)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    )
+                    .then(
+                        if (isNext) {
+                            Modifier.border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+            )
         }
     }
 }
