@@ -1,4 +1,6 @@
 package com.genoma.mines.achievements.ui
+import com.genoma.mines.core.theme.MinesPreviews
+import com.genoma.mines.core.ui.components.ScreenSurface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,9 +60,8 @@ fun AchievementScreen(
     tracks: List<AchievementTrack> = emptyList(),
     isLoading: Boolean = false
 ) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -114,13 +115,7 @@ private fun iconFor(trackId: String): ImageVector = when (trackId) {
     else -> Icons.Filled.EmojiEvents
 }
 
-private fun colorFor(tier: BadgeTier): Color = when (tier) {
-    BadgeTier.BRONZE -> Color(0xFFCD7F32)
-    BadgeTier.SILVER -> Color(0xFFB0BEC5)
-    BadgeTier.GOLD -> Color(0xFFFFC107)
-    BadgeTier.PLATINUM -> Color(0xFF66C2CE)
-    BadgeTier.DIAMOND -> Color(0xFF6FD8FF)
-}
+private fun colorFor(tier: BadgeTier): Color = tier.color()
 
 /** Total tiers earned across every track vs. every tier that exists — a single overall score. */
 @Composable
@@ -384,7 +379,7 @@ private fun TierLadder(track: AchievementTrack) {
     }
 }
 
-@Preview(showBackground = true)
+@MinesPreviews
 @Composable
 private fun AchievementScreenPreview() {
     val sampleHistory = listOf(

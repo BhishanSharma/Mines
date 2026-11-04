@@ -383,6 +383,13 @@ class MinesweeperViewModel(
         startTimer()
     }
 
+    /** Pauses a running game; no-op in any other state. */
+    fun pauseIfPlaying() {
+        if (_gameState.value?.status == GameStatus.PLAYING) {
+            togglePause()
+        }
+    }
+
     fun togglePause() {
         val currentState = _gameState.value ?: return
 

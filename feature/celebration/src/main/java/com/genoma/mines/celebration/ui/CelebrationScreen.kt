@@ -1,4 +1,8 @@
 package com.genoma.mines.celebration.ui
+import com.genoma.mines.achievements.ui.color
+import com.genoma.mines.core.theme.TierGold
+import com.genoma.mines.core.ui.components.ClassicAmbientStyle
+import com.genoma.mines.core.ui.components.ScreenSurface
 import com.genoma.mines.core.ui.components.ConfettiOverlay
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -76,18 +80,12 @@ private data class Sparkle(
     val alpha: Float
 )
 
-private fun colorForTier(tier: BadgeTier): Color = when (tier) {
-    BadgeTier.BRONZE -> Color(0xFFCD7F32)
-    BadgeTier.SILVER -> Color(0xFFA8A9AD)
-    BadgeTier.GOLD -> Color(0xFFD4A017)
-    BadgeTier.PLATINUM -> Color(0xFF7DA0C4)
-    BadgeTier.DIAMOND -> Color(0xFF63D2E8)
-}
+private fun colorForTier(tier: BadgeTier): Color = tier.color()
 
 private fun contentFor(event: CelebrationEvent): CelebrationContent = when (event) {
     is CelebrationEvent.LevelUp -> CelebrationContent(
         icon = Icons.Filled.Star,
-        iconTint = Color(0xFFFFC107),
+        iconTint = TierGold,
         eyebrow = "LEVEL UP",
         title = "Level ${event.newLevel}",
         subtitle = "You've leveled up! Keep playing to climb even higher."
@@ -121,9 +119,9 @@ fun CelebrationScreen(
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        Surface(
+        ScreenSurface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            classicAmbient = ClassicAmbientStyle.CELEBRATE
         ) {
             Column(
                 modifier = Modifier

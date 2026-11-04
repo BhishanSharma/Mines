@@ -1,4 +1,6 @@
 package com.genoma.mines.game.ui
+import com.genoma.mines.core.theme.MinesPreviews
+import com.genoma.mines.core.ui.components.ScreenSurface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -80,9 +82,8 @@ private val steps = listOf(
 fun HowToPlayScreen(
     onBack: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -181,7 +182,7 @@ private fun HowToPlayRow(
     }
 }
 
-@Preview(showBackground = true)
+@MinesPreviews
 @Composable
 private fun HowToPlayScreenPreview() {
     MinesTheme {

@@ -1,4 +1,6 @@
 package com.genoma.mines.userfeedback.ui
+import androidx.compose.ui.semantics.Role
+import com.genoma.mines.core.ui.components.ScreenSurface
 import android.net.Uri
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -108,9 +110,8 @@ fun FeedbackScreen(
                 description.length <= 2000 &&
                 !isSubmitting
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -588,6 +589,7 @@ private fun ScreenshotThumbnail(
                 )
                 .clickable(
                     enabled = enabled,
+                    role = Role.Button,
                     onClick = onRemove
                 ),
             contentAlignment = Alignment.Center

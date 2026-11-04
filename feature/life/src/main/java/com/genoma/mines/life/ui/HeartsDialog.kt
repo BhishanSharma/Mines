@@ -1,4 +1,5 @@
 package com.genoma.mines.life.ui
+import com.genoma.mines.core.theme.HeartRed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

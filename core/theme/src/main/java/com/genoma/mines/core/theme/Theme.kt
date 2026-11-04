@@ -8,6 +8,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
@@ -111,9 +113,17 @@ fun MinesTheme(
         else -> lightColorSchemeFor(themeVariant)
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalMinesThemeVariant provides themeVariant) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
+
+/**
+ * The equipped [MinesThemeVariant], so shared components (e.g. the
+ * screen backdrop) can adapt without every screen threading it through.
+ */
+val LocalMinesThemeVariant = staticCompositionLocalOf { MinesThemeVariant.CLASSIC_TEAL }

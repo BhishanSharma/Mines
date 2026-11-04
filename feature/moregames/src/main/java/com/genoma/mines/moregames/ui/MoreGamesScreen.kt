@@ -1,5 +1,7 @@
 
 package com.genoma.mines.moregames.ui
+import com.genoma.mines.core.theme.MinesPreviews
+import com.genoma.mines.core.ui.components.ScreenSurface
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,9 +22,8 @@ import com.genoma.mines.core.theme.MinesTheme
 @Composable
 fun MoreGamesScreen(
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -57,9 +58,7 @@ fun MoreGamesScreen(
     }
 }
 
-@Preview(
-    showBackground = true
-)
+@MinesPreviews
 @Composable
 private fun MoreGamesScreenPreview() {
     MinesTheme {

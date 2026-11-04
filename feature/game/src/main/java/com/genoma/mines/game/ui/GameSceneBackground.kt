@@ -1,5 +1,7 @@
 package com.genoma.mines.game.ui
 
+import com.genoma.mines.core.ui.components.STILL_FRAME_MS
+import com.genoma.mines.core.ui.components.rememberReduceMotion
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -302,9 +304,12 @@ private fun DrawScope.drawBubble(bubble: BubbleParticle, elapsedMs: Long) {
 @Composable
 private fun BubbleField(modifier: Modifier = Modifier, bubbleCount: Int = 26) {
     val bubbles = remember { generateBubbles(bubbleCount) }
-    var elapsedMs by remember { mutableStateOf(0L) }
+    // With animations turned off, hold one still frame instead of looping.
+    val reduceMotion = rememberReduceMotion()
+    var elapsedMs by remember { mutableStateOf(if (reduceMotion) STILL_FRAME_MS else 0L) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(reduceMotion) {
+        if (reduceMotion) return@LaunchedEffect
         val startNanos = withFrameNanos { it }
         while (true) {
             val nowNanos = withFrameNanos { it }

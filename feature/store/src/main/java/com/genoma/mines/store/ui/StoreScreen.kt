@@ -1,4 +1,6 @@
 package com.genoma.mines.store.ui
+import com.genoma.mines.core.theme.MinesPreviews
+import com.genoma.mines.core.ui.components.ScreenSurface
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
@@ -77,9 +79,8 @@ fun StoreScreen(
     onItemClick: (StoreItem) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -280,9 +281,8 @@ private fun StoreItemRow(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -440,7 +440,7 @@ private fun PriceBadge(owned: Boolean, equipped: Boolean, price: Int) {
 
 private fun String.toComposeColor(): Color = Color(AndroidColor.parseColor(this))
 
-@Preview(showBackground = true)
+@MinesPreviews
 @Composable
 private fun StoreScreenPreview() {
     MinesTheme {

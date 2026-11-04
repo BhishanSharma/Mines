@@ -16,6 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +62,7 @@ import com.genoma.mines.settings.ui.ThemePreference
 import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.core.theme.MinesThemeVariant
 import com.genoma.mines.presentation.viewmodel.MinesweeperViewModel
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.genoma.mines.moregames.ui.MoreGamesScreen
@@ -92,6 +95,52 @@ private sealed class Screen {
     object Tournament : Screen()
     data class Game(val difficulty: Difficulty) : Screen()
 }
+
+/**
+ * Persists the current [Screen] across configuration changes and process
+ * death as a "Name" or "Name:DIFFICULTY" string.
+ */
+private val ScreenSaver = Saver<Screen, String>(
+    save = { screen ->
+        when (screen) {
+            Screen.Login -> "Login"
+            Screen.Home -> "Home"
+            Screen.Settings -> "Settings"
+            Screen.HowToPlay -> "HowToPlay"
+            Screen.Profile -> "Profile"
+            is Screen.History -> "History:${screen.difficulty?.name.orEmpty()}"
+            Screen.Achievements -> "Achievements"
+            Screen.Feedback -> "Feedback"
+            Screen.Celebration -> "Celebration"
+            Screen.MoreGames -> "MoreGames"
+            Screen.Store -> "Store"
+            Screen.Tournament -> "Tournament"
+            is Screen.Game -> "Game:${screen.difficulty.name}"
+        }
+    },
+    restore = { saved ->
+        val name = saved.substringBefore(':')
+        val difficulty = saved.substringAfter(':', "")
+            .takeIf { it.isNotEmpty() }
+            ?.let { value -> Difficulty.entries.firstOrNull { it.name == value } }
+
+        when (name) {
+            "Home" -> Screen.Home
+            "Settings" -> Screen.Settings
+            "HowToPlay" -> Screen.HowToPlay
+            "Profile" -> Screen.Profile
+            "History" -> Screen.History(difficulty)
+            "Achievements" -> Screen.Achievements
+            "Feedback" -> Screen.Feedback
+            "Celebration" -> Screen.Celebration
+            "MoreGames" -> Screen.MoreGames
+            "Store" -> Screen.Store
+            "Tournament" -> Screen.Tournament
+            "Game" -> difficulty?.let { Screen.Game(it) } ?: Screen.Home
+            else -> Screen.Login
+        }
+    }
+)
 
 class MainActivity : ComponentActivity() {
 
@@ -127,6 +176,13 @@ class MainActivity : ComponentActivity() {
                 MinesweeperApp(viewModel = viewModel)
             }
         }
+    }
+
+    // Stop the clock when the app goes to the background. Same default
+    // key as `viewModel()` in setContent, so this is the same instance.
+    override fun onStop() {
+        super.onStop()
+        ViewModelProvider(this)[MinesweeperViewModel::class.java].pauseIfPlaying()
     }
 }
 
@@ -184,15 +240,21 @@ fun MinesweeperApp(
         R.string.google_web_client_id
     )
 
-    var screen by remember {
+    var screen by rememberSaveable(stateSaver = ScreenSaver) {
         mutableStateOf<Screen>(Screen.Login)
     }
 
-    var selectedBottomNavItem by remember {
+    // True while Settings / How to Play was opened from an unfinished game,
+    // so leaving them returns to the board instead of Home.
+    var returnToGame by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var selectedBottomNavItem by rememberSaveable {
         mutableStateOf(BottomNavItem.HOME)
     }
 
-    var selectedDifficulty by remember {
+    var selectedDifficulty by rememberSaveable {
         mutableStateOf(Difficulty.EASY)
     }
 
@@ -273,7 +335,9 @@ fun MinesweeperApp(
     LaunchedEffect(Unit) {
         val savedProfile = sessionStore.userProfile.first()
 
-        if (savedProfile != null) {
+        // Only redirect from the initial Login screen; a restored screen
+        // (after rotation or process death) must be kept.
+        if (savedProfile != null && screen is Screen.Login) {
             screen = Screen.Home
         }
 
@@ -309,11 +373,20 @@ fun MinesweeperApp(
                 statisticsLoading = false
             }
 
-            is Screen.MoreGames,
-
-            is Screen.Home -> {
+            is Screen.MoreGames -> {
                 statisticsLoading = true
                 userStatistics = viewModel.loadStatistics()
+                statisticsLoading = false
+            }
+
+            // Home needs history too: the level/XP header and per-difficulty
+            // best times are both derived from it.
+            is Screen.Home -> {
+                historyLoading = true
+                statisticsLoading = true
+                gameHistory = viewModel.loadGameHistory()
+                userStatistics = viewModel.loadStatistics()
+                historyLoading = false
                 statisticsLoading = false
             }
 
@@ -371,18 +444,40 @@ fun MinesweeperApp(
         return
     }
 
+    // Leaves Settings / How to Play, returning to the game they were opened
+    // from if it's still running.
+    fun exitDetour(fallback: Screen) {
+        val state = gameState
+        screen = if (returnToGame && state != null) {
+            Screen.Game(state.difficulty)
+        } else {
+            fallback
+        }
+        returnToGame = false
+    }
+
+    // Game handles back itself so it can confirm before forfeiting a heart.
     BackHandler(
-        enabled = screen !is Screen.Home && screen !is Screen.Login
+        enabled = screen !is Screen.Home && screen !is Screen.Login && screen !is Screen.Game
     ) {
         when (screen) {
 
-            is Screen.Game -> {
-                viewModel.goBackToHome()
+            is Screen.Settings -> {
+                exitDetour(fallback = Screen.Home)
+            }
+
+            is Screen.HowToPlay -> {
+                exitDetour(fallback = Screen.Settings)
+            }
+
+            is Screen.Celebration -> {
+                viewModel.consumeCelebrationEvent()
+            }
+
+            is Screen.Tournament -> {
                 screen = Screen.Home
             }
 
-            is Screen.Settings,
-            is Screen.HowToPlay,
             is Screen.Profile,
             is Screen.History,
             is Screen.Achievements -> {
@@ -606,6 +701,13 @@ fun MinesweeperApp(
                         onOpenTournament = {
                             screen = Screen.Tournament
                         },
+                        hasPlayedGame = gameHistory.isNotEmpty(),
+                        level = levelProgress.level,
+                        currentXp = levelProgress.currentXp,
+                        xpForNextLevel = levelProgress.xpForNextLevel,
+                        bestTimes = bestSecondsByDifficulty.mapValues { (_, seconds) ->
+                            formatBestTime(seconds)
+                        },
                         themeVariant = themeVariant
                     )
                 }
@@ -734,7 +836,7 @@ fun MinesweeperApp(
                         },
 
                         onBack = {
-                            screen = Screen.Home
+                            exitDetour(fallback = Screen.Home)
                         }
                     )
                 }
@@ -797,7 +899,7 @@ fun MinesweeperApp(
                 is Screen.HowToPlay -> {
                     HowToPlayScreen(
                         onBack = {
-                            screen = Screen.Settings
+                            exitDetour(fallback = Screen.Settings)
                         }
                     )
                 }
@@ -867,6 +969,20 @@ fun MinesweeperApp(
 
                             onPause = {
                                 viewModel.togglePause()
+                            },
+
+                            // Pause first so the timer doesn't run while
+                            // the player is away from the board.
+                            onSettings = {
+                                viewModel.pauseIfPlaying()
+                                returnToGame = true
+                                screen = Screen.Settings
+                            },
+
+                            onHowToPlay = {
+                                viewModel.pauseIfPlaying()
+                                returnToGame = true
+                                screen = Screen.HowToPlay
                             },
                             themeVariant = themeVariant
                         )

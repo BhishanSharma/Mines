@@ -1,4 +1,14 @@
 package com.genoma.mines.game.ui
+import com.genoma.mines.core.theme.MinesCoral
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.luminance
+import com.genoma.mines.core.theme.boardNumberColor
+import com.genoma.mines.core.theme.BestTimeGold
+import com.genoma.mines.core.theme.MinesPreviews
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -19,6 +29,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,19 +42,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -51,6 +66,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,22 +81,18 @@ import androidx.compose.ui.graphics.Color
 import com.genoma.mines.store.domain.BoardThemeStyle
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.genoma.mines.game.domain.Difficulty
 import com.genoma.mines.game.domain.GameStatus
-import com.genoma.mines.core.theme.CountEight
-import com.genoma.mines.core.theme.CountFive
-import com.genoma.mines.core.theme.CountFour
-import com.genoma.mines.core.theme.CountOne
-import com.genoma.mines.core.theme.CountSeven
-import com.genoma.mines.core.theme.CountSix
-import com.genoma.mines.core.theme.CountThree
-import com.genoma.mines.core.theme.CountTwo
 import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.core.theme.MinesThemeVariant
+import com.genoma.mines.core.ui.components.ClassicAmbientBackdrop
+import com.genoma.mines.core.ui.components.ClassicAmbientStyle
 import com.genoma.mines.core.ui.components.ConfettiOverlay
 
 data class CellUiState(
@@ -91,8 +103,9 @@ data class CellUiState(
     val isDetonated: Boolean = false
 )
 
-/** Accent used to make a new-best-time win banner stand out from a normal win. */
-private val BestTimeGold = Color(0xFFD4A017)
+
+/** Cell behind the exploded mine; fixed so the burst always pops. */
+private val DetonatedCellRed = Color(0xFFE5484D)
 
 private object GameSpacing {
     val screenHorizontal = 16.dp
@@ -126,13 +139,51 @@ fun GameScreen(
     // which of the two existing callbacks a tap is routed to below.
     var isFlagMode by remember { mutableStateOf(false) }
 
+    // A heart is spent when a game starts and only refunded on a win, so
+    // leaving or restarting an unfinished game forfeits it. Ask first.
+    val isGameInProgress = status == GameStatus.PLAYING || status == GameStatus.PAUSED
+    var pendingConfirmation by remember { mutableStateOf<GameConfirmation?>(null) }
+
+    val requestBack = {
+        if (isGameInProgress) pendingConfirmation = GameConfirmation.LEAVE else onBack()
+    }
+    val requestRestart = {
+        if (isGameInProgress) pendingConfirmation = GameConfirmation.RESTART else onReset()
+    }
+
+    BackHandler(onBack = requestBack)
+
+    pendingConfirmation?.let { confirmation ->
+        GameConfirmationDialog(
+            confirmation = confirmation,
+            onConfirm = {
+                pendingConfirmation = null
+                when (confirmation) {
+                    GameConfirmation.LEAVE -> onBack()
+                    GameConfirmation.RESTART -> onReset()
+                }
+            },
+            onDismiss = { pendingConfirmation = null }
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         GameSceneBackground(themeVariant = themeVariant, modifier = Modifier.fillMaxSize())
 
+        // Classic Teal's own ambient scene, in its calm "focus" style so it
+        // never competes with the board. Deep Ocean draws its scene above.
+        if (themeVariant == MinesThemeVariant.CLASSIC_TEAL) {
+            ClassicAmbientBackdrop(
+                style = ClassicAmbientStyle.FOCUS,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = if (themeVariant == MinesThemeVariant.DEEP_OCEAN) Color.Transparent
-            else MaterialTheme.colorScheme.background
+            // Both themes paint their own scene behind the board.
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground
         ) {
             Column(
                 modifier = Modifier
@@ -146,7 +197,7 @@ fun GameScreen(
             ) {
 
                 GameTopBar(
-                    onBack = onBack,
+                    onBack = requestBack,
                     onSettings = onSettings
                 )
 
@@ -190,6 +241,10 @@ fun GameScreen(
                             }
                         },
                         onCellLongPress = onCellLongPress,
+                        isPaused = status == GameStatus.PAUSED,
+                        isFlagMode = isFlagMode && status == GameStatus.PLAYING,
+                        showWrongFlags = status == GameStatus.LOST,
+                        onResume = onPause,
                         boardTheme = boardTheme,
                         frostCellSkinEquipped = frostCellSkinEquipped,
                         modifier = Modifier.fillMaxWidth()
@@ -218,6 +273,7 @@ fun GameScreen(
                                 elapsedSeconds = elapsedSeconds,
                                 previousBestSeconds = previousBestSeconds,
                                 onReset = onReset,
+                                onHome = onBack,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .fillMaxWidth()
@@ -225,11 +281,28 @@ fun GameScreen(
                         }
 
                         GameStatus.LOST -> {
+                            // Flags left on safe cells, now drawn crossed out
+                            // on the board.
+                            val wrongFlags = cells.count {
+                                it.isFlagged && !it.isMine && !it.isRevealed
+                            }
+
                             ResultBanner(
                                 title = "Game over",
-                                message = "You hit a mine.",
+                                message = buildString {
+                                    append("You hit a mine at ")
+                                    append(formatElapsedTime(elapsedSeconds))
+                                    append('.')
+                                    if (wrongFlags > 0) {
+                                        append(
+                                            if (wrongFlags == 1) " 1 flag was wrong."
+                                            else " $wrongFlags flags were wrong."
+                                        )
+                                    }
+                                },
                                 isWin = false,
                                 onReset = onReset,
+                                onHome = onBack,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .fillMaxWidth()
@@ -249,7 +322,7 @@ fun GameScreen(
                 GameBottomActions(
                     status = status,
                     onPauseToggle = onPause,
-                    onRestart = onReset,
+                    onRestart = requestRestart,
                     onHowToPlay = onHowToPlay
                 )
             }
@@ -260,6 +333,51 @@ fun GameScreen(
             modifier = Modifier.fillMaxSize()
         )
     }
+}
+
+private enum class GameConfirmation {
+    LEAVE,
+    RESTART
+}
+
+@Composable
+private fun GameConfirmationDialog(
+    confirmation: GameConfirmation,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val (title, message, confirmLabel) = when (confirmation) {
+        GameConfirmation.LEAVE -> Triple(
+            "Leave this game?",
+            "Your progress will be lost and you won't get this game's heart back.",
+            "Leave"
+        )
+
+        GameConfirmation.RESTART -> Triple(
+            "Restart this game?",
+            "Starting over abandons this game and costs another heart.",
+            "Restart"
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = title) },
+        text = { Text(text = message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = confirmLabel,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Keep playing")
+            }
+        }
+    )
 }
 
 @Composable
@@ -319,7 +437,7 @@ private fun GameStatusBar(
                 MaterialTheme.colorScheme.surfaceVariant
             )
             .padding(
-                horizontal = 18.dp,
+                horizontal = 12.dp,
                 vertical = 12.dp
             ),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -348,13 +466,10 @@ private fun GameStatusBar(
 }
 
 /**
- * Center button in the status bar. Shows a flag icon in normal (dig) mode —
- * tapping it switches into flag-placing mode, at which point it swaps to a
- * pickaxe-style icon; tapping again switches back to normal mode.
- *
- * Material Icons has no literal pickaxe glyph, so `Construction` (crossed
- * tools) stands in for it here — swap in a custom drawable if you want
- * something more literal.
+ * Center control in the status bar: a labelled two-way Dig / Flag switch,
+ * so the current tap action is always readable at a glance. The active
+ * segment is filled; Flag uses the error color to match the board's
+ * flag-mode outline.
  */
 @Composable
 private fun FlagModeButton(
@@ -362,43 +477,77 @@ private fun FlagModeButton(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-
-    Box(
+    Row(
         modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(
-                if (isFlagMode) {
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
-                } else {
-                    MaterialTheme.colorScheme.primaryContainer
-                }
-            )
-            .clickable(
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(3.dp)
+            .selectableGroup()
+    ) {
+        TapModeSegment(
+            label = "Dig",
+            icon = Icons.Filled.TouchApp,
+            selected = !isFlagMode,
+            enabled = enabled,
+            selectedContainer = MaterialTheme.colorScheme.primaryContainer,
+            selectedContent = MaterialTheme.colorScheme.onPrimaryContainer,
+            onClick = { if (isFlagMode) onClick() }
+        )
+
+        TapModeSegment(
+            label = "Flag",
+            icon = Icons.Filled.Flag,
+            selected = isFlagMode,
+            enabled = enabled,
+            selectedContainer = MaterialTheme.colorScheme.errorContainer,
+            selectedContent = MaterialTheme.colorScheme.onErrorContainer,
+            onClick = { if (!isFlagMode) onClick() }
+        )
+    }
+}
+
+@Composable
+private fun TapModeSegment(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    enabled: Boolean,
+    selectedContainer: Color,
+    selectedContent: Color,
+    onClick: () -> Unit
+) {
+    val contentColor = when {
+        selected -> selectedContent
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }.copy(alpha = if (enabled) 1f else 0.4f)
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) selectedContainer else Color.Transparent)
+            .selectable(
+                selected = selected,
                 enabled = enabled,
-                onClick = {
-                    onClick()
-                }
-            ),
-        contentAlignment = Alignment.Center
+                role = Role.RadioButton,
+                onClick = onClick
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = if (isFlagMode) {
-                Icons.Filled.Construction
-            } else {
-                Icons.Filled.Flag
-            },
-            contentDescription = if (isFlagMode) {
-                "Flag mode on — tap to switch back to digging"
-            } else {
-                "Tap to switch to flag mode"
-            },
-            tint = if (isFlagMode) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            },
-            modifier = Modifier.size(22.dp)
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(16.dp)
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = contentColor
         )
     }
 }
@@ -416,6 +565,7 @@ private fun ResultBanner(
     message: String,
     isWin: Boolean,
     onReset: () -> Unit,
+    onHome: () -> Unit,
     modifier: Modifier = Modifier,
     isNewBestTime: Boolean = false,
     elapsedSeconds: Int = 0,
@@ -503,7 +653,16 @@ private fun ResultBanner(
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(onClick = onHome) {
+                Icon(
+                    imageVector = Icons.Filled.Home,
+                    contentDescription = "Back to home",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -511,14 +670,15 @@ private fun ResultBanner(
                     .background(
                         MaterialTheme.colorScheme.primaryContainer
                     )
-                    .clickable(onClick = onReset)
+                    .clickable(role = Role.Button, onClick = onReset)
                     .padding(
                         horizontal = 16.dp,
                         vertical = 10.dp
                     )
             ) {
+                // Every new game spends a heart, so say so on the button.
                 Text(
-                    text = "Play again",
+                    text = "Play again · 1 ♥",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -727,7 +887,7 @@ private fun GameActionButton(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -754,10 +914,26 @@ private fun MineBoard(
     interactionEnabled: Boolean,
     onCellTap: (Int) -> Unit,
     onCellLongPress: (Int) -> Unit,
+    isPaused: Boolean,
+    isFlagMode: Boolean,
+    showWrongFlags: Boolean,
+    onResume: () -> Unit,
     boardTheme: BoardThemeStyle?,
     frostCellSkinEquipped: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // A thicker error-colored outline while flag mode is on, so the
+    // board itself signals that taps will place flags.
+    val borderColor by animateColorAsState(
+        targetValue = if (isFlagMode) {
+            MaterialTheme.colorScheme.error
+        } else {
+            boardTheme?.borderColor ?: MaterialTheme.colorScheme.outlineVariant
+        },
+        animationSpec = tween(durationMillis = 180),
+        label = "boardBorder"
+    )
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -765,35 +941,53 @@ private fun MineBoard(
             containerColor = boardTheme?.boardColor ?: MaterialTheme.colorScheme.surfaceVariant
         ),
         border = BorderStroke(
-            1.dp,
-            boardTheme?.borderColor ?: MaterialTheme.colorScheme.outlineVariant
+            if (isFlagMode) 2.dp else 1.dp,
+            borderColor
         )
     ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            userScrollEnabled = false,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(
-                GameSpacing.cellGap
-            ),
-            verticalArrangement = Arrangement.spacedBy(
-                GameSpacing.cellGap
-            )
-        ) {
-            items(cells.size) { index ->
-                MineCell(
-                    state = cells[index],
-                    enabled = interactionEnabled,
-                    onTap = {
-                        onCellTap(index)
-                    },
-                    onLongPress = {
-                        onCellLongPress(index)
-                    },
-                    boardTheme = boardTheme,
-                    frostCellSkinEquipped = frostCellSkinEquipped
+        Box {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                userScrollEnabled = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(6.dp)
+                    // The pause cover hides the board visually; hide it from
+                    // screen readers too, or pausing still reveals it.
+                    .then(if (isPaused) Modifier.clearAndSetSemantics {} else Modifier),
+                horizontalArrangement = Arrangement.spacedBy(
+                    GameSpacing.cellGap
+                ),
+                verticalArrangement = Arrangement.spacedBy(
+                    GameSpacing.cellGap
+                )
+            ) {
+                items(cells.size) { index ->
+                    MineCell(
+                        state = cells[index],
+                        row = index / columns + 1,
+                        column = index % columns + 1,
+                        tapActionLabel = if (isFlagMode) "Toggle flag" else "Reveal",
+                        enabled = interactionEnabled,
+                        onTap = {
+                            onCellTap(index)
+                        },
+                        onLongPress = {
+                            onCellLongPress(index)
+                        },
+                        showWrongFlag = showWrongFlags,
+                        boardTheme = boardTheme,
+                        frostCellSkinEquipped = frostCellSkinEquipped
+                    )
+                }
+            }
+
+            // Hide the board while paused so pausing can't be used to study
+            // it with the clock stopped.
+            if (isPaused) {
+                PausedBoardCover(
+                    onResume = onResume,
+                    modifier = Modifier.matchParentSize()
                 )
             }
         }
@@ -801,19 +995,78 @@ private fun MineBoard(
 }
 
 @Composable
+private fun PausedBoardCover(
+    onResume: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClickLabel = "Resume", role = Role.Button, onClick = onResume),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Paused",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Text(
+            text = "Tap to resume",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun MineCell(
     state: CellUiState,
+    row: Int,
+    column: Int,
+    tapActionLabel: String,
     enabled: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
+    showWrongFlag: Boolean,
     boardTheme: BoardThemeStyle?,
     frostCellSkinEquipped: Boolean
 ) {
+    // After a loss every mine is revealed, but a mine the player correctly
+    // flagged keeps showing its flag (on a hidden-style tile), so they can
+    // see which calls they got right.
+    val showsCorrectFlag = state.isFlagged && state.isMine && state.isRevealed && !state.isDetonated
+    val looksHidden = !state.isRevealed || showsCorrectFlag
+
+    val revealedColor = boardTheme?.revealedCellColor ?: MaterialTheme.colorScheme.surface
     val targetColor = when {
-        state.isDetonated -> boardTheme?.mineColor ?: MaterialTheme.colorScheme.errorContainer
-        state.isRevealed -> boardTheme?.revealedCellColor ?: MaterialTheme.colorScheme.surface
-        else -> boardTheme?.hiddenCellColor ?: MaterialTheme.colorScheme.primaryContainer
+        // A strong red cell under the burst, so the losing move is obvious.
+        state.isDetonated -> DetonatedCellRed
+        looksHidden -> boardTheme?.hiddenCellColor ?: MaterialTheme.colorScheme.primaryContainer
+        // Other mines revealed on a loss get a faint danger tint.
+        state.isMine -> lerp(revealedColor, MinesCoral, 0.18f)
+        else -> revealedColor
     }
+    val onDarkCell = targetColor.luminance() < 0.5f
 
     // Smoothly cross-fades when a cell flips from hidden to revealed,
     // instead of popping instantly.
@@ -825,13 +1078,13 @@ private fun MineCell(
 
     // Unrevealed cells get a faint highlight border to read as
     // "raised" tiles waiting to be tapped; revealed cells sit flush.
-    val borderColor = if (!state.isRevealed) {
+    val borderColor = if (looksHidden) {
         (boardTheme?.borderColor ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.35f)
     } else {
         Color.Transparent
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(6.dp))
@@ -843,25 +1096,54 @@ private fun MineCell(
             )
             .combinedClickable(
                 enabled = enabled,
+                onClickLabel = tapActionLabel,
                 onClick = onTap,
+                onLongClickLabel = "Toggle flag",
                 onLongClick = onLongPress
-            ),
+            )
+            // One announcement per cell, e.g. "Row 4, column 5, 2". The
+            // children's own semantics are cleared below so nothing is
+            // read twice.
+            .semantics {
+                contentDescription = "Row $row, column $column, " +
+                        cellStateDescription(state, showWrongFlag)
+            },
         contentAlignment = Alignment.Center
     ) {
+        // Size cell content from the cell itself rather than fixed dp, so
+        // it stays proportional on small phones and tablets alike.
+        val flagSize = maxWidth * 0.76f
+        val mineSize = maxWidth * 0.8f
+        val countFontSize = with(LocalDensity.current) { (maxWidth * 0.55f).toSp() }
+
         when {
-            state.isFlagged && !state.isRevealed -> {
-                Icon(
-                    imageVector = Icons.Filled.Flag,
-                    contentDescription = "Flagged",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(16.dp)
+            // After a loss, a flag on a safe cell is crossed out so the
+            // player can see which of their guesses were wrong.
+            showWrongFlag && state.isFlagged && !state.isMine && !state.isRevealed -> {
+                BoardWrongFlag(
+                    onDarkCell = onDarkCell,
+                    crossColor = MinesCoral,
+                    modifier = Modifier.size(flagSize)
+                )
+            }
+
+            state.isFlagged && looksHidden -> {
+                BoardFlag(
+                    onDarkCell = onDarkCell,
+                    modifier = Modifier.size(flagSize)
+                )
+            }
+
+            state.isDetonated -> {
+                BoardExplodedMine(
+                    modifier = Modifier.size(maxWidth)
                 )
             }
 
             state.isRevealed && state.isMine -> {
-                MineIcon(
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(16.dp)
+                BoardMine(
+                    onDarkCell = onDarkCell,
+                    modifier = Modifier.size(mineSize)
                 )
             }
 
@@ -869,11 +1151,18 @@ private fun MineCell(
                 Text(
                     text = state.adjacentMines.toString(),
                     style = MaterialTheme.typography.bodyMedium,
+                    fontSize = countFontSize,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
+                    // Pick the palette from the cell actually behind the
+                    // number: store board themes keep revealed cells light
+                    // even in dark mode.
                     color = colorForCount(
-                        state.adjacentMines
-                    )
+                        count = state.adjacentMines,
+                        onLightCell = targetColor.luminance() > 0.5f
+                    ),
+                    // The cell's own description already includes the number.
+                    modifier = Modifier.clearAndSetSemantics {}
                 )
             }
 
@@ -884,83 +1173,24 @@ private fun MineCell(
     }
 }
 
-/**
- * A minimal vector-drawn bomb: a round body with a short fuse.
- * Avoids relying on emoji (which render inconsistently across devices)
- * or a mismatched stock icon, since Material Icons has no literal bomb.
- */
-@Composable
-fun MineIcon(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurface
-) {
-    Canvas(modifier = modifier) {
-        val bodyRadius = size.minDimension * 0.36f
-        val bodyCenter = Offset(
-            x = size.width / 2f,
-            y = size.height / 2f + size.height * 0.08f
-        )
-
-        // Body
-        drawCircle(
-            color = color,
-            radius = bodyRadius,
-            center = bodyCenter
-        )
-
-        // Fuse, angled up and to the right
-        val fuseStart = Offset(
-            x = bodyCenter.x + bodyRadius * 0.55f,
-            y = bodyCenter.y - bodyRadius * 0.75f
-        )
-        val fuseEnd = Offset(
-            x = fuseStart.x + size.width * 0.16f,
-            y = fuseStart.y - size.height * 0.22f
-        )
-        drawLine(
-            color = color,
-            start = fuseStart,
-            end = fuseEnd,
-            strokeWidth = size.minDimension * 0.09f,
-            cap = StrokeCap.Round
-        )
-
-        // Spark at the fuse tip
-        drawCircle(
-            color = color,
-            radius = size.minDimension * 0.07f,
-            center = fuseEnd
-        )
-
-        // Small highlight to give the body some dimension
-        drawCircle(
-            color = Color.White.copy(alpha = 0.35f),
-            radius = bodyRadius * 0.28f,
-            center = Offset(
-                x = bodyCenter.x - bodyRadius * 0.35f,
-                y = bodyCenter.y - bodyRadius * 0.35f
-            )
-        )
-    }
-}
-
-@Composable
 private fun colorForCount(
-    count: Int
-): Color {
-    return when (count) {
-        1 -> CountOne
-        2 -> CountTwo
-        3 -> CountThree
-        4 -> CountFour
-        5 -> CountFive
-        6 -> CountSix
-        7 -> CountSeven
-        else -> CountEight
-    }
+    count: Int,
+    onLightCell: Boolean
+): Color = boardNumberColor(count, onLightCell)
+
+/** Spoken state of a cell, for screen readers. */
+private fun cellStateDescription(state: CellUiState, showWrongFlag: Boolean): String = when {
+    showWrongFlag && state.isFlagged && !state.isMine && !state.isRevealed -> "wrong flag, no mine here"
+    state.isFlagged && !state.isRevealed -> "flagged"
+    state.isFlagged && state.isMine && !state.isDetonated -> "flagged mine, correct"
+    state.isRevealed && state.isMine -> if (state.isDetonated) "mine, exploded" else "mine"
+    state.isRevealed && state.adjacentMines == 1 -> "1 adjacent mine"
+    state.isRevealed && state.adjacentMines > 1 -> "${state.adjacentMines} adjacent mines"
+    state.isRevealed -> "empty"
+    else -> "hidden"
 }
 
-@Preview(showBackground = true)
+@MinesPreviews
 @Composable
 private fun GameScreenPreview() {
     val difficulty = Difficulty.EASY

@@ -1,4 +1,7 @@
 package com.genoma.mines.game.ui
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import com.genoma.mines.core.ui.components.ScreenSurface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,9 +52,8 @@ fun HistoryScreen(
     onBack: () -> Unit,
     title: String = "Game history"
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -221,9 +223,13 @@ fun RecentHistorySection(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(
-                    onClick = onSeeAllHistory
-                )
+                modifier = Modifier
+                    .clickable(
+                        role = Role.Button,
+                        onClick = onSeeAllHistory
+                    )
+                    // Bare text is ~16dp tall; pad the touch target to 48dp.
+                    .minimumInteractiveComponentSize()
             )
         }
 

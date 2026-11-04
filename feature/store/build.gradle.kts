@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:theme"))
+    implementation(project(":core:ui"))
     implementation(project(":core:session"))
 
     implementation(platform(libs.androidx.compose.bom))

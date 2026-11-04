@@ -1,4 +1,6 @@
 package com.genoma.mines.auth.ui
+import androidx.compose.ui.semantics.Role
+import com.genoma.mines.core.theme.MinesPreviews
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -240,7 +242,7 @@ private fun AuthOption(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier.clickable(role = Role.Button, onClick = onClick)
     ) {
         Surface(
             modifier = Modifier.size(64.dp),
@@ -391,7 +393,7 @@ private fun CornerMineGrid(
     }
 }
 
-@Preview(showBackground = true)
+@MinesPreviews
 @Composable
 private fun LoginScreenPreview() {
     MinesTheme {

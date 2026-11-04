@@ -1,4 +1,6 @@
 package com.genoma.mines.settings.ui
+import com.genoma.mines.core.theme.MinesPreviews
+import com.genoma.mines.core.ui.components.ScreenSurface
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.compose.foundation.BorderStroke
@@ -90,9 +92,8 @@ fun SettingsScreen(
         mutableStateOf(false)
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
@@ -388,9 +389,9 @@ private fun DeleteAccountRow(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !isDeleting, onClick = onClick),
+        onClick = onClick,
+        enabled = !isDeleting,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
@@ -609,9 +610,8 @@ private fun SettingActionRow(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -766,7 +766,7 @@ private fun getInstalledAppVersion(context: Context): String {
     }
 }
 
-@Preview(showBackground = true)
+@MinesPreviews
 @Composable
 private fun SettingsScreenPreview() {
     MinesTheme {

@@ -117,7 +117,8 @@ fun ConfettiOverlay(
     modifier: Modifier = Modifier,
     pieceCount: Int = 90
 ) {
-    if (!visible) return
+    // Confetti is nothing but motion; with animations off, skip it.
+    if (!visible || rememberReduceMotion()) return
 
     val pieces = remember(visible) { generateConfettiPieces(pieceCount) }
     var elapsedMs by remember(visible) { mutableStateOf(0L) }

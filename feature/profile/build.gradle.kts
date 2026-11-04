@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:theme"))
+    implementation(project(":core:ui"))
     api(project(":feature:achievements"))
     api(project(":feature:game"))
 

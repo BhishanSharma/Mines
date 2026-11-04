@@ -47,6 +47,61 @@ val CountSix = Color(0xFF0D9488)
 val CountSeven = Color(0xFF1F2937)
 val CountEight = Color(0xFF6B7280)
 
+// ---- Board number colors, contrast-checked ----
+// The Count* colors above are for decoration (backdrops, logos). On the
+// board, numbers use these instead: one set for light revealed cells, one
+// for dark, every pair ≥ 4.5:1 (WCAG AA) against the app's revealed-cell
+// colors. The single set above failed badly on dark cells (7 was 1.1:1).
+private val CountsOnLightCell = listOf(
+    Color(0xFF1D4ED8), // 1 blue
+    Color(0xFF15803D), // 2 green
+    Color(0xFFB91C1C), // 3 red
+    Color(0xFF6D28D9), // 4 violet
+    Color(0xFF9A3412), // 5 rust
+    Color(0xFF0F766E), // 6 teal
+    Color(0xFF1F2937), // 7 near-black
+    Color(0xFF4B5563)  // 8 gray
+)
+
+private val CountsOnDarkCell = listOf(
+    Color(0xFF60A5FA), // 1 blue
+    Color(0xFF4ADE80), // 2 green
+    Color(0xFFF87171), // 3 red
+    Color(0xFFA78BFA), // 4 violet
+    Color(0xFFFB923C), // 5 orange
+    Color(0xFF2DD4BF), // 6 teal
+    Color(0xFFE5E7EB), // 7 near-white
+    Color(0xFF9CA3AF)  // 8 gray
+)
+
+/** Readable color for a board number [count] (1–8) on a light or dark cell. */
+fun boardNumberColor(count: Int, onLightCell: Boolean): Color {
+    val palette = if (onLightCell) CountsOnLightCell else CountsOnDarkCell
+    return palette[(count - 1).coerceIn(0, palette.lastIndex)]
+}
+
+// ---- Rewards & status accents ----
+// Shared by every screen that shows them, so the same thing is always
+// the same color (these were previously redefined per screen).
+
+// New-best-time badge. Darker than TierGold so white content stays legible.
+val BestTimeGold = Color(0xFFD4A017)
+val HeartRed = Color(0xFFE53950)
+
+// Win / loss / neutral stat accents (Profile overview & per-difficulty).
+val StatWinGreen = Color(0xFF22A06B)
+val StatLossRed = Color(0xFFE05353)
+val StatInfoBlue = Color(0xFF3B82F6)
+val StatStreakOrange = Color(0xFFF2A63D)
+
+// Badge tiers. Map BadgeTier to these via BadgeTier.color() in
+// feature:achievements rather than referencing them per screen.
+val TierBronze = Color(0xFFCD7F32)
+val TierSilver = Color(0xFFB0BEC5)
+val TierGold = Color(0xFFFFC107)
+val TierPlatinum = Color(0xFF66C2CE)
+val TierDiamond = Color(0xFF6FD8FF)
+
 // ---- Deep Ocean brand ----
 val OceanPrimaryLight = Color(0xFF1B4B66)
 val OceanPrimaryDark = Color(0xFF7FC7E8)

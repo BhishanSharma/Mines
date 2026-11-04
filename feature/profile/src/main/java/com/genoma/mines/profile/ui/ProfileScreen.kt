@@ -1,4 +1,13 @@
 package com.genoma.mines.profile.ui
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
+import com.genoma.mines.achievements.ui.color
+import com.genoma.mines.core.theme.StatInfoBlue
+import com.genoma.mines.core.theme.StatWinGreen
+import com.genoma.mines.core.theme.StatLossRed
+import com.genoma.mines.core.theme.StatStreakOrange
+import com.genoma.mines.core.theme.MinesPreviews
+import com.genoma.mines.core.ui.components.ScreenSurface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -128,9 +137,8 @@ fun ProfileScreen(
         mutableStateOf(false)
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
 
@@ -313,14 +321,14 @@ fun ProfileScreen(
                         )
                         StatIconCard(
                             icon = Icons.Filled.EmojiEvents,
-                            iconTint = Color(0xFFF2A63D),
+                            iconTint = StatStreakOrange,
                             value = statistics.totalWins.toString(),
                             label = "Won",
                             modifier = Modifier.weight(1f)
                         )
                         StatIconCard(
                             icon = Icons.Filled.WbSunny,
-                            iconTint = Color(0xFFE05353),
+                            iconTint = StatLossRed,
                             value = statistics.totalLosses.toString(),
                             label = "Lost",
                             modifier = Modifier.weight(1f)
@@ -364,7 +372,7 @@ fun ProfileScreen(
                         DifficultyStatRow(
                             label = "Easy",
                             stats = statistics.easy,
-                            accent = Color(0xFF22A06B),
+                            accent = StatWinGreen,
                             bestTime = bestTimes["Easy"],
                             highlighted = highlightedDifficultyLabel == "Easy",
                             onClick = { onDifficultyClick("Easy") }
@@ -372,7 +380,7 @@ fun ProfileScreen(
                         DifficultyStatRow(
                             label = "Medium",
                             stats = statistics.medium,
-                            accent = Color(0xFF3B82F6),
+                            accent = StatInfoBlue,
                             bestTime = bestTimes["Medium"],
                             highlighted = highlightedDifficultyLabel == "Medium",
                             onClick = { onDifficultyClick("Medium") }
@@ -380,7 +388,7 @@ fun ProfileScreen(
                         DifficultyStatRow(
                             label = "Hard",
                             stats = statistics.hard,
-                            accent = Color(0xFFE05353),
+                            accent = StatLossRed,
                             bestTime = bestTimes["Hard"],
                             highlighted = highlightedDifficultyLabel == "Hard",
                             onClick = { onDifficultyClick("Hard") }
@@ -812,11 +820,11 @@ private fun ProfileHeaderDecoration(modifier: Modifier = Modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 DecorTile()
-                DecorTile(text = "1", textColor = Color(0xFF3B82F6))
+                DecorTile(text = "1", textColor = StatInfoBlue)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                DecorTile(icon = Icons.Filled.Flag, iconTint = Color(0xFFE05353))
-                DecorTile(text = "2", textColor = Color(0xFF22A06B))
+                DecorTile(icon = Icons.Filled.Flag, iconTint = StatLossRed)
+                DecorTile(text = "2", textColor = StatWinGreen)
             }
         }
     }
@@ -967,7 +975,11 @@ private fun AvatarGridItem(
                 color = MaterialTheme.colorScheme.primary,
                 shape = CircleShape
             )
-            .clickable(onClick = onClick),
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -1032,17 +1044,9 @@ private fun iconForTrack(trackId: String): ImageVector = when (trackId) {
     else -> Icons.Filled.EmojiEvents
 }
 
-private fun colorForBadgeTier(tier: BadgeTier): Color = when (tier) {
-    BadgeTier.BRONZE -> Color(0xFFCD7F32)
-    BadgeTier.SILVER -> Color(0xFFB0BEC5)
-    BadgeTier.GOLD -> Color(0xFFFFC107)
-    BadgeTier.PLATINUM -> Color(0xFF66C2CE)
-    BadgeTier.DIAMOND -> Color(0xFF6FD8FF)
-}
+private fun colorForBadgeTier(tier: BadgeTier): Color = tier.color()
 
-@Preview(
-    showBackground = true
-)
+@MinesPreviews
 @Composable
 private fun ProfileScreenPreview() {
     MinesTheme {

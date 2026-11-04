@@ -1,4 +1,6 @@
 package com.genoma.mines.life.ui
+import androidx.compose.ui.semantics.Role
+import com.genoma.mines.core.theme.HeartRed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +38,6 @@ import com.genoma.mines.life.domain.LifeSnapshot
 import com.genoma.mines.life.domain.LifeStatus
 import kotlinx.coroutines.delay
 
-internal val HeartRed = Color(0xFFE53950)
 
 /**
  * Live hearts for [snapshot], re-evaluated every second so a regenerated
@@ -108,7 +109,7 @@ fun HeartsIndicator(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics {
                 contentDescription = buildString {
                     append("${status.hearts} of ${status.maxHearts} hearts")
