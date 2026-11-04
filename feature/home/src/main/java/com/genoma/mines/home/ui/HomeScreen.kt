@@ -1,4 +1,5 @@
 package com.genoma.mines.home.ui
+import com.genoma.mines.core.ui.R as CoreUiR
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.text.TextAutoSize
@@ -72,7 +73,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.genoma.mines.home.R
 import com.genoma.mines.game.domain.Difficulty
 import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.core.theme.LocalMinesThemeVariant
@@ -631,9 +631,9 @@ private fun MinesHeroIllustration(
         // Deep Ocean gets a blue-recolored copy of the same art (only the
         // mint blob and tiles shift; flag, bomb and numbers are unchanged).
         val banner = if (LocalMinesThemeVariant.current == MinesThemeVariant.DEEP_OCEAN) {
-            R.drawable.home_banner_ocean
+            CoreUiR.drawable.home_banner_ocean
         } else {
-            R.drawable.home_banner
+            CoreUiR.drawable.home_banner
         }
 
         Image(

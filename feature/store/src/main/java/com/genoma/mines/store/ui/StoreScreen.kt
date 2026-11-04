@@ -1,4 +1,12 @@
 package com.genoma.mines.store.ui
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import com.genoma.mines.core.theme.MinesPreviews
 import com.genoma.mines.core.ui.components.ScreenSurface
 import android.graphics.Color as AndroidColor
@@ -89,40 +97,23 @@ fun StoreScreen(
                 .padding(bottom = StoreSpacing.screenBottom)
         ) {
 
-            // Top bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Both balances up top: coins used to appear only inside the
+            // redeem card, so players couldn't see them at a glance.
+            ScreenTopBar(
+                title = "Store",
+                horizontalInset = false
             ) {
-                Text(
-                    text = "Store",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                BalancePill(
+                    icon = Icons.Filled.MonetizationOn,
+                    value = coinBalance,
+                    contentDescription = "$coinBalance coins"
                 )
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Diamond,
-                        contentDescription = "Diamond balance",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "$diamondBalance",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+                BalancePill(
+                    icon = Icons.Filled.Diamond,
+                    value = diamondBalance,
+                    contentDescription = "$diamondBalance diamonds"
+                )
             }
 
             Spacer(modifier = Modifier.height(StoreSpacing.barToContent))
@@ -166,6 +157,8 @@ fun StoreScreen(
                                         is CellSkinItem -> equippedCellSkinId == item.id
                                         is AvatarStoreItem -> false
                                     },
+                                    canAfford = diamondBalance >= item.price,
+                                    diamondsShort = (item.price - diamondBalance).coerceAtLeast(0),
                                     onClick = { onItemClick(item) }
                                 )
                             }
@@ -176,6 +169,36 @@ fun StoreScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BalancePill(
+    icon: ImageVector,
+    value: Int,
+    contentDescription: String
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "$value",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -278,6 +301,8 @@ private fun StoreItemRow(
     item: StoreItem,
     owned: Boolean,
     equipped: Boolean,
+    canAfford: Boolean,
+    diamondsShort: Int,
     onClick: () -> Unit
 ) {
     Card(
@@ -318,7 +343,15 @@ private fun StoreItemRow(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            PriceBadge(owned = owned, equipped = equipped, price = item.price)
+            PriceBadge(
+                owned = owned,
+                equipped = equipped,
+                price = item.price,
+                canAfford = canAfford,
+                diamondsShort = diamondsShort,
+                // Avatars can't be "applied" from here, only owned.
+                canApply = item !is AvatarStoreItem
+            )
         }
     }
 }
@@ -339,17 +372,19 @@ private fun StoreItemPreview(item: StoreItem, modifier: Modifier = Modifier) {
             }
         }
 
-        is CellSkinItem -> DrawableOrFallbackIcon(
-            drawableRes = item.previewDrawableRes,
-            fallbackIcon = Icons.Filled.GridView,
-            modifier = modifier
-        )
+        // No preview art ships for these yet, so draw one rather than a
+        // generic placeholder: players shouldn't buy blind.
+        is CellSkinItem -> if (item.previewDrawableRes != null) {
+            DrawableOrFallbackIcon(item.previewDrawableRes, Icons.Filled.GridView, modifier)
+        } else {
+            FrostCellsPreview(modifier = modifier)
+        }
 
-        is AvatarStoreItem -> DrawableOrFallbackIcon(
-            drawableRes = item.previewDrawableRes,
-            fallbackIcon = Icons.Filled.Person,
-            modifier = modifier
-        )
+        is AvatarStoreItem -> if (item.previewDrawableRes != null) {
+            DrawableOrFallbackIcon(item.previewDrawableRes, Icons.Filled.Person, modifier)
+        } else {
+            RoboAvatarPreview(modifier = modifier)
+        }
     }
 }
 
@@ -383,58 +418,182 @@ private fun DrawableOrFallbackIcon(
     }
 }
 
+/** A 2x2 sample of cells wearing the frosted skin: white glassy borders. */
 @Composable
-private fun PriceBadge(owned: Boolean, equipped: Boolean, price: Int) {
-    if (equipped) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = "Applied",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+private fun FrostCellsPreview(modifier: Modifier = Modifier) {
+    Canvas(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFDCEFF5))
+    ) {
+        val gap = size.width * 0.08f
+        val cell = (size.width - gap * 3) / 2
+        val corner = CornerRadius(cell * 0.22f)
+        for (row in 0..1) {
+            for (col in 0..1) {
+                val topLeft = Offset(gap + col * (cell + gap), gap + row * (cell + gap))
+                val revealed = row == 1 && col == 0
+                drawRoundRect(
+                    color = if (revealed) Color.White else Color(0xFF9BD3E3),
+                    topLeft = topLeft,
+                    size = Size(cell, cell),
+                    cornerRadius = corner
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.9f),
+                    topLeft = topLeft,
+                    size = Size(cell, cell),
+                    cornerRadius = corner,
+                    style = Stroke(width = cell * 0.12f)
+                )
+            }
         }
-    } else if (owned) {
-        Box(
+    }
+}
+
+/** A simple robot face standing in for the Robo avatar's art. */
+@Composable
+private fun RoboAvatarPreview(modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    Canvas(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        val w = size.width
+        val h = size.height
+        val headColor = Color(0xFF8A99A3)
+
+        // Antenna.
+        drawLine(headColor, Offset(w * 0.5f, h * 0.14f), Offset(w * 0.5f, h * 0.28f), w * 0.05f)
+        drawCircle(Color(0xFFE5484D), radius = w * 0.06f, center = Offset(w * 0.5f, h * 0.13f))
+        // Head.
+        drawRoundRect(
+            color = headColor,
+            topLeft = Offset(w * 0.2f, h * 0.28f),
+            size = Size(w * 0.6f, h * 0.5f),
+            cornerRadius = CornerRadius(w * 0.12f)
+        )
+        // Eyes.
+        drawCircle(Color.White, radius = w * 0.08f, center = Offset(w * 0.38f, h * 0.47f))
+        drawCircle(Color.White, radius = w * 0.08f, center = Offset(w * 0.62f, h * 0.47f))
+        drawCircle(accent, radius = w * 0.04f, center = Offset(w * 0.38f, h * 0.47f))
+        drawCircle(accent, radius = w * 0.04f, center = Offset(w * 0.62f, h * 0.47f))
+        // Mouth grille.
+        drawRoundRect(
+            color = Color(0xFF2B3134),
+            topLeft = Offset(w * 0.35f, h * 0.62f),
+            size = Size(w * 0.3f, h * 0.07f),
+            cornerRadius = CornerRadius(w * 0.03f)
+        )
+    }
+}
+
+/**
+ * What the row's action is, at a glance:
+ * - Applied: in use now.
+ * - Apply: owned, tap to use it.
+ * - Buy + price: affordable, styled as a button.
+ * - Price + "Need N more": not affordable yet, muted, so a failed purchase
+ *   isn't a surprise after tapping.
+ */
+@Composable
+private fun PriceBadge(
+    owned: Boolean,
+    equipped: Boolean,
+    price: Int,
+    canAfford: Boolean,
+    diamondsShort: Int,
+    canApply: Boolean
+) {
+    when {
+        equipped -> StatusChip(
+            text = "Applied",
+            container = MaterialTheme.colorScheme.primaryContainer,
+            content = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+
+        owned -> StatusChip(
+            text = if (canApply) "Apply" else "Owned",
+            container = MaterialTheme.colorScheme.surfaceVariant,
+            content = if (canApply) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        canAfford -> Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = "Owned",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else {
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(
+                text = "Buy",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Spacer(modifier = Modifier.width(6.dp))
             Icon(
                 imageVector = Icons.Filled.Diamond,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(14.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = "$price",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+
+        else -> Column(horizontalAlignment = Alignment.End) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Diamond,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "$price",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = "Need $diamondsShort more",
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun StatusChip(text: String, container: Color, content: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(container)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = content
+        )
     }
 }
 

@@ -1,4 +1,8 @@
 package com.genoma.mines.tournament.ui
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -45,7 +49,10 @@ import kotlin.random.Random
 
 @Composable
 fun TournamentScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    // Something useful to do while the season is on its way, so the screen
+    // isn't a dead end.
+    onPracticeClick: () -> Unit = onBackClick
 ) {
     val infiniteTransition = rememberInfiniteTransition(
         label = "snow_animation"
@@ -87,58 +94,10 @@ fun TournamentScreen(
                 .padding(horizontal = 20.dp)
         ) {
 
-            // Top bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                IconButton(
-                    onClick = onBackClick
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = onSurfaceColor
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-
-                Icon(
-                    imageVector = Icons.Default.EmojiEvents,
-                    contentDescription = "Tournament",
-                    tint = primaryColor,
-                    modifier = Modifier.size(28.dp)
-                )
-
-                Spacer(
-                    modifier = Modifier.size(8.dp)
-                )
-
-                Text(
-                    text = "TOURNAMENT",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = onSurfaceColor
-                )
-
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Keeps the title visually centered with the back button.
-                Spacer(
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-
-            Spacer(
-                modifier = Modifier.height(30.dp)
+            ScreenTopBar(
+                title = "Tournament",
+                onBack = onBackClick,
+                horizontalInset = false
             )
 
             // Main winter card
@@ -179,7 +138,7 @@ fun TournamentScreen(
                 )
 
                 Text(
-                    text = "WINTER",
+                    text = "THE WINTER",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = onSurfaceColor,
@@ -187,7 +146,7 @@ fun TournamentScreen(
                 )
 
                 Text(
-                    text = "IS COMING",
+                    text = "CUP",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = primaryColor,
@@ -199,7 +158,7 @@ fun TournamentScreen(
                 )
 
                 Text(
-                    text = "Tournament season is almost here.",
+                    text = "Our first tournament season is on its way.",
                     style = MaterialTheme.typography.titleMedium,
                     color = onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -210,7 +169,7 @@ fun TournamentScreen(
                 )
 
                 Text(
-                    text = "Prepare yourself. Compete with the best.\nThe winter tournament will begin soon.",
+                    text = "Compete with other players for the top spot.\nWarm up with a practice game in the meantime.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -233,27 +192,47 @@ fun TournamentScreen(
                             vertical = 12.dp
                         )
                 ) {
-                    Text(
-                        text = "❄  COMING SOON  ❄",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = primaryColor
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AcUnit,
+                            contentDescription = null,
+                            tint = primaryColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "COMING SOON",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Icon(
+                            imageVector = Icons.Default.AcUnit,
+                            contentDescription = null,
+                            tint = primaryColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.height(28.dp)
+                )
+
+                Button(onClick = onPracticeClick) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Play a practice game")
                 }
             }
 
             Spacer(
-                modifier = Modifier.height(20.dp)
-            )
-
-            Text(
-                text = "Stay sharp. Winter is coming.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                modifier = Modifier.height(24.dp)
             )
         }
     }

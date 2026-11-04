@@ -1,4 +1,7 @@
 package com.genoma.mines.game.ui
+import java.text.DateFormat
+import androidx.compose.material3.Button
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.semantics.Role
 import com.genoma.mines.core.ui.components.ScreenSurface
@@ -50,7 +53,9 @@ fun HistoryScreen(
     isLoading: Boolean,
     history: List<GameHistoryItem>,
     onBack: () -> Unit,
-    title: String = "Game history"
+    title: String = "Game history",
+    // Shown as a button in the empty state; null hides it.
+    onPlayClick: (() -> Unit)? = null
 ) {
     ScreenSurface(
         modifier = Modifier.fillMaxSize()
@@ -65,32 +70,12 @@ fun HistoryScreen(
             // Header
             // ----------------------------------------------------------------
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        top = 8.dp,
-                        bottom = 16.dp
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
+            ScreenTopBar(
+                title = title,
+                onBack = onBack,
+                horizontalInset = false,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
 
             // ----------------------------------------------------------------
@@ -112,9 +97,10 @@ fun HistoryScreen(
 
                 // Empty
                 history.isEmpty() -> {
-                    Box(
+                    Column(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = "No games played yet.\nYour results will show up here.",
@@ -122,6 +108,14 @@ fun HistoryScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
+
+                        if (onPlayClick != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Button(onClick = onPlayClick) {
+                                Text(text = "Play a game")
+                            }
+                        }
                     }
                 }
 
@@ -284,6 +278,18 @@ fun RecentHistorySection(
 // Shown on both the Profile recent-history preview and the full History
 // screen — a win's score reads with a leading "+" so it's visually obvious
 // alongside a loss's "-", instead of only the loss carrying a sign.
+/** "01:12": how long the game took. */
+private fun formatDuration(totalSeconds: Long): String {
+    val clamped = totalSeconds.coerceIn(0, 99L * 60 + 59)
+    return "%02d:%02d".format(clamped / 60, clamped % 60)
+}
+
+/** "01:12 · 3:45 PM": duration plus time of day (rows are grouped by date). */
+private fun historyDetail(entry: GameHistoryItem): String {
+    val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(entry.createdAtMillis))
+    return "${formatDuration(entry.durationSeconds)} · $time"
+}
+
 private fun formatSignedScore(score: Int): String {
     return if (score > 0) "+$score" else score.toString()
 }
@@ -316,14 +322,21 @@ private fun HistoryPreviewRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // Difficulty
-            Text(
-                text = entry.difficulty.label(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
+            // Difficulty, with how long the game took: the stat
+            // Minesweeper players care most about.
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.difficulty.label(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = formatDuration(entry.durationSeconds),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             // Result
             Text(
@@ -416,14 +429,21 @@ private fun HistoryRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // Difficulty
-            Text(
-                text = entry.difficulty.label(),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
+            // Difficulty, with how long the game took: the stat
+            // Minesweeper players care most about.
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.difficulty.label(),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = historyDetail(entry),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             // Result
             Text(

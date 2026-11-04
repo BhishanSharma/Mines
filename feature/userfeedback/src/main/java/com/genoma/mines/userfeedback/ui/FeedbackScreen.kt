@@ -1,4 +1,5 @@
 package com.genoma.mines.userfeedback.ui
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import androidx.compose.ui.semantics.Role
 import com.genoma.mines.core.ui.components.ScreenSurface
 import android.net.Uri
@@ -120,31 +121,12 @@ fun FeedbackScreen(
                 .padding(horizontal = 16.dp)
         ) {
 
-            // Top bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    enabled = !isSubmitting
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                Text(
-                    text = "Feedback",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
+            // Back is ignored while a submission is in flight.
+            ScreenTopBar(
+                title = "Feedback",
+                onBack = { if (!isSubmitting) onBack() },
+                horizontalInset = false
+            )
 
             // Content
             Column(

@@ -1,4 +1,9 @@
 package com.genoma.mines.profile.ui
+import com.genoma.mines.achievements.ui.achievementTrackIcon
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.semantics.Role
 import com.genoma.mines.achievements.ui.color
@@ -44,7 +49,6 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -112,17 +116,16 @@ fun ProfileScreen(
 
     history: List<GameHistoryItem> = emptyList(),
 
-    level: Int = 8,
-    currentXp: Int = 320,
-    xpForNextLevel: Int = 500,
+    // Neutral defaults: a caller that forgets one of these shows "nothing
+    // yet", never made-up stats (these used to default to demo values).
+    level: Int = 1,
+    currentXp: Int = 0,
+    xpForNextLevel: Int = 100,
     keepGoingMessage: String = "Play more to unlock new achievements.",
-    bestTimeOverall: String? = "00:42",
-    bestTimeDifficultyLabel: String = "Easy",
-    bestTimes: Map<String, String> = mapOf(
-        "Easy" to "00:42",
-        "Medium" to "01:28"
-    ),
-    highlightedDifficultyLabel: String = "Easy",
+    bestTimeOverall: String? = null,
+    bestTimeDifficultyLabel: String = "",
+    bestTimes: Map<String, String> = emptyMap(),
+    highlightedDifficultyLabel: String = "",
 
     onAvatarSelected: (AvatarOption) -> Unit = {},
     onOpenSettings: () -> Unit = {},
@@ -141,15 +144,6 @@ fun ProfileScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-
-            // Faint decorative grid, built from shapes only (no image asset
-            // required) — echoes the Mines tiles behind the header, like
-            // in the reference design.
-            ProfileHeaderDecoration(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 30.dp, y = 6.dp)
-            )
 
             Column(
                 modifier = Modifier
@@ -176,7 +170,13 @@ fun ProfileScreen(
                                 .calculateBottomPadding() + ProfileSpacing.screenBottom
                         )
                 ) {
-                    Spacer(modifier = Modifier.height(ProfileSpacing.small))
+                    // Same top spacing as ScreenTopBar, clear of any camera
+                    // cutout (status bars are hidden app-wide).
+                    Spacer(
+                        modifier = Modifier
+                            .windowInsetsTopHeight(WindowInsets.displayCutout)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // ---------- Avatar + name + level ----------
                     Row(verticalAlignment = Alignment.Top) {
@@ -275,6 +275,7 @@ fun ProfileScreen(
                             }
                             BadgesRow(
                                 tracks = achievementTracks,
+                                onClick = onKeepGoingClick,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
 
@@ -327,7 +328,7 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f)
                         )
                         StatIconCard(
-                            icon = Icons.Filled.WbSunny,
+                            icon = Icons.Filled.HeartBroken,
                             iconTint = StatLossRed,
                             value = statistics.totalLosses.toString(),
                             label = "Lost",
@@ -809,58 +810,6 @@ private fun DifficultyStatRow(
 }
 
 @Composable
-private fun ProfileHeaderDecoration(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(120.dp)
-            .rotate(-12f)
-            .alpha(0.35f),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                DecorTile()
-                DecorTile(text = "1", textColor = StatInfoBlue)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                DecorTile(icon = Icons.Filled.Flag, iconTint = StatLossRed)
-                DecorTile(text = "2", textColor = StatWinGreen)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DecorTile(
-    text: String? = null,
-    textColor: Color = Color.Unspecified,
-    icon: ImageVector? = null,
-    iconTint: Color = Color.Unspecified
-) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            icon != null -> Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(16.dp)
-            )
-            text != null -> Text(
-                text = text,
-                color = textColor,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
 private fun AvatarPickerDialog(
     currentSelection: AvatarOption,
     onConfirm: (AvatarOption) -> Unit,
@@ -997,6 +946,7 @@ private fun AvatarGridItem(
 @Composable
 private fun BadgesRow(
     tracks: List<AchievementTrack>,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val earnedTracks = tracks.filter { it.achievedTier != null }
@@ -1011,15 +961,23 @@ private fun BadgesRow(
         return
     }
 
+    // Badges alone were five identical orange dots with no meaning; the
+    // count label says what they are, and the row opens Achievements.
+    val badgeCount = earnedTracks.sumOf { track -> track.achievedTier?.let { it.ordinal + 1 } ?: 0 }
+
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClickLabel = "View achievements", role = Role.Button, onClick = onClick)
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         earnedTracks.take(5).forEach { track ->
             val tier = track.achievedTier ?: return@forEach
             Box(
                 modifier = Modifier
-                    .size(26.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(colorForBadgeTier(tier)),
                 contentAlignment = Alignment.Center
@@ -1028,21 +986,30 @@ private fun BadgesRow(
                     imageVector = iconForTrack(track.id),
                     contentDescription = "${track.title}: ${tier.displayName}",
                     tint = Color.White,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(17.dp)
                 )
             }
         }
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Text(
+            text = if (badgeCount == 1) "1 badge" else "$badgeCount badges",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
-private fun iconForTrack(trackId: String): ImageVector = when (trackId) {
-    "games_played" -> Icons.Filled.SportsEsports
-    "games_won" -> Icons.Filled.EmojiEvents
-    "win_streak" -> Icons.Filled.Whatshot
-    "total_score" -> Icons.Filled.BarChart
-    "hard_wins" -> Icons.Filled.MilitaryTech
-    else -> Icons.Filled.EmojiEvents
-}
+private fun iconForTrack(trackId: String): ImageVector = achievementTrackIcon(trackId)
 
 private fun colorForBadgeTier(tier: BadgeTier): Color = tier.color()
 

@@ -1,4 +1,10 @@
 package com.genoma.mines.celebration.ui
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Card
+import com.genoma.mines.achievements.ui.achievementTrackIcon
 import com.genoma.mines.achievements.ui.color
 import com.genoma.mines.core.theme.TierGold
 import com.genoma.mines.core.ui.components.ClassicAmbientStyle
@@ -91,12 +97,15 @@ private fun contentFor(event: CelebrationEvent): CelebrationContent = when (even
         subtitle = "You've leveled up! Keep playing to climb even higher."
     )
 
+    // The badge itself (track icon in its tier color, as on Achievements
+    // and Profile) rather than a stock trophy; the tier moves into the
+    // eyebrow so the title is just the track name.
     is CelebrationEvent.AchievementUnlocked -> CelebrationContent(
-        icon = Icons.Filled.EmojiEvents,
+        icon = achievementTrackIcon(event.trackId),
         iconTint = colorForTier(event.tier),
-        eyebrow = "ACHIEVEMENT UNLOCKED",
-        title = "${event.tier.displayName} — ${event.trackTitle}",
-        subtitle = "A new badge has been added to your collection."
+        eyebrow = "${event.tier.displayName.uppercase()} BADGE UNLOCKED",
+        title = event.trackTitle,
+        subtitle = "Added to your collection. Keep going for the next tier."
     )
 }
 
@@ -123,130 +132,157 @@ fun CelebrationScreen(
             modifier = Modifier.fillMaxSize(),
             classicAmbient = ClassicAmbientStyle.CELEBRATE
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(WindowInsets.safeDrawing.asPaddingValues())
-                    .padding(horizontal = CelebrationSpacing.screenHorizontal),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                AnimatedContent(
-                    targetState = current,
-                    transitionSpec = {
-                        (
-                                fadeIn(
-                                    animationSpec = tween(220)
-                                ) +
-                                        scaleIn(
-                                            animationSpec = tween(220),
-                                            initialScale = 0.85f
-                                        )
-                                ) togetherWith (
-                                fadeOut(
-                                    animationSpec = tween(150)
-                                ) +
-                                        scaleOut(
-                                            animationSpec = tween(150),
-                                            targetScale = 0.85f
-                                        )
-                                )
-                    },
-                    label = "celebration_content"
-                ) { event ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Drawn first so it sits behind the badge and text: it used to
+                // be drawn last, on top, and covered the title and button.
+                ConfettiOverlay(
+                    visible = true,
+                    modifier = Modifier.fillMaxSize()
+                )
 
-                    val animatedContent = contentFor(event)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(WindowInsets.safeDrawing.asPaddingValues())
+                        .padding(horizontal = CelebrationSpacing.screenHorizontal),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    AnimatedContent(
+                        targetState = current,
+                        transitionSpec = {
+                            (
+                                    fadeIn(
+                                        animationSpec = tween(220)
+                                    ) +
+                                            scaleIn(
+                                                animationSpec = tween(220),
+                                                initialScale = 0.85f
+                                            )
+                                    ) togetherWith (
+                                    fadeOut(
+                                        animationSpec = tween(150)
+                                    ) +
+                                            scaleOut(
+                                                animationSpec = tween(150),
+                                                targetScale = 0.85f
+                                            )
+                                    )
+                        },
+                        label = "celebration_content"
+                    ) { event ->
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CelebrationHero(
-                            icon = animatedContent.icon,
-                            iconTint = animatedContent.iconTint
-                        )
+                        val animatedContent = contentFor(event)
 
-                        Text(
-                            text = animatedContent.eyebrow,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = animatedContent.iconTint,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(
-                                top = CelebrationSpacing.iconToTitle
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CelebrationHero(
+                                icon = animatedContent.icon,
+                                iconTint = animatedContent.iconTint
                             )
-                        )
 
-                        Text(
-                            text = animatedContent.title,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp)
-                        )
+                            Spacer(modifier = Modifier.height(CelebrationSpacing.iconToTitle))
 
+                            // Opaque card behind the text: confetti is drawn
+                            // underneath, but transparent text still let it
+                            // show through between the letters.
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    // Tier colors like gold are too light to
+                                    // read on a white card (~1.6:1), so on
+                                    // light cards pull them toward the text
+                                    // color while keeping the hue.
+                                    val onLightCard = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+                                    Text(
+                                        text = animatedContent.eyebrow,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (onLightCard) {
+                                            lerp(animatedContent.iconTint, MaterialTheme.colorScheme.onSurface, 0.45f)
+                                        } else {
+                                            animatedContent.iconTint
+                                        },
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Text(
+                                        text = animatedContent.title,
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 6.dp)
+                                    )
+
+                                    Text(
+                                        text = animatedContent.subtitle,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                top = CelebrationSpacing.titleToSubtitle
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(
+                        modifier = Modifier.height(
+                            CelebrationSpacing.subtitleToButton
+                        )
+                    )
+
+                    // Only shown when more than one milestone is queued.
+                    if (remaining > 1) {
                         Text(
-                            text = animatedContent.subtitle,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
+                            text = "${remaining - 1} more to celebrate",
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    top = CelebrationSpacing.titleToSubtitle
-                                )
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+
+                    Button(
+                        onClick = onContinue,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text(
+                            text = if (remaining > 1) {
+                                "Next"
+                            } else {
+                                "Continue"
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-
-                Spacer(
-                    modifier = Modifier.height(
-                        CelebrationSpacing.subtitleToButton
-                    )
-                )
-
-                // Only shown when more than one milestone is queued.
-                if (remaining > 1) {
-                    Text(
-                        text = "${remaining - 1} more to celebrate",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-
-                Button(
-                    onClick = onContinue,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        text = if (remaining > 1) {
-                            "Next"
-                        } else {
-                            "Continue"
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
-
-        // Keep confetti visually behind the main content.
-        //
-        // ConfettiOverlay should ideally position most particles around
-        // the screen edges rather than over the central badge.
-        ConfettiOverlay(
-            visible = true,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }
 

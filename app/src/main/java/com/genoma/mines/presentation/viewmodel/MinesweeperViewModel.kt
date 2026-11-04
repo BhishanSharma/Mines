@@ -302,7 +302,7 @@ class MinesweeperViewModel(
 
                 if (!result.success) {
                     _redeemResultMessage.value =
-                        "You need ${item.price} gems to buy ${item.name}."
+                        "You need ${item.price} diamonds to buy ${item.name}."
                     return@launch
                 }
 
@@ -312,7 +312,7 @@ class MinesweeperViewModel(
                     // The gems are already spent, so hand them back rather than
                     // charging for an item the player never received.
                     runCatching { wallet.addDiamonds(item.price) }
-                    _redeemResultMessage.value = "Couldn't complete the purchase. Your gems were not charged."
+                    _redeemResultMessage.value = "Couldn't complete the purchase. Your diamonds were not charged."
                     return@launch
                 }
             }
@@ -795,7 +795,7 @@ class MinesweeperViewModel(
                 val payment = wallet.spendDiamonds(cost)
                 if (!payment.success) {
                     _redeemResultMessage.value =
-                        "You need $cost gems to refill $missing " +
+                        "You need $cost diamonds to refill $missing " +
                                 if (missing == 1) "heart." else "hearts."
                     return@launch
                 }

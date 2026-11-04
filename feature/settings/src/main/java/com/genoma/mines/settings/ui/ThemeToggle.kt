@@ -212,20 +212,12 @@ private fun ThemeOptionRow(
                 modifier = Modifier.width(8.dp)
             )
 
+            // One selection marker for every option (System used to show a
+            // sync icon instead, so "selected" looked different per row).
             if (selected) {
-                val isSync = spec.preference == ThemePreference.SYSTEM
-
                 Icon(
-                    imageVector = if (isSync) {
-                        Icons.Filled.Sync
-                    } else {
-                        Icons.Filled.Check
-                    },
-                    contentDescription = if (isSync) {
-                        "Synced with system"
-                    } else {
-                        "Selected"
-                    },
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )

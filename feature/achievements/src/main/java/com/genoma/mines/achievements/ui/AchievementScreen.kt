@@ -1,4 +1,5 @@
 package com.genoma.mines.achievements.ui
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import com.genoma.mines.core.theme.MinesPreviews
 import com.genoma.mines.core.ui.components.ScreenSurface
 import androidx.compose.foundation.Canvas
@@ -69,12 +70,10 @@ fun AchievementScreen(
                 .padding(horizontal = 16.dp)
         ) {
 
-            Text(
-                text = "Achievements",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+            ScreenTopBar(
+                title = "Achievements",
+                horizontalInset = false,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             if (isLoading) {
@@ -106,14 +105,7 @@ fun AchievementScreen(
     }
 }
 
-private fun iconFor(trackId: String): ImageVector = when (trackId) {
-    "games_played" -> Icons.Filled.SportsEsports
-    "games_won" -> Icons.Filled.EmojiEvents
-    "win_streak" -> Icons.Filled.Whatshot
-    "total_score" -> Icons.Filled.BarChart
-    "hard_wins" -> Icons.Filled.MilitaryTech
-    else -> Icons.Filled.EmojiEvents
-}
+private fun iconFor(trackId: String): ImageVector = achievementTrackIcon(trackId)
 
 private fun colorFor(tier: BadgeTier): Color = tier.color()
 
@@ -144,18 +136,20 @@ private fun AchievementSummaryCard(tracks: List<AchievementTrack>) {
 
             Spacer(modifier = Modifier.width(14.dp))
 
+            // Title and ring count the same thing (badges), so "5 of 5" can
+            // no longer sit next to a 20% ring.
             Column {
                 Text(
-                    text = "$unlockedTracks of ${tracks.size} unlocked",
+                    text = "$unlockedTiers of $totalTiers badges earned",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = if (unlockedTracks == tracks.size) {
-                        "Every track has at least one tier — nice work"
-                    } else {
-                        "Keep playing to unlock more tiers"
+                    text = when {
+                        unlockedTiers == totalTiers -> "Every badge earned. Incredible."
+                        unlockedTracks == tracks.size -> "Started every track. Now go for Silver."
+                        else -> "$unlockedTracks of ${tracks.size} tracks started"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -309,7 +303,9 @@ private fun AchievementTrackCard(
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 color = tint,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                // M3's end-of-track dot read as a stray glyph here.
+                drawStopIndicator = {}
             )
 
             Spacer(modifier = Modifier.height(12.dp))

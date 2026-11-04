@@ -1,6 +1,9 @@
 package com.genoma.mines.game.ui
+import com.genoma.mines.core.ui.components.BoardMine
+import com.genoma.mines.core.ui.components.BoardFlag
 import com.genoma.mines.core.theme.MinesPreviews
 import com.genoma.mines.core.ui.components.ScreenSurface
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -8,73 +11,106 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Dangerous
-import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.genoma.mines.core.theme.HeartRed
 import com.genoma.mines.core.theme.MinesTheme
 
 private object HowToPlaySpacing {
     val screenHorizontal = 16.dp
-    val screenTop = 16.dp
-    val screenBottom = 16.dp
-    val barToContent = 20.dp
+    val screenBottom = 24.dp
+    val sectionGap = 24.dp
     val rowGap = 10.dp
 }
 
 private data class HowToPlayStep(
-    val icon: ImageVector,
     val title: String,
-    val description: String
+    val description: String,
+    // Either a stock icon, or the board's own art (flag, mine) so the
+    // guide shows exactly what the player will see on the board.
+    val icon: ImageVector? = null,
+    val art: (@Composable () -> Unit)? = null
 )
 
-private val steps = listOf(
+private val rules = listOf(
     HowToPlayStep(
         icon = Icons.Filled.TouchApp,
-        title = "Tap to reveal",
-        description = "Tap a hidden cell to reveal what's underneath. The first tap is always safe."
+        title = "Dig to reveal",
+        description = "Tap a hidden cell to reveal what's underneath. Your first tap is always safe."
     ),
     HowToPlayStep(
         icon = Icons.Filled.Numbers,
         title = "Read the numbers",
-        description = "A revealed number tells you how many mines are hiding in the 8 cells touching it."
+        description = "A number tells you how many mines are in the 8 cells touching it."
     ),
     HowToPlayStep(
-        icon = Icons.Filled.Flag,
-        title = "Flag suspected mines",
-        description = "Long-press a cell to mark it with a flag. Flagged cells can't be tapped by accident."
+        art = { BoardFlag(modifier = Modifier.size(26.dp)) },
+        title = "Flag the mines",
+        description = "Mark cells you think hide a mine. Flagged cells can't be dug by accident."
     ),
     HowToPlayStep(
-        icon = Icons.Filled.Dangerous,
-        title = "Avoid the mines",
-        description = "Revealing a mine ends the game. Clear every safe cell to win."
+        art = { BoardMine(modifier = Modifier.size(28.dp)) },
+        title = "Clear the board",
+        description = "Dig up a mine and the game ends. Reveal every safe cell to win."
+    )
+)
+
+private val controls = listOf(
+    HowToPlayStep(
+        icon = Icons.Filled.SwapHoriz,
+        title = "Dig / Flag switch",
+        description = "Use the switch above the board to choose what a tap does: dig a cell, or place a flag."
+    ),
+    HowToPlayStep(
+        art = { BoardFlag(modifier = Modifier.size(26.dp)) },
+        title = "Long-press to flag",
+        description = "Long-press any hidden cell to flag or unflag it, whichever mode you're in."
+    ),
+    HowToPlayStep(
+        icon = Icons.Filled.DoneAll,
+        title = "Clear around a number",
+        description = "Once a number has that many flags next to it, tap the number to dig all its other neighbors at once."
+    )
+)
+
+private val heartsAndScoring = listOf(
+    HowToPlayStep(
+        icon = Icons.Filled.Favorite,
+        title = "Each game costs a heart",
+        description = "Win and you get the heart back. You hold up to 5, and one refills every hour."
+    ),
+    HowToPlayStep(
+        icon = Icons.Filled.Timer,
+        title = "Faster wins score more",
+        description = "Harder boards and quicker clears earn more points. Losing early costs points; getting past halfway earns a few."
     )
 )
 
@@ -85,45 +121,54 @@ fun HowToPlayScreen(
     ScreenSurface(
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = HowToPlaySpacing.screenHorizontal)
-                .padding(
-                    bottom = HowToPlaySpacing.screenBottom
-                )
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "How to play",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            Spacer(modifier = Modifier.height(HowToPlaySpacing.barToContent))
-
-            Text(
-                text = "RULES",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ScreenTopBar(
+                title = "How to play",
+                onBack = onBack
             )
 
-            Spacer(modifier = Modifier.height(HowToPlaySpacing.rowGap))
-
             Column(
-                verticalArrangement = Arrangement.spacedBy(HowToPlaySpacing.rowGap)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = HowToPlaySpacing.screenHorizontal)
+                    .padding(top = 8.dp, bottom = HowToPlaySpacing.screenBottom)
             ) {
-                steps.forEach { step ->
-                    HowToPlayRow(step = step)
-                }
+                HowToPlaySection(title = "RULES", steps = rules)
+
+                Spacer(modifier = Modifier.height(HowToPlaySpacing.sectionGap))
+
+                HowToPlaySection(title = "CONTROLS", steps = controls)
+
+                Spacer(modifier = Modifier.height(HowToPlaySpacing.sectionGap))
+
+                HowToPlaySection(title = "HEARTS & SCORING", steps = heartsAndScoring)
             }
+        }
+    }
+}
+
+@Composable
+private fun HowToPlaySection(
+    title: String,
+    steps: List<HowToPlayStep>
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { heading() }
+    )
+
+    Spacer(modifier = Modifier.height(HowToPlaySpacing.rowGap))
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(HowToPlaySpacing.rowGap)
+    ) {
+        steps.forEach { step ->
+            HowToPlayRow(step = step)
         }
     }
 }
@@ -154,12 +199,19 @@ private fun HowToPlayRow(
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = step.icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(20.dp)
-                )
+                when {
+                    step.art != null -> step.art.invoke()
+                    step.icon != null -> Icon(
+                        imageVector = step.icon,
+                        contentDescription = null,
+                        tint = if (step.icon == Icons.Filled.Favorite) {
+                            HeartRed
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        },
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))

@@ -1,4 +1,12 @@
 package com.genoma.mines.game.ui
+import com.genoma.mines.core.ui.components.MineIcon
+import com.genoma.mines.core.ui.components.BoardWrongFlag
+import com.genoma.mines.core.ui.components.BoardExplodedMine
+import com.genoma.mines.core.ui.components.BoardMine
+import com.genoma.mines.core.ui.components.BoardFlag
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Button
 import com.genoma.mines.core.theme.MinesCoral
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.semantics
@@ -179,6 +187,13 @@ fun GameScreen(
             )
         }
 
+        // Behind the board and result banner, not over them: it frames the
+        // win without covering the text the player needs to read.
+        ConfettiOverlay(
+            visible = status == GameStatus.WON,
+            modifier = Modifier.fillMaxSize()
+        )
+
         Surface(
             modifier = Modifier.fillMaxSize(),
             // Both themes paint their own scene behind the board.
@@ -217,15 +232,20 @@ fun GameScreen(
                     modifier = Modifier.height(GameSpacing.barToBoard)
                 )
 
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    // The board stays visible in every non-READY state,
-                    // including WON/LOST, so a loss reveals where every mine
-                    // was instead of hiding the board behind the result card.
+                    // The board is square: cap its width at the height
+                    // available, so short phones (or the result banner
+                    // below taking space) shrink it instead of clipping it.
+                    val boardSide = minOf(maxWidth, maxHeight)
+
+                    // The board stays fully visible in every state,
+                    // including WON/LOST: the result banner sits below it
+                    // rather than on top, so a loss shows every mine.
                     MineBoard(
                         columns = difficulty.columns,
                         cells = cells,
@@ -247,91 +267,70 @@ fun GameScreen(
                         onResume = onPause,
                         boardTheme = boardTheme,
                         frostCellSkinEquipped = frostCellSkinEquipped,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.width(boardSide)
                     )
-
-                    // Win/loss is shown as a slim banner pinned to the bottom
-                    // of the board rather than a big centered card, so the
-                    // whole grid — every revealed mine included — stays
-                    // visible instead of being blacked out underneath it.
-                    when (status) {
-
-                        GameStatus.WON -> {
-                            ResultBanner(
-                                title = if (isNewBestTime) {
-                                    "New best time!"
-                                } else {
-                                    "You won!"
-                                },
-                                message = if (isNewBestTime) {
-                                    "Great job! Your fastest clear yet at this difficulty."
-                                } else {
-                                    "Great job! You cleared the board."
-                                },
-                                isWin = true,
-                                isNewBestTime = isNewBestTime,
-                                elapsedSeconds = elapsedSeconds,
-                                previousBestSeconds = previousBestSeconds,
-                                onReset = onReset,
-                                onHome = onBack,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                            )
-                        }
-
-                        GameStatus.LOST -> {
-                            // Flags left on safe cells, now drawn crossed out
-                            // on the board.
-                            val wrongFlags = cells.count {
-                                it.isFlagged && !it.isMine && !it.isRevealed
-                            }
-
-                            ResultBanner(
-                                title = "Game over",
-                                message = buildString {
-                                    append("You hit a mine at ")
-                                    append(formatElapsedTime(elapsedSeconds))
-                                    append('.')
-                                    if (wrongFlags > 0) {
-                                        append(
-                                            if (wrongFlags == 1) " 1 flag was wrong."
-                                            else " $wrongFlags flags were wrong."
-                                        )
-                                    }
-                                },
-                                isWin = false,
-                                onReset = onReset,
-                                onHome = onBack,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                            )
-                        }
-
-                        else -> {
-                            // PLAYING/PAUSED: board only, no overlay.
-                        }
-                    }
                 }
 
                 Spacer(
                     modifier = Modifier.height(14.dp)
                 )
 
-                GameBottomActions(
-                    status = status,
-                    onPauseToggle = onPause,
-                    onRestart = requestRestart,
-                    onHowToPlay = onHowToPlay
-                )
+                // Once the game is over, the result banner takes the place
+                // of the bottom actions (Pause/Restart are meaningless then),
+                // so it never covers any of the board.
+                when (status) {
+
+                    GameStatus.WON -> {
+                        ResultBanner(
+                            title = if (isNewBestTime) "New best time!" else "You won!",
+                            message = "Cleared in ${formatElapsedTime(elapsedSeconds)}",
+                            isWin = true,
+                            isNewBestTime = isNewBestTime,
+                            elapsedSeconds = elapsedSeconds,
+                            previousBestSeconds = previousBestSeconds,
+                            onReset = onReset,
+                            onHome = onBack,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    GameStatus.LOST -> {
+                        // Flags left on safe cells, now drawn crossed out
+                        // on the board.
+                        val wrongFlags = cells.count {
+                            it.isFlagged && !it.isMine && !it.isRevealed
+                        }
+
+                        ResultBanner(
+                            title = "Game over",
+                            message = buildString {
+                                append("Hit a mine at ")
+                                append(formatElapsedTime(elapsedSeconds))
+                                if (wrongFlags > 0) {
+                                    append(
+                                        if (wrongFlags == 1) " · 1 wrong flag"
+                                        else " · $wrongFlags wrong flags"
+                                    )
+                                }
+                            },
+                            isWin = false,
+                            onReset = onReset,
+                            onHome = onBack,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    else -> {
+                        GameBottomActions(
+                            status = status,
+                            onPauseToggle = onPause,
+                            onRestart = requestRestart,
+                            onHowToPlay = onHowToPlay
+                        )
+                    }
+                }
             }
         }
-
-        ConfettiOverlay(
-            visible = status == GameStatus.WON,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }
 
@@ -584,66 +583,66 @@ private fun ResultBanner(
         else -> MaterialTheme.colorScheme.onErrorContainer
     }
 
+    // Stacked, not one row: a single row squeezed the text into ~110dp and
+    // wrapped every line. Summary on top, actions full-width below.
     Card(
-        modifier = modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(badgeColor),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isWin) {
-                    Icon(
-                        imageVector = Icons.Filled.EmojiEvents,
-                        contentDescription = null,
-                        tint = badgeIconColor,
-                        modifier = Modifier.size(20.dp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(badgeColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isWin) {
+                        Icon(
+                            imageVector = Icons.Filled.EmojiEvents,
+                            contentDescription = null,
+                            tint = badgeIconColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        MineIcon(
+                            color = badgeIconColor,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
                     )
-                } else {
-                    MineIcon(
-                        color = badgeIconColor,
-                        modifier = Modifier.size(18.dp)
+
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // Only shown on a win where there's an actual prior best to
-                // compare against — omitted for a loss, and omitted for a
-                // player's very first win at a difficulty (nothing to
-                // compare yet).
+                // Only shown on a win with an actual prior best to compare
+                // against (not on a loss, nor on a first win at a difficulty).
                 if (isWin && previousBestSeconds != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     TimeComparisonChip(
                         isNewBestTime = isNewBestTime,
@@ -653,36 +652,46 @@ private fun ResultBanner(
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            IconButton(onClick = onHome) {
-                Icon(
-                    imageVector = Icons.Filled.Home,
-                    contentDescription = "Back to home",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer
-                    )
-                    .clickable(role = Role.Button, onClick = onReset)
-                    .padding(
-                        horizontal = 16.dp,
-                        vertical = 10.dp
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Every new game spends a heart, so say so on the button.
-                Text(
-                    text = "Play again · 1 ♥",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                OutlinedButton(
+                    onClick = onHome,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Home,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Home")
+                }
+
+                // Every new game spends a heart, so the button says so.
+                Button(
+                    onClick = onReset,
+                    modifier = Modifier
+                        .weight(1.4f)
+                        .semantics { contentDescription = "Play again, costs 1 heart" }
+                ) {
+                    Text(text = "Play again")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "−1",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 2.dp)
+                            .size(14.dp)
+                    )
+                }
             }
         }
     }
@@ -739,18 +748,15 @@ private fun TimeComparisonChip(
                 BestTimeGold.copy(alpha = glowAlpha),
                 Color.White,
                 Icons.Filled.EmojiEvents,
-                if (diffSeconds > 0) {
-                    "${diffSeconds}s faster than your best"
-                } else {
-                    "Matched your best time"
-                }
+                // Short: the chip sits beside the title in the banner.
+                if (diffSeconds > 0) "${diffSeconds}s faster" else "Tied best"
             )
         } else {
             Quadruple(
                 MaterialTheme.colorScheme.secondaryContainer.copy(alpha = glowAlpha),
                 MaterialTheme.colorScheme.onSecondaryContainer,
                 Icons.Filled.Timer,
-                "+${diffSeconds}s off your best (${formatElapsedTime(previousBestSeconds.toInt())})"
+                "Best ${formatElapsedTime(previousBestSeconds.toInt())}"
             )
         }
 

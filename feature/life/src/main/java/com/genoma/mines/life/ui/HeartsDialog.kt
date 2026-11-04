@@ -29,7 +29,7 @@ import com.genoma.mines.life.domain.LifeRules
 import com.genoma.mines.life.domain.LifeStatus
 
 /**
- * Shows hearts, the regen countdown, and the gem refill offer. Opened by
+ * Shows hearts, the regen countdown, and the diamond refill offer. Opened by
  * tapping the home-screen hearts, or automatically when a game can't start.
  */
 @Composable
@@ -39,6 +39,9 @@ fun HeartsDialog(
     isRefilling: Boolean,
     onRefill: () -> Unit,
     onDismiss: () -> Unit,
+    // Where to send a player who can't afford a refill (the Store, which
+    // has the coin-to-diamond redeem). Null hides the option.
+    onGetDiamonds: (() -> Unit)? = null,
     refillCost: Int = LifeRules.refillCost(status.hearts)
 ) {
     val missingHearts = (status.maxHearts - status.hearts).coerceAtLeast(0)
@@ -89,8 +92,9 @@ fun HeartsDialog(
 
                 if (!status.isFull) {
                     Text(
-                        text = "You have $diamondBalance gems. " +
-                            "${LifeRules.DIAMONDS_PER_HEART} gems per heart.",
+                        // "Diamonds" everywhere: this used to say "gems".
+                        text = "You have $diamondBalance diamonds. " +
+                            "${LifeRules.DIAMONDS_PER_HEART} diamonds per heart.",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (canAfford) {
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -102,7 +106,19 @@ fun HeartsDialog(
             }
         },
         confirmButton = {
-            if (!status.isFull) {
+            if (!status.isFull && !canAfford && onGetDiamonds != null) {
+                // Can't afford it: offer the way to get diamonds instead of a
+                // dead, disabled refill button.
+                Button(onClick = onGetDiamonds) {
+                    Icon(
+                        imageVector = Icons.Filled.Diamond,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Get diamonds")
+                }
+            } else if (!status.isFull) {
                 Button(
                     onClick = onRefill,
                     enabled = canAfford && !isRefilling,
@@ -125,7 +141,7 @@ fun HeartsDialog(
                                 if (missingHearts == 1) "Refill 1 heart for $refillCost"
                                 else "Refill $missingHearts hearts for $refillCost"
                             } else {
-                                "Need $refillCost gems"
+                                "Need $refillCost diamonds"
                             }
                         )
                     }

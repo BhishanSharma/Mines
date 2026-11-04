@@ -1061,13 +1061,22 @@ fun MinesweeperApp(
                 }
 
                 is Screen.MoreGames -> {
-                    MoreGamesScreen()
+                    MoreGamesScreen(
+                        onPlayClick = {
+                            selectedBottomNavItem = BottomNavItem.HOME
+                            screen = Screen.Home
+                        }
+                    )
                 }
 
                 is Screen.Tournament -> {
                     TournamentScreen(
                         onBackClick = {
                             screen = Screen.Home
+                        },
+                        onPracticeClick = {
+                            screen = Screen.Home
+                            viewModel.startGame(selectedDifficulty)
                         }
                     )
                 }
@@ -1086,7 +1095,11 @@ fun MinesweeperApp(
                         history = filteredHistory,
                         title = historyScreen.difficulty?.let { "${it.displayName()} history" }
                             ?: "Game history",
-                        onBack = { screen = Screen.Profile }
+                        onBack = { screen = Screen.Profile },
+                        onPlayClick = {
+                            selectedBottomNavItem = BottomNavItem.HOME
+                            screen = Screen.Home
+                        }
                     )
                 }
             }
@@ -1099,7 +1112,16 @@ fun MinesweeperApp(
                     diamondBalance = diamonds,
                     isRefilling = isRefillingHearts,
                     onRefill = { viewModel.refillHearts() },
-                    onDismiss = { viewModel.dismissHeartsDialog() }
+                    onDismiss = { viewModel.dismissHeartsDialog() },
+                    // Short on diamonds: go to the Store (coin redeem lives
+                    // there). From a finished game, close it first so Home
+                    // doesn't bounce back into it later.
+                    onGetDiamonds = {
+                        viewModel.dismissHeartsDialog()
+                        if (screen is Screen.Game) viewModel.goBackToHome()
+                        selectedBottomNavItem = BottomNavItem.STORE
+                        screen = Screen.Store
+                    }
                 )
             }
         }

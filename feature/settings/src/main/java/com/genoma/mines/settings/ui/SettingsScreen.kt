@@ -1,4 +1,8 @@
 package com.genoma.mines.settings.ui
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
+import com.genoma.mines.core.ui.components.ScreenTopBar
 import com.genoma.mines.core.theme.MinesPreviews
 import com.genoma.mines.core.ui.components.ScreenSurface
 import android.content.Context
@@ -105,29 +109,11 @@ fun SettingsScreen(
                 )
         ) {
 
-            // Top bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
+            ScreenTopBar(
+                title = "Settings",
+                onBack = onBack,
+                horizontalInset = false
+            )
 
             Spacer(
                 modifier = Modifier.height(
@@ -212,9 +198,9 @@ fun SettingsScreen(
                 )
             )
 
-            // App Appearance
+            // Theme (pick one)
             Text(
-                text = "PREFERENCES",
+                text = "THEME",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -232,11 +218,37 @@ fun SettingsScreen(
                 )
             ) {
 
-                // Theme
                 ThemeToggle(
                     selected = themePreference,
                     onSelect = onThemePreferenceChange
                 )
+            }
+
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.barToContent
+                )
+            )
+
+            // Sound & haptics (on/off switches)
+            Text(
+                text = "SOUND & HAPTICS",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(
+                modifier = Modifier.height(
+                    SettingsSpacing.rowGap
+                )
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(
+                    SettingsSpacing.rowGap
+                )
+            ) {
 
                 // Sound
                 SettingToggleRow(
@@ -477,35 +489,24 @@ private fun SettingToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    // Neutral card in both states: the switch shows on/off. (It used to
+    // take the teal "selected" styling when on, so a toggle looked like a
+    // chosen theme option.) The whole row toggles.
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = onCheckedChange
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (checked) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (checked) {
-                2.dp
-            } else {
-                0.dp
-            }
-        ),
-        border = BorderStroke(
-            width = if (checked) {
-                1.5.dp
-            } else {
-                1.dp
-            },
-            color = if (checked) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            }
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -522,24 +523,13 @@ private fun SettingToggleRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (checked) {
-                            MaterialTheme.colorScheme.primary
-                                .copy(alpha = 0.15f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    ),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (checked) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -556,11 +546,7 @@ private fun SettingToggleRow(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (checked) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(
@@ -570,12 +556,7 @@ private fun SettingToggleRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (checked) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                            .copy(alpha = 0.8f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -584,9 +565,10 @@ private fun SettingToggleRow(
             )
 
             // Toggle
+            // The row handles the toggle; the switch is the visual.
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor =
                         MaterialTheme.colorScheme.onPrimary,
@@ -682,34 +664,19 @@ private fun SettingInfoRow(
     title: String,
     value: String
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant
-        )
+    // Plain row, no card: this is information, not an action, and the card
+    // styling made it look tappable.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = 16.dp,
-                    vertical = 14.dp
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
 
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant
-                    ),
+                modifier = Modifier.size(40.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

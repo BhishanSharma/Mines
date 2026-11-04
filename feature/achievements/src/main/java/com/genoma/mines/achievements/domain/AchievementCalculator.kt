@@ -21,14 +21,15 @@ data class AchievementTrack(
         get() = tiers.lastOrNull { currentValue >= it.threshold }?.tier
     val nextTier: AchievementTier?
         get() = tiers.firstOrNull { currentValue < it.threshold }
+    /**
+     * Progress toward the next tier, measured from zero, so it matches a
+     * "current / next threshold" label (5 / 20 = 25%). 1 once every tier
+     * is earned.
+     */
     val progress: Float
         get() {
             val next = nextTier ?: return 1f
-            val previousThreshold = tiers
-                .lastOrNull { it.threshold <= currentValue }
-                ?.threshold ?: 0
-            val span = (next.threshold - previousThreshold).coerceAtLeast(1)
-            return ((currentValue - previousThreshold).toFloat() / span).coerceIn(0f, 1f)
+            return (currentValue.toFloat() / next.threshold.coerceAtLeast(1)).coerceIn(0f, 1f)
         }
 }
 

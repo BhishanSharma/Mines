@@ -1,4 +1,4 @@
-package com.genoma.mines.game.ui
+package com.genoma.mines.core.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
