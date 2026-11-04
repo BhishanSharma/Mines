@@ -33,7 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
@@ -300,7 +300,7 @@ fun SettingsScreen(
             ) {
 
                 SettingActionRow(
-                    icon= Icons.Filled.Help,
+                    icon = Icons.AutoMirrored.Filled.Help,
                     title = "How to Play",
                     subtitle = "Learn how to play Minesweeper",
                     onClick = onHowToPlayClick

@@ -45,7 +45,8 @@ fun ScreenSurface(
 
             isClassicAmbient -> ClassicAmbientBackdrop(
                 modifier = Modifier.fillMaxSize(),
-                style = classicAmbient ?: ClassicAmbientStyle.SHOWCASE
+                // Smart-cast: isClassicAmbient already checked it's non-null.
+                style = classicAmbient
             )
         }
 
