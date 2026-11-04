@@ -75,6 +75,7 @@ import coil.compose.AsyncImage
 import com.genoma.mines.home.R
 import com.genoma.mines.game.domain.Difficulty
 import com.genoma.mines.core.theme.MinesTheme
+import com.genoma.mines.core.theme.LocalMinesThemeVariant
 import com.genoma.mines.core.theme.MinesThemeVariant
 import com.genoma.mines.life.domain.LifeStatus
 import com.genoma.mines.life.ui.HeartsIndicator
@@ -627,9 +628,17 @@ private fun MinesHeroIllustration(
         contentAlignment = Alignment.Center
     ) {
 
+        // Deep Ocean gets a blue-recolored copy of the same art (only the
+        // mint blob and tiles shift; flag, bomb and numbers are unchanged).
+        val banner = if (LocalMinesThemeVariant.current == MinesThemeVariant.DEEP_OCEAN) {
+            R.drawable.home_banner_ocean
+        } else {
+            R.drawable.home_banner
+        }
+
         Image(
             painter = painterResource(
-                id = R.drawable.home_banner
+                id = banner
             ),
             contentDescription = "Mines logo",
             contentScale = ContentScale.Fit,

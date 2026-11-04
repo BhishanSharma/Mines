@@ -35,9 +35,12 @@ fun ScreenSurface(
 
     Box(modifier = modifier) {
         when {
+            // Screens that ask for an ambient style (Home, Celebration) get
+            // the lively ocean (rays, fish, bubbles); info screens stay calm.
             isOcean -> AmbientOceanBackdrop(
                 themeVariant = themeVariant,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                lively = classicAmbient != null
             )
 
             isClassicAmbient -> ClassicAmbientBackdrop(
