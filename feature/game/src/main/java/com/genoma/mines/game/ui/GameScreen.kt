@@ -48,6 +48,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.selection.selectable
@@ -203,6 +208,9 @@ fun GameScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // The app Scaffold no longer pads for insets, so keep
+                    // the top bar clear of the camera cutout here.
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top))
                     .padding(
                         horizontal = GameSpacing.screenHorizontal
                     )

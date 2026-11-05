@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -503,6 +504,10 @@ fun MinesweeperApp(
     }
 
     Scaffold(
+        // No insets here: each screen handles the camera cutout itself
+        // (ScreenTopBar, Home, Login...). Padding here as well doubled the
+        // top gap and left a plain strip above Deep Ocean's backdrop.
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
 
 
