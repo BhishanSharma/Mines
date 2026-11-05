@@ -49,6 +49,8 @@ import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.core.theme.MinesThemeVariant
 import com.genoma.mines.core.ui.R as CoreUiR
 import com.genoma.mines.core.ui.components.BoardFlag
+import com.genoma.mines.core.ui.components.ClassicAmbientStyle
+import com.genoma.mines.core.ui.components.ScreenSurface
 
 /*
  * One message, one brand: the same hero art and tagline as Home. (This
@@ -60,105 +62,113 @@ fun LoginScreen(
     onGoogleSignInClick: () -> Unit,
     onGuestClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+    val isOcean = LocalMinesThemeVariant.current == MinesThemeVariant.DEEP_OCEAN
+
+    // Same backdrop as Home: Classic Teal's floating tiles or the lively
+    // Deep Ocean scene, so the first screen matches the equipped theme.
+    ScreenSurface(
+        modifier = Modifier.fillMaxSize(),
+        classicAmbient = ClassicAmbientStyle.SHOWCASE
     ) {
-        // Decorative mine-tile grids tucked into two corners, echoing the
-        // board without competing with the actual content.
-        CornerMineGrid(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = (-28).dp, y = (-14).dp)
-        )
-        CornerMineGrid(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 28.dp, y = 14.dp),
-            flagAt = 0 to 2,
-            numberAt = 1 to 0
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(WindowInsets.safeDrawing.asPaddingValues())
-                .padding(horizontal = 24.dp, vertical = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-
-            // Same hero art as Home, so the first screen already looks like
-            // the game the player is about to play.
-            val banner = if (LocalMinesThemeVariant.current == MinesThemeVariant.DEEP_OCEAN) {
-                CoreUiR.drawable.home_banner_ocean
-            } else {
-                CoreUiR.drawable.home_banner
-            }
-            Image(
-                painter = painterResource(id = banner),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .widthIn(max = 300.dp)
-                    .aspectRatio(1.1f)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Mines",
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Think. Uncover. Win.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            GoogleSignInButton(
-                onClick = onGoogleSignInClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 360.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Sign in to save your progress across devices.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            TextButton(onClick = onGuestClick) {
-                Text(
-                    text = "Continue as guest",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Decorative mine-tile grids tucked into two corners, echoing the
+            // board without competing with the actual content. Deep Ocean's
+            // scene already fills the edges, so they'd only clutter it.
+            if (!isOcean) {
+                CornerMineGrid(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = (-28).dp, y = (-14).dp)
+                )
+                CornerMineGrid(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 28.dp, y = 14.dp),
+                    flagAt = 0 to 2,
+                    numberAt = 1 to 0
                 )
             }
 
-            // Say what guests give up, up front.
-            Text(
-                text = "Guest progress is saved on this device only.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(WindowInsets.safeDrawing.asPaddingValues())
+                    .padding(horizontal = 24.dp, vertical = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+
+                // Same hero art as Home, so the first screen already looks like
+                // the game the player is about to play.
+                val banner = if (isOcean) {
+                    CoreUiR.drawable.home_banner_ocean
+                } else {
+                    CoreUiR.drawable.home_banner
+                }
+                Image(
+                    painter = painterResource(id = banner),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .widthIn(max = 300.dp)
+                        .aspectRatio(1.1f)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Mines",
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Think. Uncover. Win.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                GoogleSignInButton(
+                    onClick = onGoogleSignInClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Sign in to save your progress across devices.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                TextButton(onClick = onGuestClick) {
+                    Text(
+                        text = "Continue as guest",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // Say what guests give up, up front.
+                Text(
+                    text = "Guest progress is saved on this device only.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -249,6 +259,17 @@ private fun CornerMineGrid(
 @Composable
 private fun LoginScreenPreview() {
     MinesTheme {
+        LoginScreen(
+            onGoogleSignInClick = {},
+            onGuestClick = {}
+        )
+    }
+}
+
+@MinesPreviews
+@Composable
+private fun LoginScreenOceanPreview() {
+    MinesTheme(themeVariant = MinesThemeVariant.DEEP_OCEAN) {
         LoginScreen(
             onGoogleSignInClick = {},
             onGuestClick = {}
