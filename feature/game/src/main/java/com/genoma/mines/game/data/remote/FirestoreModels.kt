@@ -1,8 +1,12 @@
 package com.genoma.mines.game.data.remote
 import com.google.firebase.firestore.PropertyName
 import com.google.firebase.firestore.ServerTimestamp
+import androidx.annotation.Keep
 import java.util.Date
 
+// @Keep: Firestore's toObject() fills these classes by matching field
+// names via reflection, so R8 must not rename or strip them in release.
+@Keep
 data class UserStats(
     val name: String? = null,
     val email: String? = null,
@@ -58,6 +62,7 @@ private fun winRatioOf(wins: Int, totalGames: Int): Int {
     return if (totalGames == 0) 0 else (wins * 100) / totalGames
 }
 
+@Keep
 data class GameHistoryEntry(
     val difficulty: String = "",
     val score: Int = 0,
