@@ -11,9 +11,11 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -30,6 +32,7 @@ include(":app")
 include(":core:theme")
 include(":core:ui")
 include(":core:session")
+include(":core:remoteconfig")
 
 // --- Feature modules: one Gradle module per product area / team ---
 include(":feature:auth")

@@ -41,6 +41,7 @@ dependencies {
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))
     implementation(project(":core:session"))
+    implementation(project(":core:remoteconfig"))
 
     // --- Features (the app module only wires these together) ---
     implementation(project(":feature:auth"))
