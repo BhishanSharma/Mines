@@ -1,4 +1,3 @@
-
 package com.genoma.mines.presentation.viewmodel
 
 import android.app.Application
@@ -134,6 +133,13 @@ class MinesweeperViewModel(
 
     private val _gameState = MutableStateFlow<GameState?>(null)
     val gameState: StateFlow<GameState?> = _gameState.asStateFlow()
+
+    private val _winAdBonusClaimed = MutableStateFlow(false)
+    val winAdBonusClaimed: StateFlow<Boolean> = _winAdBonusClaimed.asStateFlow()
+
+    private val _winAdBonusClaimInProgress = MutableStateFlow(false)
+    val winAdBonusClaimInProgress: StateFlow<Boolean> =
+        _winAdBonusClaimInProgress.asStateFlow()
 
     private val _soundEnabled = MutableStateFlow(true)
     val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
@@ -368,6 +374,8 @@ class MinesweeperViewModel(
 
         game = MinesweeperGame(difficulty)
         gameResultSaved = false
+        _winAdBonusClaimed.value = false
+        _winAdBonusClaimInProgress.value = false
         _lastScore.value = null
         _isNewBestTime.value = false
         _previousBestSeconds.value = null
@@ -849,6 +857,37 @@ class MinesweeperViewModel(
                     "Couldn't refill hearts. Check your connection and try again."
             } finally {
                 _isRefillingHearts.value = false
+            }
+        }
+    }
+
+    /**
+     * Grants the optional post-win ad bonus only after the ad SDK reports
+     * that the rewarded action was earned.
+     *
+     * This client-side guard prevents accidental repeated taps in one game.
+     * Production wallet integrity must also be enforced server-side.
+     */
+    fun claimWinAdBonus() {
+        val state = _gameState.value ?: return
+        val amount = remoteConfig.rewardedAdBonus
+
+        if (state.status != GameStatus.WON) return
+        if (!remoteConfig.isWinAdBonusAvailable || amount <= 0) return
+        if (_winAdBonusClaimed.value || _winAdBonusClaimInProgress.value) return
+
+        _winAdBonusClaimInProgress.value = true
+
+        viewModelScope.launch {
+            try {
+                wallet.addCoins(amount)
+                _winAdBonusClaimed.value = true
+                _redeemResultMessage.value = "+$amount bonus Coins added!"
+            } catch (_: Exception) {
+                _redeemResultMessage.value =
+                    "Couldn't add the bonus Coins. Please try again."
+            } finally {
+                _winAdBonusClaimInProgress.value = false
             }
         }
     }

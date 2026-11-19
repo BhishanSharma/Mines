@@ -1,4 +1,3 @@
-
 package com.genoma.mines.core.remoteconfig
 
 import android.util.Log
@@ -115,8 +114,11 @@ class RemoteConfigManager(
             conversionLimitDaily = remoteConfig
                 .getLong(KEY_CONVERSION_LIMIT_DAILY)
                 .toSafeInt(),
+
             rewardedAdBonus = remoteConfig.getLong(KEY_REWARDED_AD_BONUS)
                 .toSafeInt(),
+            rewardedAdBonusEnabled = remoteConfig
+                .getBoolean(KEY_REWARDED_AD_BONUS_ENABLED),
 
             luckAdEnabled = remoteConfig.getBoolean(KEY_LUCK_AD_ENABLED),
             luckAdCoinReward = remoteConfig.getLong(KEY_LUCK_AD_COIN_REWARD)
@@ -164,7 +166,10 @@ class RemoteConfigManager(
         private const val KEY_LOSS_COIN_FEE = "loss_coin_fee"
         private const val KEY_MINIMUM_START_COINS = "minimum_start_coins"
         private const val KEY_CONVERSION_LIMIT_DAILY = "conversion_limit_daily"
+
         private const val KEY_REWARDED_AD_BONUS = "rewarded_ad_bonus"
+        private const val KEY_REWARDED_AD_BONUS_ENABLED =
+            "rewarded_ad_bonus_enabled"
 
         private const val KEY_LUCK_AD_ENABLED = "luck_ad_enabled"
         private const val KEY_LUCK_AD_COIN_REWARD = "luck_ad_coin_reward"
@@ -196,7 +201,9 @@ class RemoteConfigManager(
             KEY_LOSS_COIN_FEE to 20L,
             KEY_MINIMUM_START_COINS to 20L,
             KEY_CONVERSION_LIMIT_DAILY to 3L,
+
             KEY_REWARDED_AD_BONUS to 50L,
+            KEY_REWARDED_AD_BONUS_ENABLED to false,
 
             KEY_LUCK_AD_ENABLED to false,
             KEY_LUCK_AD_COIN_REWARD to 0L,

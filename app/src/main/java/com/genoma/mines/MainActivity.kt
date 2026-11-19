@@ -1,4 +1,5 @@
 package com.genoma.mines
+import com.genoma.mines.ads.RewardedAdState
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -193,6 +194,7 @@ fun MinesweeperApp(
 ) {
     val context = LocalContext.current
     val activity = context as ComponentActivity
+    val app = context.applicationContext as MinesApplication
     val scope = rememberCoroutineScope()
 
     val authManager = remember {
@@ -282,6 +284,11 @@ fun MinesweeperApp(
     val soundEnabled by viewModel.soundEnabled.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
     val gameState by viewModel.gameState.collectAsState()
+    val rewardedAdState by app.rewardedAdsManager.state.collectAsState()
+    val remoteConfig by app.remoteConfigManager.snapshot.collectAsState()
+    val winAdBonusClaimed by viewModel.winAdBonusClaimed.collectAsState()
+    val winAdBonusClaimInProgress by
+    viewModel.winAdBonusClaimInProgress.collectAsState()
     val isNewBestTime by viewModel.isNewBestTime.collectAsState()
     val previousBestSeconds by viewModel.previousBestSeconds.collectAsState()
     val celebrationEvents by viewModel.celebrationEvents.collectAsState()
@@ -954,6 +961,36 @@ fun MinesweeperApp(
                             previousBestSeconds = previousBestSeconds,
                             boardTheme = equippedBoardTheme?.style,
                             frostCellSkinEquipped = equippedCellSkin?.id == "cellskin_frost",
+                            showWinAdBonus = remoteConfig.isWinAdBonusAvailable,
+                            winAdBonusAmount = remoteConfig.rewardedAdBonus,
+                            winAdBonusReady = rewardedAdState == RewardedAdState.Ready,
+                            winAdBonusClaimed = winAdBonusClaimed,
+                            winAdBonusLoading = winAdBonusClaimInProgress ||
+                                    rewardedAdState == RewardedAdState.Loading ||
+                                    rewardedAdState == RewardedAdState.Showing,
+                            onWinAdBonusClick = {
+                                val shown = app.rewardedAdsManager.showRewardedAd(
+                                    activity = activity,
+                                    onRewardEarned = {
+                                        viewModel.claimWinAdBonus()
+                                    },
+                                    onAdFailed = { error ->
+                                        Toast.makeText(
+                                            context,
+                                            "Ad unavailable: $error",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
+
+                                if (!shown) {
+                                    Toast.makeText(
+                                        context,
+                                        "Rewarded ad isn't ready yet.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
 
                             onCellTap = { index ->
                                 viewModel.revealCell(index)

@@ -1,4 +1,3 @@
-
 package com.genoma.mines.core.remoteconfig
 
 /**
@@ -19,7 +18,10 @@ data class RemoteConfigSnapshot(
     val lossCoinFee: Int = 20,
     val minimumStartCoins: Int = 20,
     val conversionLimitDaily: Int = 3,
+
+    // Normal rewarded-ad bonus offered after a game win.
     val rewardedAdBonus: Int = 50,
+    val rewardedAdBonusEnabled: Boolean = false,
 
     val luckAdEnabled: Boolean = false,
     val luckAdCoinReward: Int = 0,
@@ -41,4 +43,10 @@ data class RemoteConfigSnapshot(
      */
     val isLuckAdsAvailable: Boolean
         get() = luckAdsFeatureEnabled && luckAdEnabled
+
+    /**
+     * The win bonus is available only when explicitly enabled and positive.
+     */
+    val isWinAdBonusAvailable: Boolean
+        get() = rewardedAdBonusEnabled && rewardedAdBonus > 0
 }

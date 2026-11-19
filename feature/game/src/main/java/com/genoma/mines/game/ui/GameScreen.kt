@@ -146,6 +146,12 @@ fun GameScreen(
     boardTheme: BoardThemeStyle? = null,
     frostCellSkinEquipped: Boolean = false,
     themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL,
+    showWinAdBonus: Boolean = false,
+    winAdBonusAmount: Int = 50,
+    winAdBonusReady: Boolean = false,
+    winAdBonusClaimed: Boolean = false,
+    winAdBonusLoading: Boolean = false,
+    onWinAdBonusClick: () -> Unit = {},
 ) {
     // Local UI-only state: which action a plain tap performs. This never
     // needs to reach the ViewModel — it doesn't affect game logic, only
@@ -298,7 +304,13 @@ fun GameScreen(
                             previousBestSeconds = previousBestSeconds,
                             onReset = onReset,
                             onHome = onBack,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            showAdBonus = showWinAdBonus,
+                            adBonusAmount = winAdBonusAmount,
+                            adBonusReady = winAdBonusReady,
+                            adBonusClaimed = winAdBonusClaimed,
+                            adBonusLoading = winAdBonusLoading,
+                            onWatchAdBonus = onWinAdBonusClick
                         )
                     }
 
@@ -576,7 +588,13 @@ private fun ResultBanner(
     modifier: Modifier = Modifier,
     isNewBestTime: Boolean = false,
     elapsedSeconds: Int = 0,
-    previousBestSeconds: Long? = null
+    previousBestSeconds: Long? = null,
+    showAdBonus: Boolean = false,
+    adBonusAmount: Int = 50,
+    adBonusReady: Boolean = false,
+    adBonusClaimed: Boolean = false,
+    adBonusLoading: Boolean = false,
+    onWatchAdBonus: () -> Unit = {}
 ) {
     // A new best time gets a gold badge instead of the usual win color, so
     // it visually stands out from an ordinary clear at a glance.
@@ -698,6 +716,38 @@ private fun ResultBanner(
                         modifier = Modifier
                             .padding(start = 2.dp)
                             .size(14.dp)
+                    )
+                }
+            }
+            if (isWin && showAdBonus && adBonusAmount > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (adBonusClaimed) {
+                    Text(
+                        text = "Bonus reward claimed",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    Button(
+                        onClick = onWatchAdBonus,
+                        enabled = adBonusReady && !adBonusLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = when {
+                                adBonusLoading -> "Loading rewarded ad…"
+                                adBonusReady -> "Watch ad · +$adBonusAmount Coins"
+                                else -> "Rewarded ad unavailable"
+                            }
+                        )
+                    }
+                    Text(
+                        text = "Optional bonus. Your normal win reward is already added.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
