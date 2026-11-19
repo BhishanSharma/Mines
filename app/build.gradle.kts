@@ -27,23 +27,25 @@ android {
             }
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
     }
 }
 
 dependencies {
-    // --- Core (shared, no feature ever lives here) ---
+    // Core
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))
     implementation(project(":core:session"))
     implementation(project(":core:remoteconfig"))
 
-    // --- Features (the app module only wires these together) ---
+    // Features
     implementation(project(":feature:auth"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:store"))
@@ -58,6 +60,7 @@ dependencies {
     implementation(project(":feature:profile"))
     implementation(project(":feature:home"))
 
+    // Android / Compose
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -68,16 +71,21 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // --- Firebase (app needs FirebaseAuth directly for account deletion flow) ---
+    // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.analytics)
 
+    // Google Mobile Ads Next-Gen
+    implementation(libs.gma.nextgen)
+
+    // Tests
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
