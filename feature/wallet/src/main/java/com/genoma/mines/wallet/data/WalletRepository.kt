@@ -7,6 +7,7 @@ interface WalletRepository {
     val diamonds: Flow<Int>
 
     suspend fun addCoins(amount: Int)
+    suspend fun spendCoins(amount: Int): RedeemResult
     suspend fun getRedeemStatus(): RedeemStatus
 
     /** Converts 500 Coins into 1 Gem. */

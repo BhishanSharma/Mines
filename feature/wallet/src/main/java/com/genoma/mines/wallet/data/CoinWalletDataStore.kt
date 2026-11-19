@@ -84,6 +84,38 @@ class CoinWalletDataStore(
         }
     }
 
+    /**
+     * Atomically checks and spends Coins.
+     * A failed spend never changes the wallet balance.
+     */
+    override suspend fun spendCoins(amount: Int): RedeemResult {
+        if (amount <= 0) {
+            return RedeemResult(false, "Amount must be greater than zero.")
+        }
+
+        var result = RedeemResult(false, "")
+
+        context.walletDataStore.edit { prefs ->
+            val currentCoins = prefs[COINS] ?: 0
+
+            result = if (currentCoins < amount) {
+                RedeemResult(
+                    false,
+                    "You need $amount Coins to play."
+                )
+            } else {
+                prefs[COINS] = currentCoins - amount
+
+                RedeemResult(
+                    true,
+                    "Successfully spent $amount Coins."
+                )
+            }
+        }
+
+        return result
+    }
+
     override suspend fun addDiamonds(amount: Int) {
         if (amount <= 0) return
 

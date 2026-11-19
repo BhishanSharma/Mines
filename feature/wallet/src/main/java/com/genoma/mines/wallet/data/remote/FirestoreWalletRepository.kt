@@ -77,6 +77,45 @@ class FirestoreWalletRepository(
         ).await()
     }
 
+    /**
+     * Atomically checks and spends Coins.
+     * A failed spend never changes the wallet balance.
+     */
+    suspend fun spendCoins(
+        uid: String,
+        amount: Int
+    ): RedeemResult {
+        if (amount <= 0) {
+            return RedeemResult(false, "Amount must be greater than zero.")
+        }
+
+        return firestore.runTransaction { transaction ->
+            val document = userDoc(uid)
+            val snapshot = transaction.get(document)
+            val currentCoins = snapshot.getLong("coins") ?: 0L
+
+            if (currentCoins < amount.toLong()) {
+                RedeemResult(
+                    false,
+                    "You need $amount Coins to play."
+                )
+            } else {
+                transaction.set(
+                    document,
+                    mapOf(
+                        "coins" to currentCoins - amount.toLong()
+                    ),
+                    SetOptions.merge()
+                )
+
+                RedeemResult(
+                    true,
+                    "Successfully spent $amount Coins."
+                )
+            }
+        }.await()
+    }
+
     suspend fun getRedeemStatus(uid: String): RedeemStatus {
         val snapshot = userDoc(uid).get(Source.SERVER).await()
 

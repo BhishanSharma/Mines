@@ -1,81 +1,79 @@
+
 package com.genoma.mines.presentation.viewmodel
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.genoma.mines.MinesApplication
+import com.genoma.mines.achievements.domain.AchievementCalculator
+import com.genoma.mines.celebration.domain.CelebrationEvent
+import com.genoma.mines.game.data.GameHistoryItem
 import com.genoma.mines.game.data.GameRepository
 import com.genoma.mines.game.data.GameRepositoryImpl
 import com.genoma.mines.game.data.GameResult
-import com.genoma.mines.game.data.GameHistoryItem
 import com.genoma.mines.game.data.UserStatistics
-import com.genoma.mines.achievements.domain.AchievementCalculator
 import com.genoma.mines.game.data.local.GuestGameDatabase
 import com.genoma.mines.game.data.local.GuestGameRepository
 import com.genoma.mines.game.data.remote.FirestoreGameRepository
-import com.genoma.mines.wallet.data.remote.FirestoreWalletRepository
-import com.genoma.mines.userfeedback.data.FirestoreFeedbackRepository
-import com.genoma.mines.userfeedback.data.FeedbackSubmission
-import com.genoma.mines.celebration.domain.CelebrationEvent
-import com.genoma.mines.game.domain.GameFeedback
 import com.genoma.mines.game.domain.Difficulty
+import com.genoma.mines.game.domain.GameFeedback
+import com.genoma.mines.game.domain.GameResultType
 import com.genoma.mines.game.domain.GameState
 import com.genoma.mines.game.domain.GameStatus
-import com.genoma.mines.game.domain.GameResultType
 import com.genoma.mines.game.domain.LevelCalculator
 import com.genoma.mines.game.domain.MinesweeperGame
 import com.genoma.mines.game.domain.ScoreCalculator
-import com.genoma.mines.session.SessionManager
-import com.genoma.mines.settings.data.SettingsDataStore
-import com.genoma.mines.store.data.StoreDataStore
-import com.genoma.mines.store.data.StoreRepository
-import com.genoma.mines.store.data.StoreRepositoryImpl
-import com.genoma.mines.store.data.remote.FirestoreStoreRepository
-import com.genoma.mines.store.domain.StoreItem
-import com.genoma.mines.profile.domain.AvatarOption
-import com.genoma.mines.userfeedback.ui.FeedbackData
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.seconds
-import com.genoma.mines.settings.ui.ThemePreference
-import com.genoma.mines.settings.ui.toDarkThemeFlag
-import com.genoma.mines.wallet.data.CoinWalletDataStore
-import com.genoma.mines.wallet.data.RedeemStatus
-import com.genoma.mines.wallet.data.WalletRepository
-import com.genoma.mines.wallet.data.WalletRepositoryImpl
 import com.genoma.mines.life.data.LifeDataStore
 import com.genoma.mines.life.data.LifeRepository
 import com.genoma.mines.life.data.LifeRepositoryImpl
 import com.genoma.mines.life.data.remote.FirestoreLifeRepository
 import com.genoma.mines.life.domain.LifeRules
 import com.genoma.mines.life.domain.LifeSnapshot
+import com.genoma.mines.profile.domain.AvatarOption
+import com.genoma.mines.session.SessionManager
+import com.genoma.mines.settings.data.SettingsDataStore
+import com.genoma.mines.settings.ui.ThemePreference
+import com.genoma.mines.settings.ui.toDarkThemeFlag
+import com.genoma.mines.store.data.StoreDataStore
+import com.genoma.mines.store.data.StoreRepository
+import com.genoma.mines.store.data.StoreRepositoryImpl
+import com.genoma.mines.store.data.remote.FirestoreStoreRepository
+import com.genoma.mines.store.domain.StoreItem
+import com.genoma.mines.userfeedback.data.FeedbackSubmission
+import com.genoma.mines.userfeedback.data.FirestoreFeedbackRepository
+import com.genoma.mines.userfeedback.ui.FeedbackData
+import com.genoma.mines.wallet.data.CoinWalletDataStore
+import com.genoma.mines.wallet.data.RedeemStatus
+import com.genoma.mines.wallet.data.WalletRepository
+import com.genoma.mines.wallet.data.WalletRepositoryImpl
+import com.genoma.mines.wallet.data.remote.FirestoreWalletRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 class MinesweeperViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
     private companion object {
-        /** A game that runs this long auto-quits back to the home screen. */
         const val MAX_GAME_DURATION_SECONDS = 30 * 60
-
-        /**
-         * Coins paid for a win, scaled by board difficulty so that clearing a
-         * denser board is worth more than grinding the easiest one.
-         */
-        fun coinRewardFor(difficulty: Difficulty): Int = when (difficulty) {
-            Difficulty.EASY -> 50
-            Difficulty.MEDIUM -> 100
-            Difficulty.HARD -> 200
-        }
     }
 
     private var game: MinesweeperGame? = null
     private var timerJob: Job? = null
 
     private val feedback = GameFeedback(application)
+
+    private val remoteConfig
+        get() = (getApplication<Application>() as MinesApplication)
+            .remoteConfigManager.snapshot.value
+
     private val settings = SettingsDataStore(application)
 
     private val sessionManager = SessionManager()
@@ -149,21 +147,14 @@ class MinesweeperViewModel(
     private val _isNewBestTime = MutableStateFlow(false)
     val isNewBestTime: StateFlow<Boolean> = _isNewBestTime.asStateFlow()
 
-    // The player's best prior time (seconds) at this difficulty, captured
-    // right before the just-finished game is saved — lets the UI show how
-    // the current run compares, whether it's a new record or not.
     private val _previousBestSeconds = MutableStateFlow<Long?>(null)
     val previousBestSeconds: StateFlow<Long?> = _previousBestSeconds.asStateFlow()
 
-    // Milestones (level-ups, newly unlocked achievement tiers) earned by the
-    // most recently completed game, queued so the UI can acknowledge them
-    // one at a time instead of the change only showing up silently the next
-    // time the player opens Profile or Achievements.
-    private val _celebrationEvents = MutableStateFlow<List<CelebrationEvent>>(emptyList())
-    val celebrationEvents: StateFlow<List<CelebrationEvent>> = _celebrationEvents.asStateFlow()
+    private val _celebrationEvents =
+        MutableStateFlow<List<CelebrationEvent>>(emptyList())
+    val celebrationEvents: StateFlow<List<CelebrationEvent>> =
+        _celebrationEvents.asStateFlow()
 
-    // Null = no saved preference yet; the UI falls back to the system
-    // setting until the user explicitly picks light or dark.
     private val _darkTheme = MutableStateFlow<Boolean?>(null)
     val darkTheme: StateFlow<Boolean?> = _darkTheme.asStateFlow()
 
@@ -178,8 +169,6 @@ class MinesweeperViewModel(
 
     private val _equippedCellSkinId = MutableStateFlow<String?>(null)
     val equippedCellSkinId: StateFlow<String?> = _equippedCellSkinId.asStateFlow()
-
-
 
     private val _isSubmittingFeedback = MutableStateFlow(false)
     val isSubmittingFeedback: StateFlow<Boolean> = _isSubmittingFeedback.asStateFlow()
@@ -196,7 +185,6 @@ class MinesweeperViewModel(
 
     private fun loadSettings() {
         viewModelScope.launch {
-
             launch {
                 settings.soundEnabled.collect { enabled ->
                     _soundEnabled.value = enabled
@@ -222,15 +210,21 @@ class MinesweeperViewModel(
             }
 
             launch {
-                storeDataStore.ownedItemIds.collect { _ownedStoreItemIds.value = it }
+                storeDataStore.ownedItemIds.collect {
+                    _ownedStoreItemIds.value = it
+                }
             }
 
             launch {
-                storeDataStore.equippedBoardThemeId.collect { _equippedBoardThemeId.value = it }
+                storeDataStore.equippedBoardThemeId.collect {
+                    _equippedBoardThemeId.value = it
+                }
             }
 
             launch {
-                storeDataStore.equippedCellSkinId.collect { _equippedCellSkinId.value = it }
+                storeDataStore.equippedCellSkinId.collect {
+                    _equippedCellSkinId.value = it
+                }
             }
 
             launch {
@@ -249,7 +243,6 @@ class MinesweeperViewModel(
 
     fun setSoundEnabled(enabled: Boolean) {
         _soundEnabled.value = enabled
-
         viewModelScope.launch {
             settings.setSoundEnabled(enabled)
         }
@@ -257,7 +250,6 @@ class MinesweeperViewModel(
 
     fun setHapticsEnabled(enabled: Boolean) {
         _hapticsEnabled.value = enabled
-
         viewModelScope.launch {
             settings.setHapticsEnabled(enabled)
         }
@@ -275,9 +267,9 @@ class MinesweeperViewModel(
             }
         }
     }
+
     fun setAvatar(avatar: AvatarOption) {
         _selectedAvatar.value = avatar
-
         viewModelScope.launch {
             settings.setSelectedAvatarId(avatar.id)
         }
@@ -288,7 +280,8 @@ class MinesweeperViewModel(
             val owned = try {
                 item.price == 0 || storeDataStore.isOwned(item.id)
             } catch (_: Exception) {
-                _redeemResultMessage.value = "Couldn't reach the store. Check your connection and try again."
+                _redeemResultMessage.value =
+                    "Couldn't reach the store. Check your connection and try again."
                 return@launch
             }
 
@@ -296,7 +289,8 @@ class MinesweeperViewModel(
                 val result = try {
                     wallet.spendDiamonds(item.price)
                 } catch (_: Exception) {
-                    _redeemResultMessage.value = "Couldn't complete the purchase. Check your connection and try again."
+                    _redeemResultMessage.value =
+                        "Couldn't complete the purchase. Check your connection and try again."
                     return@launch
                 }
 
@@ -309,54 +303,62 @@ class MinesweeperViewModel(
                 try {
                     storeDataStore.addOwnedItem(item.id)
                 } catch (_: Exception) {
-                    // The gems are already spent, so hand them back rather than
-                    // charging for an item the player never received.
                     runCatching { wallet.addDiamonds(item.price) }
-                    _redeemResultMessage.value = "Couldn't complete the purchase. Your diamonds were not charged."
+                    _redeemResultMessage.value =
+                        "Couldn't complete the purchase. Your diamonds were not charged."
                     return@launch
                 }
             }
 
-            // The item is owned at this point either way, so a failure to equip
-            // is only worth a message — it isn't worth undoing the purchase.
             try {
                 when (item) {
-                    is com.genoma.mines.store.domain.BoardThemeItem -> storeDataStore.equipBoardTheme(item.id)
-                    is com.genoma.mines.store.domain.CellSkinItem -> storeDataStore.equipCellSkin(item.id)
+                    is com.genoma.mines.store.domain.BoardThemeItem ->
+                        storeDataStore.equipBoardTheme(item.id)
+
+                    is com.genoma.mines.store.domain.CellSkinItem ->
+                        storeDataStore.equipCellSkin(item.id)
+
                     is com.genoma.mines.store.domain.AvatarStoreItem -> {
-                        // Avatar artwork is not yet part of AvatarOption. Ownership is
-                        // still saved, but no fake visual mapping is introduced.
+                        // Avatar artwork is not yet mapped to AvatarOption.
                     }
                 }
             } catch (_: Exception) {
-                _redeemResultMessage.value = "${item.name} is yours, but couldn't be applied. Tap it again."
+                _redeemResultMessage.value =
+                    "${item.name} is yours, but couldn't be applied. Tap it again."
             }
         }
     }
 
     /**
-     * Spends a heart, then starts the game. With no hearts left the hearts
-     * dialog opens instead and [gameState] is left untouched.
+     * Starts a game only when the player has the configured minimum Coins
+     * and at least one Life available.
      *
-     * The heart is taken up front and handed back on a win, so losing,
-     * quitting, restarting mid-game, or the app being killed all cost exactly
-     * one heart without needing to detect each case.
+     * No Coins or Lives are deducted at game start.
      */
     fun startGame(difficulty: Difficulty) {
         if (startGameJob?.isActive == true) return
 
         startGameJob = viewModelScope.launch {
-            val consumed = try {
-                lives.consumeHeart()
-            } catch (_: Exception) {
-                _redeemResultMessage.value = "Couldn't start the game. Check your connection and try again."
-                return@launch
-            }
+            try {
+                val minimumCoins =
+                    remoteConfig.minimumStartCoins.coerceAtLeast(0)
+                val currentCoins = wallet.coins.first()
 
-            if (consumed) {
+                if (currentCoins < minimumCoins) {
+                    _redeemResultMessage.value =
+                        "You need at least $minimumCoins Coins to start a game."
+                    return@launch
+                }
+
+                if (lives.getStatus().hearts <= 0) {
+                    _showHeartsDialog.value = true
+                    return@launch
+                }
+
                 beginGame(difficulty)
-            } else {
-                _showHeartsDialog.value = true
+            } catch (_: Exception) {
+                _redeemResultMessage.value =
+                    "Couldn't start the game. Check your connection and try again."
             }
         }
     }
@@ -383,7 +385,6 @@ class MinesweeperViewModel(
         startTimer()
     }
 
-    /** Pauses a running game; no-op in any other state. */
     fun pauseIfPlaying() {
         if (_gameState.value?.status == GameStatus.PLAYING) {
             togglePause()
@@ -394,10 +395,8 @@ class MinesweeperViewModel(
         val currentState = _gameState.value ?: return
 
         when (currentState.status) {
-
             GameStatus.PLAYING -> {
                 timerJob?.cancel()
-
                 _gameState.value = currentState.copy(
                     status = GameStatus.PAUSED
                 )
@@ -407,13 +406,10 @@ class MinesweeperViewModel(
                 _gameState.value = currentState.copy(
                     status = GameStatus.PLAYING
                 )
-
                 startTimer()
             }
 
-            else -> {
-                // Cannot pause a game that is ready, won, or lost.
-            }
+            else -> Unit
         }
     }
 
@@ -425,10 +421,7 @@ class MinesweeperViewModel(
                 delay(1.seconds)
 
                 val currentState = _gameState.value
-
-                if (currentState?.status != GameStatus.PLAYING) {
-                    break
-                }
+                if (currentState?.status != GameStatus.PLAYING) break
 
                 val updatedSeconds = currentState.elapsedSeconds + 1
 
@@ -445,13 +438,10 @@ class MinesweeperViewModel(
     }
 
     fun revealCell(index: Int) {
-
         val currentGame = game ?: return
         val currentState = _gameState.value ?: return
 
-        if (currentState.status != GameStatus.PLAYING) {
-            return
-        }
+        if (currentState.status != GameStatus.PLAYING) return
 
         val tappedCell = currentState.cells.getOrNull(index) ?: return
 
@@ -480,7 +470,6 @@ class MinesweeperViewModel(
 
             _gameState.value = finalState
             completeLevel(finalState, GameResultType.LOSS)
-
             return
         }
 
@@ -492,7 +481,6 @@ class MinesweeperViewModel(
 
         if (status == GameStatus.WON) {
             timerJob?.cancel()
-
             feedback.win(
                 soundEnabled = _soundEnabled.value,
                 hapticsEnabled = _hapticsEnabled.value
@@ -518,19 +506,13 @@ class MinesweeperViewModel(
     }
 
     fun toggleFlag(index: Int) {
-
         val currentGame = game ?: return
         val currentState = _gameState.value ?: return
 
-        if (currentState.status != GameStatus.PLAYING) {
-            return
-        }
+        if (currentState.status != GameStatus.PLAYING) return
 
         val changed = currentGame.toggleFlag(index)
-
-        if (!changed) {
-            return
-        }
+        if (!changed) return
 
         feedback.flag(
             soundEnabled = _soundEnabled.value,
@@ -543,28 +525,28 @@ class MinesweeperViewModel(
         )
     }
 
-    private fun completeLevel(state: GameState, result: GameResultType) {
+    /**
+     * Processes a completed result once.
+     *
+     * The fixed game fee is charged for both wins and losses.
+     * The win reward is then granted separately and is not multiplied
+     * by the fee or reduced by reward multipliers.
+     *
+     * A loss also consumes one Life. A win does not consume or refund Lives.
+     */
+    private fun completeLevel(
+        state: GameState,
+        result: GameResultType
+    ) {
         if (gameResultSaved) return
         gameResultSaved = true
 
-        if (result == GameResultType.WIN) {
-            viewModelScope.launch {
-                wallet.addCoins(coinRewardFor(state.difficulty))
-            }
+        val correctlyRevealedCells =
+            state.cells.count { it.isRevealed && !it.isMine }
 
-            // Winning keeps the heart that was spent to start this game.
-            viewModelScope.launch {
-                try {
-                    lives.refundHeart()
-                } catch (_: Exception) {
-                    _redeemResultMessage.value = "Couldn't return your heart. Check your connection."
-                }
-            }
-        }
-
-        val correctlyRevealedCells = state.cells.count { it.isRevealed && !it.isMine }
-
-        val totalSafeCells = state.difficulty.rows * state.difficulty.columns - state.difficulty.mines
+        val totalSafeCells =
+            state.difficulty.rows * state.difficulty.columns -
+                    state.difficulty.mines
 
         val score = scoreCalculator.calculate(
             difficulty = state.difficulty,
@@ -584,15 +566,49 @@ class MinesweeperViewModel(
         )
 
         viewModelScope.launch {
-            // Fetched once up front: doubles as the "before this game"
-            // history used both for the best-time comparison below and for
-            // the level/achievement diff after saving.
+            // Apply the fee and outcome reward/penalty before saving the result.
+            try {
+                val fee = remoteConfig.lossCoinFee.coerceAtLeast(0)
+
+                if (fee > 0) {
+                    val payment = wallet.spendCoins(fee)
+
+                    if (!payment.success) {
+                        _redeemResultMessage.value =
+                            payment.message.ifBlank {
+                                "You couldn't pay the game fee."
+                            }
+                        return@launch
+                    }
+                }
+
+                if (result == GameResultType.WIN) {
+                    val reward = when (state.difficulty) {
+                        Difficulty.EASY -> remoteConfig.easyWinReward
+                        Difficulty.MEDIUM -> remoteConfig.mediumWinReward
+                        Difficulty.HARD -> remoteConfig.hardWinReward
+                    }.coerceAtLeast(0)
+
+                    if (reward > 0) {
+                        wallet.addCoins(reward)
+                    }
+                } else {
+                    val consumed = lives.consumeHeart()
+
+                    if (!consumed) {
+                        _redeemResultMessage.value =
+                            "You lost, but no Life was available to deduct."
+                    }
+                }
+            } catch (_: Exception) {
+                _redeemResultMessage.value =
+                    "Couldn't apply the game fee or reward. Check your connection."
+                return@launch
+            }
+
             val historyBeforeThisGame = gameRepository.getGameHistory()
 
             if (result == GameResultType.WIN) {
-                // Compare against past wins at this difficulty *before*
-                // saving the current one, so it's judged against previous
-                // attempts rather than against itself.
                 val previousBestSeconds = historyBeforeThisGame
                     .filter {
                         it.difficulty == state.difficulty &&
@@ -617,80 +633,89 @@ class MinesweeperViewModel(
                 _previousBestSeconds.value = null
             }
 
-            // Snapshot level + achievement progress from *before* this game
-            // counts, so afterwards we can tell exactly what just changed.
             val levelBefore = levelFor(historyBeforeThisGame)
-            val achievedTiersBefore = AchievementCalculator.calculate(historyBeforeThisGame)
-                .associate { it.id to it.achievedTier }
+            val achievedTiersBefore =
+                AchievementCalculator.calculate(historyBeforeThisGame)
+                    .associate { it.id to it.achievedTier }
 
             gameRepository.saveGameResult(gameResult)
 
-            // Rather than re-querying the repository (which, for an
-            // authenticated user, could race with server-side write
-            // propagation), the just-saved game is appended locally to the
-            // same history snapshot used above — cheap, and guaranteed to
-            // reflect exactly what was just written.
-            val historyAfterThisGame = historyBeforeThisGame + GameHistoryItem(
-                difficulty = state.difficulty,
-                score = score,
-                result = result,
-                durationSeconds = state.elapsedSeconds.toLong(),
-                createdAtMillis = gameResult.createdAt
-            )
+            val historyAfterThisGame =
+                historyBeforeThisGame + GameHistoryItem(
+                    difficulty = state.difficulty,
+                    score = score,
+                    result = result,
+                    durationSeconds = state.elapsedSeconds.toLong(),
+                    createdAtMillis = gameResult.createdAt
+                )
 
             val levelAfter = levelFor(historyAfterThisGame)
-            val tracksAfter = AchievementCalculator.calculate(historyAfterThisGame)
+            val tracksAfter =
+                AchievementCalculator.calculate(historyAfterThisGame)
 
             val newCelebrations = mutableListOf<CelebrationEvent>()
 
             if (levelAfter > levelBefore) {
-                newCelebrations += CelebrationEvent.LevelUp(newLevel = levelAfter)
+                newCelebrations +=
+                    CelebrationEvent.LevelUp(newLevel = levelAfter)
             }
 
             tracksAfter.forEach { track ->
                 val tierAfter = track.achievedTier ?: return@forEach
                 val tierBefore = achievedTiersBefore[track.id]
 
-                if (tierBefore == null || tierAfter.ordinal > tierBefore.ordinal) {
-                    newCelebrations += CelebrationEvent.AchievementUnlocked(
-                        trackId = track.id,
-                        trackTitle = track.title,
-                        tier = tierAfter
-                    )
+                if (tierBefore == null ||
+                    tierAfter.ordinal > tierBefore.ordinal
+                ) {
+                    newCelebrations +=
+                        CelebrationEvent.AchievementUnlocked(
+                            trackId = track.id,
+                            trackTitle = track.title,
+                            tier = tierAfter
+                        )
                 }
             }
 
             if (newCelebrations.isNotEmpty()) {
-                if (newCelebrations.any { it is CelebrationEvent.LevelUp }) {
+                if (newCelebrations.any {
+                        it is CelebrationEvent.LevelUp
+                    }
+                ) {
                     feedback.levelUp(
                         soundEnabled = _soundEnabled.value,
                         hapticsEnabled = _hapticsEnabled.value
                     )
                 }
 
-                if (newCelebrations.any { it is CelebrationEvent.AchievementUnlocked }) {
+                if (newCelebrations.any {
+                        it is CelebrationEvent.AchievementUnlocked
+                    }
+                ) {
                     feedback.achievementUnlocked(
                         soundEnabled = _soundEnabled.value,
                         hapticsEnabled = _hapticsEnabled.value
                     )
                 }
 
-                _celebrationEvents.value = _celebrationEvents.value + newCelebrations
+                _celebrationEvents.value =
+                    _celebrationEvents.value + newCelebrations
             }
         }
     }
 
-    /** Player level implied by a completed history list, via total XP. */
     private fun levelFor(history: List<GameHistoryItem>): Int {
-        val wins = history.count { it.result == GameResultType.WIN }
-        val losses = history.count { it.result == GameResultType.LOSS }
+        val wins = history.count {
+            it.result == GameResultType.WIN
+        }
+        val losses = history.count {
+            it.result == GameResultType.LOSS
+        }
 
         return LevelCalculator.calculateProgress(
             LevelCalculator.calculateTotalXp(wins, losses)
         ).level
     }
 
-    /** Pops the front-most queued celebration once the UI has shown it. */
     fun consumeCelebrationEvent() {
         _celebrationEvents.value = _celebrationEvents.value.drop(1)
     }
@@ -705,7 +730,6 @@ class MinesweeperViewModel(
 
     fun resetGame() {
         val currentState = _gameState.value ?: return
-
         startGame(currentState.difficulty)
     }
 
@@ -734,7 +758,8 @@ class MinesweeperViewModel(
                 )
                 _feedbackSubmitted.value = true
             } catch (e: Exception) {
-                _feedbackError.value = e.message ?: "Couldn't send feedback. Please try again."
+                _feedbackError.value =
+                    e.message ?: "Couldn't send feedback. Please try again."
             } finally {
                 _isSubmittingFeedback.value = false
             }
@@ -776,13 +801,6 @@ class MinesweeperViewModel(
         _showHeartsDialog.value = false
     }
 
-    /**
-     * Buys the hearts the player is actually missing, at
-     * [LifeRules.DIAMONDS_PER_HEART] gems each.
-     *
-     * The price is read off the same status the refill is applied to, so a
-     * heart that regenerates mid-purchase can never be charged for.
-     */
     fun refillHearts() {
         if (_isRefillingHearts.value) return
         _isRefillingHearts.value = true
@@ -792,8 +810,10 @@ class MinesweeperViewModel(
 
             try {
                 val status = lives.getStatus()
+
                 if (status.isFull) {
-                    _redeemResultMessage.value = "Your hearts are already full."
+                    _redeemResultMessage.value =
+                        "Your hearts are already full."
                     return@launch
                 }
 
@@ -801,6 +821,7 @@ class MinesweeperViewModel(
                 cost = LifeRules.refillCost(status.hearts)
 
                 val payment = wallet.spendDiamonds(cost)
+
                 if (!payment.success) {
                     _redeemResultMessage.value =
                         "You need $cost diamonds to refill $missing " +
@@ -811,17 +832,21 @@ class MinesweeperViewModel(
                 try {
                     lives.refillHearts()
                 } catch (e: Exception) {
-                    // The gems are already gone, so hand them back rather than
-                    // charging for hearts the player never received.
                     wallet.addDiamonds(cost)
                     throw e
                 }
 
                 _redeemResultMessage.value =
-                    if (missing == 1) "1 heart refilled!" else "$missing hearts refilled!"
+                    if (missing == 1) {
+                        "1 heart refilled!"
+                    } else {
+                        "$missing hearts refilled!"
+                    }
+
                 _showHeartsDialog.value = false
             } catch (_: Exception) {
-                _redeemResultMessage.value = "Couldn't refill hearts. Check your connection and try again."
+                _redeemResultMessage.value =
+                    "Couldn't refill hearts. Check your connection and try again."
             } finally {
                 _isRefillingHearts.value = false
             }
