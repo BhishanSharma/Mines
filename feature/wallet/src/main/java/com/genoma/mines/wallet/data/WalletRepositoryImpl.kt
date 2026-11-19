@@ -1,7 +1,8 @@
 package com.genoma.mines.wallet.data
-import com.genoma.mines.wallet.data.remote.FirestoreWalletRepository
+
 import com.genoma.mines.session.SessionManager
 import com.genoma.mines.session.UserSession
+import com.genoma.mines.wallet.data.remote.FirestoreWalletRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -78,12 +79,6 @@ class WalletRepositoryImpl(
         }
     }
 
-    /**
-     * Spends diamonds when purchasing a Store item.
-     *
-     * Logged-in users use the Firestore wallet.
-     * Guest users use the local DataStore wallet.
-     */
     override suspend fun spendDiamonds(
         amount: Int
     ): RedeemResult {
@@ -108,6 +103,18 @@ class WalletRepositoryImpl(
 
             UserSession.Guest ->
                 guestWallet.redeemDiamond()
+        }
+    }
+
+    override suspend fun convertGemToCoins(): RedeemResult {
+        return when (val session = sessionManager.currentSession) {
+            is UserSession.Authenticated ->
+                firestoreWallet.convertGemToCoins(
+                    session.firebaseUid
+                )
+
+            UserSession.Guest ->
+                guestWallet.convertGemToCoins()
         }
     }
 }

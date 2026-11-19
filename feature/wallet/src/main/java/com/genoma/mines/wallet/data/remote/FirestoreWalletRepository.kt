@@ -1,4 +1,5 @@
 package com.genoma.mines.wallet.data.remote
+
 import com.genoma.mines.wallet.data.CoinWalletDataStore
 import com.genoma.mines.wallet.data.RedeemResult
 import com.genoma.mines.wallet.data.RedeemStatus
@@ -11,40 +12,56 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
-private const val WINDOW_MILLIS = 24L * 60 * 60 * 1000
-
+private const val IST_TIME_ZONE = "Asia/Kolkata"
 
 class FirestoreWalletRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore =
+        FirebaseFirestore.getInstance()
 ) {
 
-    private fun userDoc(uid: String) = firestore.collection("users").document(uid)
+    private fun userDoc(uid: String) =
+        firestore.collection("users").document(uid)
 
-    /** Live coin/diamond balance, updating in real time as it changes server-side. */
-    fun observeWallet(uid: String): Flow<WalletSnapshot> = callbackFlow {
-        val registration = userDoc(uid).addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(error)
-                return@addSnapshotListener
+    /** Live Coins and Gems balance. */
+    fun observeWallet(uid: String): Flow<WalletSnapshot> =
+        callbackFlow {
+            val registration =
+                userDoc(uid).addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        close(error)
+                        return@addSnapshotListener
+                    }
+
+                    trySend(
+                        WalletSnapshot(
+                            coins = snapshot
+                                ?.getLong("coins")
+                                ?.toInt() ?: 0,
+                            diamonds = snapshot
+                                ?.getLong("diamonds")
+                                ?.toInt() ?: 0
+                        )
+                    )
+                }
+
+            awaitClose {
+                registration.remove()
             }
-
-            trySend(
-                WalletSnapshot(
-                    coins = snapshot?.getLong("coins")?.toInt() ?: 0,
-                    diamonds = snapshot?.getLong("diamonds")?.toInt() ?: 0
-                )
-            )
         }
-
-        awaitClose { registration.remove() }
-    }
 
     suspend fun addCoins(uid: String, amount: Int) {
         if (amount <= 0) return
 
         userDoc(uid).set(
-            mapOf("coins" to FieldValue.increment(amount.toLong())),
+            mapOf(
+                "coins" to FieldValue.increment(amount.toLong())
+            ),
             SetOptions.merge()
         ).await()
     }
@@ -53,7 +70,9 @@ class FirestoreWalletRepository(
         if (amount <= 0) return
 
         userDoc(uid).set(
-            mapOf("diamonds" to FieldValue.increment(amount.toLong())),
+            mapOf(
+                "diamonds" to FieldValue.increment(amount.toLong())
+            ),
             SetOptions.merge()
         ).await()
     }
@@ -61,78 +80,177 @@ class FirestoreWalletRepository(
     suspend fun getRedeemStatus(uid: String): RedeemStatus {
         val snapshot = userDoc(uid).get(Source.SERVER).await()
 
-        val coins = snapshot.getLong("coins") ?: 0L
-        val activeTimestamps = readTimestamps(snapshot.get("redeemTimestamps")).filterActive()
+        val today = todayIst()
+        val storedDate = snapshot.getString("conversionDateIst")
+
+        val used = if (storedDate == today) {
+            (snapshot.getLong("conversionsUsedToday") ?: 0L)
+                .toInt()
+                .coerceIn(
+                    0,
+                    CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW
+                )
+        } else {
+            0
+        }
 
         return RedeemStatus(
-            coins = coins.toInt(),
+            coins = (snapshot.getLong("coins") ?: 0L).toInt(),
             diamonds = (snapshot.getLong("diamonds") ?: 0L).toInt(),
-            redemptionsUsedToday = activeTimestamps.size,
-            maxRedemptionsPerWindow = CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW,
-            nextUnlockMillis = if (activeTimestamps.size >= CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW) {
-                activeTimestamps.min() + WINDOW_MILLIS
+            redemptionsUsedToday = used,
+            maxRedemptionsPerWindow =
+                CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW,
+            nextUnlockMillis = if (
+                used >= CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW
+            ) {
+                nextIstMidnightMillis()
             } else {
                 null
             }
         )
     }
 
-    /** Spends [CoinWalletDataStore.COST_PER_DIAMOND] coins for one diamond, if allowed. */
+    /**
+     * Converts 500 Coins into 1 Gem.
+     *
+     * This is an atomic Firestore transaction, but it is still invoked
+     * by the Android client. A trusted backend should replace this
+     * transaction before production release.
+     */
     suspend fun redeemDiamond(uid: String): RedeemResult {
         return firestore.runTransaction { transaction ->
-            val snapshot = transaction.get(userDoc(uid))
+            val document = userDoc(uid)
+            val snapshot = transaction.get(document)
 
+            val today = todayIst()
+            val used = readDailyUsage(snapshot, today)
             val currentCoins = snapshot.getLong("coins") ?: 0L
-            val activeTimestamps = readTimestamps(snapshot.get("redeemTimestamps")).filterActive()
 
             when {
-                activeTimestamps.size >= CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW -> RedeemResult(
-                    success = false,
-                    message = "You've used both redemptions for today. Check back later."
-                )
+                used >= CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW ->
+                    RedeemResult(
+                        false,
+                        "You've used all 3 conversions for today. Try again after midnight IST."
+                    )
 
-                currentCoins < CoinWalletDataStore.COST_PER_DIAMOND -> RedeemResult(
-                    success = false,
-                    message = "You need ${CoinWalletDataStore.COST_PER_DIAMOND} coins to redeem a diamond."
-                )
+                currentCoins < CoinWalletDataStore.COST_PER_DIAMOND ->
+                    RedeemResult(
+                        false,
+                        "You need 500 Coins to convert into 1 Gem."
+                    )
 
                 else -> {
                     transaction.set(
-                        userDoc(uid),
+                        document,
                         mapOf(
-                            "coins" to currentCoins - CoinWalletDataStore.COST_PER_DIAMOND,
+                            "coins" to currentCoins -
+                                    CoinWalletDataStore.COST_PER_DIAMOND,
                             "diamonds" to FieldValue.increment(1),
-                            "redeemTimestamps" to activeTimestamps + System.currentTimeMillis()
+                            "conversionDateIst" to today,
+                            "conversionsUsedToday" to used + 1
                         ),
                         SetOptions.merge()
                     )
 
-                    RedeemResult(success = true, message = "Redeemed 1 diamond!")
+                    RedeemResult(
+                        true,
+                        "Successfully converted 500 Coins into 1 Gem."
+                    )
                 }
             }
         }.await()
     }
 
-    suspend fun spendDiamonds(uid: String, amount: Int): RedeemResult {
-        if (amount <= 0) return RedeemResult(success = true, message = "")
-
+    /**
+     * Converts 1 Gem into 500 Coins.
+     * Shares the daily conversion count with Coins -> Gems.
+     */
+    suspend fun convertGemToCoins(uid: String): RedeemResult {
         return firestore.runTransaction { transaction ->
-            val snapshot = transaction.get(userDoc(uid))
+            val document = userDoc(uid)
+            val snapshot = transaction.get(document)
+
+            val today = todayIst()
+            val used = readDailyUsage(snapshot, today)
             val currentDiamonds = snapshot.getLong("diamonds") ?: 0L
 
-            if (currentDiamonds < amount) {
-                RedeemResult(
-                    success = false,
-                    message = "You need $amount diamonds to buy this item."
-                )
-            } else {
-                transaction.update(userDoc(uid), "diamonds", currentDiamonds - amount)
-                RedeemResult(success = true, message = "Purchase successful!")
+            when {
+                used >= CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW ->
+                    RedeemResult(
+                        false,
+                        "You've used all 3 conversions for today. Try again after midnight IST."
+                    )
+
+                currentDiamonds < 1L ->
+                    RedeemResult(
+                        false,
+                        "You need 1 Gem to convert into 500 Coins."
+                    )
+
+                else -> {
+                    val currentCoins =
+                        snapshot.getLong("coins") ?: 0L
+
+                    transaction.set(
+                        document,
+                        mapOf(
+                            "diamonds" to currentDiamonds - 1L,
+                            "coins" to currentCoins +
+                                    CoinWalletDataStore.COINS_PER_DIAMOND,
+                            "conversionDateIst" to today,
+                            "conversionsUsedToday" to used + 1
+                        ),
+                        SetOptions.merge()
+                    )
+
+                    RedeemResult(
+                        true,
+                        "Successfully converted 1 Gem into 500 Coins."
+                    )
+                }
             }
         }.await()
     }
 
-    suspend fun migrateGuestWallet(uid: String, coins: Int, diamonds: Int) {
+    suspend fun spendDiamonds(
+        uid: String,
+        amount: Int
+    ): RedeemResult {
+        if (amount <= 0) {
+            return RedeemResult(true, "")
+        }
+
+        return firestore.runTransaction { transaction ->
+            val document = userDoc(uid)
+            val snapshot = transaction.get(document)
+            val currentDiamonds =
+                snapshot.getLong("diamonds") ?: 0L
+
+            if (currentDiamonds < amount) {
+                RedeemResult(
+                    false,
+                    "You need $amount Gems to buy this item."
+                )
+            } else {
+                transaction.update(
+                    document,
+                    "diamonds",
+                    currentDiamonds - amount
+                )
+
+                RedeemResult(
+                    true,
+                    "Purchase successful!"
+                )
+            }
+        }.await()
+    }
+
+    suspend fun migrateGuestWallet(
+        uid: String,
+        coins: Int,
+        diamonds: Int
+    ) {
         if (coins <= 0 && diamonds <= 0) return
 
         userDoc(uid).set(
@@ -144,11 +262,46 @@ class FirestoreWalletRepository(
         ).await()
     }
 
-    private fun readTimestamps(raw: Any?): List<Long> =
-        (raw as? List<*>)?.mapNotNull { (it as? Number)?.toLong() } ?: emptyList()
+    private fun readDailyUsage(
+        snapshot: com.google.firebase.firestore.DocumentSnapshot,
+        today: String
+    ): Int {
+        if (snapshot.getString("conversionDateIst") != today) {
+            return 0
+        }
 
-    private fun List<Long>.filterActive(): List<Long> {
-        val cutoff = System.currentTimeMillis() - WINDOW_MILLIS
-        return filter { it > cutoff }
+        return (snapshot.getLong("conversionsUsedToday") ?: 0L)
+            .toInt()
+            .coerceIn(
+                0,
+                CoinWalletDataStore.MAX_REDEMPTIONS_PER_WINDOW
+            )
+    }
+
+    private fun todayIst(): String =
+        formatIstDate(System.currentTimeMillis())
+
+    private fun formatIstDate(timestamp: Long): String {
+        val formatter = SimpleDateFormat(
+            "yyyy-MM-dd",
+            Locale.US
+        ).apply {
+            timeZone = TimeZone.getTimeZone(IST_TIME_ZONE)
+        }
+
+        return formatter.format(Date(timestamp))
+    }
+
+    private fun nextIstMidnightMillis(): Long {
+        return Calendar.getInstance(
+            TimeZone.getTimeZone(IST_TIME_ZONE),
+            Locale.US
+        ).apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
     }
 }
