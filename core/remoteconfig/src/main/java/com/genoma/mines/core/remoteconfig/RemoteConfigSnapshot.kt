@@ -1,14 +1,16 @@
+
 package com.genoma.mines.core.remoteconfig
 
 /**
- * A typed snapshot of remotely configurable, non-authoritative app settings.
+ * Typed snapshot of remotely configurable, non-authoritative app settings.
  *
- * These values may control presentation and configurable game rules, but
- * must never be used as proof that a wallet transaction or purchase is valid.
+ * Remote Config controls presentation and configurable rules. It must never
+ * be treated as proof that a wallet transaction or purchase is valid.
  */
 data class RemoteConfigSnapshot(
     val maintenanceMode: Boolean = false,
-    val maintenanceMessage: String = "The game is temporarily unavailable. Please try again soon.",
+    val maintenanceMessage: String =
+        "The game is temporarily unavailable. Please try again soon.",
 
     val easyWinReward: Int = 50,
     val mediumWinReward: Int = 50,
@@ -25,6 +27,7 @@ data class RemoteConfigSnapshot(
     val luckAdCoinProbability: Double = 0.0,
     val luckAdGemProbability: Double = 0.0,
     val luckAdNoRewardProbability: Double = 100.0,
+    val luckAdPrizesJson: String = "",
 
     val eventBannerEnabled: Boolean = false,
     val eventBannerText: String = "",
@@ -32,4 +35,10 @@ data class RemoteConfigSnapshot(
     val storeFeaturedItem: String = "",
     val newThemeEnabled: Boolean = false,
     val luckAdsFeatureEnabled: Boolean = false
-)
+) {
+    /**
+     * Both flags must be enabled before Luck Ads can be offered.
+     */
+    val isLuckAdsAvailable: Boolean
+        get() = luckAdsFeatureEnabled && luckAdEnabled
+}
