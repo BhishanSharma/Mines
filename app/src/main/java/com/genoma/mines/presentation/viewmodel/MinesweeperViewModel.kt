@@ -759,6 +759,14 @@ class MinesweeperViewModel(
         }
     }
 
+    fun convertGemToCoins() {
+        viewModelScope.launch {
+            val result = wallet.convertGemToCoins()
+            _redeemResultMessage.value = result.message
+            _redeemStatus.value = wallet.getRedeemStatus()
+        }
+    }
+
     fun openHeartsDialog() {
         _showHeartsDialog.value = true
     }

@@ -80,10 +80,12 @@ fun StoreScreen(
     coinBalance: Int = 0,
     diamondBalance: Int = 0,
     canRedeem: Boolean = false,
+    canConvertGemToCoins: Boolean = false,
     redemptionsUsedToday: Int = 0,
-    maxRedemptionsPerWindow: Int = 2,
+    maxRedemptionsPerWindow: Int = 3,
     nextUnlockMillis: Long? = null,
     onRedeemClick: () -> Unit = {},
+    onConvertGemToCoinsClick: () -> Unit = {},
     onItemClick: (StoreItem) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
@@ -120,11 +122,14 @@ fun StoreScreen(
 
             RedeemCard(
                 coinBalance = coinBalance,
+                diamondBalance = diamondBalance,
                 canRedeem = canRedeem,
+                canConvertGemToCoins = canConvertGemToCoins,
                 redemptionsUsedToday = redemptionsUsedToday,
                 maxRedemptionsPerWindow = maxRedemptionsPerWindow,
                 nextUnlockMillis = nextUnlockMillis,
-                onRedeemClick = onRedeemClick
+                onRedeemClick = onRedeemClick,
+                onConvertGemToCoinsClick = onConvertGemToCoinsClick
             )
 
             Spacer(modifier = Modifier.height(StoreSpacing.sectionGap))
@@ -205,12 +210,21 @@ private fun BalancePill(
 @Composable
 private fun RedeemCard(
     coinBalance: Int,
+    diamondBalance: Int,
     canRedeem: Boolean,
+    canConvertGemToCoins: Boolean,
     redemptionsUsedToday: Int,
     maxRedemptionsPerWindow: Int,
     nextUnlockMillis: Long?,
-    onRedeemClick: () -> Unit
+    onRedeemClick: () -> Unit,
+    onConvertGemToCoinsClick: () -> Unit
 ) {
+    val remainingConversions =
+        (maxRedemptionsPerWindow - redemptionsUsedToday).coerceAtLeast(0)
+
+    val dailyLimitReached =
+        redemptionsUsedToday >= maxRedemptionsPerWindow
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -223,52 +237,61 @@ private fun RedeemCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.MonetizationOn,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Redeem coins for diamonds",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
+            Text(
+                text = "Currency Exchange",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "500 coins = 1 diamond \u00B7 up to $maxRedemptionsPerWindow times a day",
-                style = MaterialTheme.typography.bodySmall,
+                text = "500 Coins = 1 Gem",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Text(
+                text = "1 Gem = 500 Coins",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "$remainingConversions of $maxRedemptionsPerWindow conversions remaining today (IST)",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            if (dailyLimitReached && nextUnlockMillis != null) {
+                Text(
+                    text = "Daily limit reached. Resets in ${formatRemaining(nextUnlockMillis)}.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "$coinBalance coins",
+                        text = "$coinBalance Coins",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = when {
-                            canRedeem ->
-                                "${maxRedemptionsPerWindow - redemptionsUsedToday} redemptions left today"
-                            nextUnlockMillis != null ->
-                                "Locked \u2014 more in ${formatRemaining(nextUnlockMillis)}"
-                            else -> "Not enough coins yet"
-                        },
+                        text = "Convert 500 Coins into 1 Gem",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                     )
@@ -276,13 +299,38 @@ private fun RedeemCard(
 
                 Button(
                     onClick = onRedeemClick,
-                    enabled = canRedeem,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    enabled = canRedeem
                 ) {
-                    Text("Redeem")
+                    Text("Get 1 Gem")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "$diamondBalance Gems",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "Convert 1 Gem into 500 Coins",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                    )
+                }
+
+                Button(
+                    onClick = onConvertGemToCoinsClick,
+                    enabled = canConvertGemToCoins
+                ) {
+                    Text("Get 500 Coins")
                 }
             }
         }

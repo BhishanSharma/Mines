@@ -1050,11 +1050,16 @@ fun MinesweeperApp(
                     StoreScreen(
                         coinBalance = coins,
                         diamondBalance = diamonds,
-                        canRedeem = redeemStatus?.canRedeem ?: false,
+                        canRedeem = redeemStatus?.canConvertCoinsToGem ?: false,
+                        canConvertGemToCoins =
+                            redeemStatus?.canConvertGemToCoins ?: false,
                         redemptionsUsedToday = redeemStatus?.redemptionsUsedToday ?: 0,
                         maxRedemptionsPerWindow = redeemStatus?.maxRedemptionsPerWindow ?: 2,
                         nextUnlockMillis = redeemStatus?.nextUnlockMillis,
                         onRedeemClick = { viewModel.redeemDiamond() },
+                        onConvertGemToCoinsClick = {
+                            viewModel.convertGemToCoins()
+                        },
                         ownedItemIds = ownedStoreItemIds,
                         equippedBoardThemeId = equippedBoardThemeId,
                         equippedCellSkinId = equippedCellSkinId,
