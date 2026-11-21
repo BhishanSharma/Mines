@@ -1,11 +1,45 @@
 package com.genoma.mines.presentation.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.genoma.mines.MinesApplication
 import com.genoma.mines.achievements.domain.AchievementCalculator
+import com.genoma.mines.ads.AdUsageStore
 import com.genoma.mines.celebration.domain.CelebrationEvent
+import com.genoma.mines.core.economy.AdEligibility
+import com.genoma.mines.core.economy.AdFrequencyRules
+import com.genoma.mines.core.economy.LuckPrize
+import com.genoma.mines.core.economy.LuckPrizeTable
+import com.genoma.mines.core.economy.LuckPrizeType
+import com.genoma.mines.core.economy.RewardedAdPlacement
+import com.genoma.mines.core.economy.SettlementPlan
+import com.genoma.mines.core.remoteconfig.RemoteConfigSnapshot
+import com.genoma.mines.economy.toAdCapConfig
+import com.genoma.mines.home.ui.LuckSpinResultUi
+import com.genoma.mines.life.domain.LifeCalculator
+import com.genoma.mines.core.economy.ConversionDirection
+import com.genoma.mines.core.economy.EconomyRules
+import com.genoma.mines.core.economy.GameOutcome
+import com.genoma.mines.core.economy.GameSettlementRules
+import com.genoma.mines.core.economy.PendingSettlement
+import com.genoma.mines.core.economy.WalletTransaction
+import com.genoma.mines.core.economy.WalletTransactionType
+import com.genoma.mines.economy.FirestoreSettlementRepository
+import com.genoma.mines.economy.HeartRefillResult
+import com.genoma.mines.economy.HeartRefillService
+import com.genoma.mines.economy.StorePurchaseResult
+import com.genoma.mines.economy.StorePurchaseService
+import com.genoma.mines.economy.PendingSettlementStore
+import com.genoma.mines.economy.SettlementProcessor
+import com.genoma.mines.economy.SettlementResult
+import com.genoma.mines.economy.WinBonusTicket
+import com.genoma.mines.economy.toEconomyRules
+import com.genoma.mines.economy.winRewardFor
 import com.genoma.mines.game.data.GameHistoryItem
 import com.genoma.mines.game.data.GameRepository
 import com.genoma.mines.game.data.GameRepositoryImpl
@@ -37,7 +71,12 @@ import com.genoma.mines.store.data.StoreDataStore
 import com.genoma.mines.store.data.StoreRepository
 import com.genoma.mines.store.data.StoreRepositoryImpl
 import com.genoma.mines.store.data.remote.FirestoreStoreRepository
+import com.genoma.mines.store.domain.AvatarStoreItem
+import com.genoma.mines.store.domain.BoardThemeItem
+import com.genoma.mines.store.domain.CellSkinItem
 import com.genoma.mines.store.domain.StoreItem
+import com.genoma.mines.store.data.StoreCatalog
+import com.genoma.mines.session.UserSession
 import com.genoma.mines.userfeedback.data.FeedbackSubmission
 import com.genoma.mines.userfeedback.data.FirestoreFeedbackRepository
 import com.genoma.mines.userfeedback.ui.FeedbackData
@@ -51,9 +90,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
 class MinesweeperViewModel(
@@ -61,6 +106,7 @@ class MinesweeperViewModel(
 ) : AndroidViewModel(application) {
 
     private companion object {
+        const val TAG = "MinesweeperViewModel"
         const val MAX_GAME_DURATION_SECONDS = 30 * 60
     }
 
@@ -78,9 +124,11 @@ class MinesweeperViewModel(
     private val sessionManager = SessionManager()
     private val scoreCalculator = ScoreCalculator()
 
+    private val guestStore = StoreDataStore(application)
+
     private val storeDataStore: StoreRepository = StoreRepositoryImpl(
         sessionManager = sessionManager,
-        guestStore = StoreDataStore(application),
+        guestStore = guestStore,
         firestoreStore = FirestoreStoreRepository()
     )
 
@@ -96,17 +144,54 @@ class MinesweeperViewModel(
 
     private var gameResultSaved = false
 
+    private val guestWallet = CoinWalletDataStore(application)
+    private val guestLife = LifeDataStore(application)
+
     private val wallet: WalletRepository = WalletRepositoryImpl(
         sessionManager = sessionManager,
-        guestWallet = CoinWalletDataStore(application),
+        guestWallet = guestWallet,
         firestoreWallet = FirestoreWalletRepository()
     )
 
     private val lives: LifeRepository = LifeRepositoryImpl(
         sessionManager = sessionManager,
-        guestLife = LifeDataStore(application),
+        guestLife = guestLife,
         firestoreLife = FirestoreLifeRepository()
     )
+
+    /** Applies game results and rewards exactly once, retrying when offline. */
+    private val settlements = SettlementProcessor(
+        sessionManager = sessionManager,
+        queue = PendingSettlementStore(application),
+        guestWallet = guestWallet,
+        guestLife = guestLife,
+        firestoreSettlements = FirestoreSettlementRepository()
+    )
+
+    /** Charges and grants cosmetics together, exactly once. */
+    private val storePurchases = StorePurchaseService(
+        sessionManager = sessionManager,
+        guestWallet = guestWallet,
+        guestStore = guestStore
+    )
+
+    /** Charges Gems and refills hearts together. */
+    private val heartRefills = HeartRefillService(
+        sessionManager = sessionManager,
+        guestWallet = guestWallet,
+        guestLife = guestLife
+    )
+
+    private val _isPurchasing = MutableStateFlow(false)
+    val isPurchasing: StateFlow<Boolean> = _isPurchasing.asStateFlow()
+
+    /** Identifies the current game; settlement idempotency keys derive from it. */
+    private var gameId: String = UUID.randomUUID().toString()
+
+    /** Economy rules captured when the current game started. */
+    private var gameRules: EconomyRules = EconomyRules.DEFAULT
+
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     private var startGameJob: Job? = null
 
@@ -136,6 +221,18 @@ class MinesweeperViewModel(
 
     private val _winAdBonusClaimed = MutableStateFlow(false)
     val winAdBonusClaimed: StateFlow<Boolean> = _winAdBonusClaimed.asStateFlow()
+
+    /** Bonus amount offered for the current game, or null when no bonus applies. */
+    private val _winAdBonusOffer = MutableStateFlow<Int?>(null)
+    val winAdBonusOffer: StateFlow<Int?> = _winAdBonusOffer.asStateFlow()
+
+    private val _isConverting = MutableStateFlow(false)
+    val isConverting: StateFlow<Boolean> = _isConverting.asStateFlow()
+
+    /** Recent wallet changes, newest first, for the active session. */
+    val walletHistory: StateFlow<List<WalletTransaction>> by lazy {
+        wallet.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }
 
     private val _winAdBonusClaimInProgress = MutableStateFlow(false)
     val winAdBonusClaimInProgress: StateFlow<Boolean> =
@@ -185,8 +282,146 @@ class MinesweeperViewModel(
     private val _feedbackSubmitted = MutableStateFlow(false)
     val feedbackSubmitted: StateFlow<Boolean> = _feedbackSubmitted.asStateFlow()
 
+    private val remoteConfigFlow: StateFlow<RemoteConfigSnapshot> =
+        (application as MinesApplication).remoteConfigManager.snapshot
+
+    private val adUsageStore = AdUsageStore(application)
+
+    /** Re-evaluates time-based rules (cooldowns, regeneration) as time passes. */
+    private val clockTicks = flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            delay(15.seconds)
+        }
+    }
+
+    /** Rewarded-ad caps and cooldowns per placement (Stage 3G). */
+    val adEligibility: StateFlow<Map<RewardedAdPlacement, AdEligibility>> =
+        combine(adUsageStore.usage, remoteConfigFlow, clockTicks) { usage, config, now ->
+            val caps = config.toAdCapConfig()
+            RewardedAdPlacement.entries.associateWith { placement ->
+                AdFrequencyRules.check(placement, caps, usage, now)
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /** True when the post-win bonus ad is within its caps. */
+    val winBonusAdEligible: StateFlow<Boolean> =
+        adEligibility.map { it[RewardedAdPlacement.WIN_BONUS] == AdEligibility.Eligible }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /**
+     * Life recovery ad (Stage 3D): null hides the option (flag off or hearts
+     * full); otherwise its current cap/cooldown eligibility.
+     */
+    val lifeRecoveryAd: StateFlow<AdEligibility?> =
+        combine(adEligibility, remoteConfigFlow, _lifeSnapshot, clockTicks) { eligibility, config, life, now ->
+            when {
+                !config.lifeRecoveryAdEnabled -> null
+                LifeCalculator.status(life, now).isFull -> null
+                else -> eligibility[RewardedAdPlacement.LIFE_RECOVERY] ?: AdEligibility.Eligible
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _lifeRecoveryInProgress = MutableStateFlow(false)
+    val lifeRecoveryInProgress: StateFlow<Boolean> = _lifeRecoveryInProgress.asStateFlow()
+
+    /** Prize table offered by Luck Spin; empty when the feature is off or misconfigured. */
+    val luckSpinPrizes: StateFlow<List<LuckPrize>> =
+        remoteConfigFlow.map { config ->
+            if (!config.isLuckAdsAvailable) {
+                emptyList()
+            } else {
+                LuckPrizeTable.build(
+                    prizesJson = config.luckAdPrizesJson,
+                    legacyCoinReward = config.luckAdCoinReward,
+                    legacyGemReward = config.luckAdGemReward,
+                    legacyCoinWeight = config.luckAdCoinProbability,
+                    legacyGemWeight = config.luckAdGemProbability,
+                    legacyNoRewardWeight = config.luckAdNoRewardProbability
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Luck Spin eligibility, or null when Luck Spin is not offered at all. */
+    val luckSpinEligibility: StateFlow<AdEligibility?> =
+        combine(luckSpinPrizes, adEligibility) { prizes, eligibility ->
+            if (prizes.isEmpty()) null else eligibility[RewardedAdPlacement.LUCK_SPIN] ?: AdEligibility.Eligible
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Short availability text for the Home entry and the dialog, or null to hide Luck Spin. */
+    val luckSpinStatus: StateFlow<String?> =
+        combine(luckSpinEligibility, clockTicks) { eligibility, now ->
+            when (eligibility) {
+                null, AdEligibility.Disabled -> null
+                AdEligibility.Eligible -> "Watch an ad for a chance to win Coins or Gems."
+                is AdEligibility.CoolingDown ->
+                    "Next spin in ${formatWait(eligibility.availableAtMillis - now)}."
+
+                AdEligibility.DailyCapReached, AdEligibility.TotalDailyCapReached ->
+                    "You've used today's spins. Come back tomorrow."
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _luckSpinOpen = MutableStateFlow(false)
+    val luckSpinOpen: StateFlow<Boolean> = _luckSpinOpen.asStateFlow()
+
+    private val _luckSpinBusy = MutableStateFlow(false)
+    val luckSpinBusy: StateFlow<Boolean> = _luckSpinBusy.asStateFlow()
+
+    private val _luckSpinResult = MutableStateFlow<LuckSpinResultUi?>(null)
+    val luckSpinResult: StateFlow<LuckSpinResultUi?> = _luckSpinResult.asStateFlow()
+
+    private var luckSpinNonce = 0
+
     init {
         loadSettings()
+        watchForSettlementRetries()
+
+        viewModelScope.launch {
+            try {
+                storePurchases.reconcileGuestPurchases()
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't reconcile guest purchases", exception)
+            }
+        }
+    }
+
+    /**
+     * Retries queued settlements on start, on every sign-in/sign-out and
+     * whenever the network comes back.
+     */
+    private fun watchForSettlementRetries() {
+        viewModelScope.launch {
+            sessionManager.sessionFlow.collect { retryPendingSettlements() }
+        }
+
+        val connectivity = getApplication<Application>()
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                retryPendingSettlements()
+            }
+        }
+
+        try {
+            connectivity.registerDefaultNetworkCallback(callback)
+            networkCallback = callback
+        } catch (exception: Exception) {
+            Log.w(TAG, "Couldn't watch connectivity for settlement retries", exception)
+        }
+    }
+
+    /** Applies any results or rewards that couldn't be applied earlier. */
+    fun retryPendingSettlements() {
+        viewModelScope.launch {
+            try {
+                settlements.processPending()
+            } catch (exception: Exception) {
+                Log.w(TAG, "Pending settlement retry failed", exception)
+            }
+        }
     }
 
     private fun loadSettings() {
@@ -210,8 +445,17 @@ class MinesweeperViewModel(
             }
 
             launch {
-                settings.selectedAvatarId.collect { avatarId ->
-                    _selectedAvatar.value = AvatarOption.fromId(avatarId)
+                // The equipped avatar is stored with the other cosmetics so it
+                // follows the account across devices; the older device-only
+                // setting is the fallback. Premium avatars need ownership.
+                combine(
+                    storeDataStore.equippedAvatarId,
+                    settings.selectedAvatarId,
+                    storeDataStore.ownedItemIds
+                ) { equipped, legacy, owned ->
+                    AvatarOption.resolve(equipped ?: legacy, owned)
+                }.collect { avatar ->
+                    _selectedAvatar.value = avatar
                 }
             }
 
@@ -275,64 +519,120 @@ class MinesweeperViewModel(
     }
 
     fun setAvatar(avatar: AvatarOption) {
+        if (!avatar.isUsableWith(_ownedStoreItemIds.value)) {
+            _redeemResultMessage.value = "Buy this avatar in the Store first."
+            return
+        }
+
         _selectedAvatar.value = avatar
         viewModelScope.launch {
             settings.setSelectedAvatarId(avatar.id)
+            try {
+                storeDataStore.equipAvatar(avatar.id)
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't save the avatar to the account", exception)
+            }
         }
     }
 
+    /**
+     * Buys [item] if needed (charge and ownership together, exactly once),
+     * then applies it. Owned items are applied for free.
+     */
     fun purchaseOrEquipStoreItem(item: StoreItem) {
+        if (_isPurchasing.value) return
+        _isPurchasing.value = true
+
         viewModelScope.launch {
-            val owned = try {
-                item.price == 0 || storeDataStore.isOwned(item.id)
-            } catch (_: Exception) {
-                _redeemResultMessage.value =
-                    "Couldn't reach the store. Check your connection and try again."
-                return@launch
-            }
+            try {
+                val owned = item.price <= 0 || item.id in _ownedStoreItemIds.value
 
-            if (!owned) {
-                val result = try {
-                    wallet.spendDiamonds(item.price)
-                } catch (_: Exception) {
-                    _redeemResultMessage.value =
-                        "Couldn't complete the purchase. Check your connection and try again."
-                    return@launch
-                }
+                if (!owned) {
+                    when (val result = storePurchases.purchase(item.id, item.price)) {
+                        StorePurchaseResult.Purchased ->
+                            _redeemResultMessage.value = "${item.name} is yours!"
 
-                if (!result.success) {
-                    _redeemResultMessage.value =
-                        "You need ${item.price} diamonds to buy ${item.name}."
-                    return@launch
+                        StorePurchaseResult.AlreadyOwned -> Unit
+
+                        is StorePurchaseResult.InsufficientGems -> {
+                            _redeemResultMessage.value =
+                                "You need ${result.gemsShort} more Gems to buy ${item.name}."
+                            return@launch
+                        }
+                    }
                 }
 
                 try {
-                    storeDataStore.addOwnedItem(item.id)
-                } catch (_: Exception) {
-                    runCatching { wallet.addDiamonds(item.price) }
+                    equip(item)
+                } catch (exception: Exception) {
+                    Log.w(TAG, "Couldn't apply ${item.id}", exception)
                     _redeemResultMessage.value =
-                        "Couldn't complete the purchase. Your diamonds were not charged."
-                    return@launch
+                        "${item.name} is yours, but couldn't be applied. Tap it again."
                 }
-            }
-
-            try {
-                when (item) {
-                    is com.genoma.mines.store.domain.BoardThemeItem ->
-                        storeDataStore.equipBoardTheme(item.id)
-
-                    is com.genoma.mines.store.domain.CellSkinItem ->
-                        storeDataStore.equipCellSkin(item.id)
-
-                    is com.genoma.mines.store.domain.AvatarStoreItem -> {
-                        // Avatar artwork is not yet mapped to AvatarOption.
-                    }
-                }
-            } catch (_: Exception) {
+            } catch (exception: Exception) {
+                Log.w(TAG, "Purchase of ${item.id} failed", exception)
                 _redeemResultMessage.value =
-                    "${item.name} is yours, but couldn't be applied. Tap it again."
+                    "Couldn't complete the purchase. Check your connection and try again."
+            } finally {
+                _isPurchasing.value = false
             }
         }
+    }
+
+    private suspend fun equip(item: StoreItem) {
+        when (item) {
+            is BoardThemeItem -> storeDataStore.equipBoardTheme(item.id)
+            is CellSkinItem -> storeDataStore.equipCellSkin(item.id)
+            is AvatarStoreItem -> AvatarOption.forStoreItem(item.id)?.let { avatar ->
+                _selectedAvatar.value = avatar
+                settings.setSelectedAvatarId(avatar.id)
+                storeDataStore.equipAvatar(avatar.id)
+            }
+        }
+    }
+
+    /**
+     * Unequips [item], returning to the default for its slot. Ownership is
+     * never removed and nothing is charged (plan §1.6).
+     */
+    fun unequipStoreItem(item: StoreItem) {
+        viewModelScope.launch {
+            try {
+                when (item) {
+                    is BoardThemeItem ->
+                        storeDataStore.equipBoardTheme(StoreCatalog.DEFAULT_BOARD_THEME_ID)
+
+                    is CellSkinItem -> storeDataStore.unequipCellSkin()
+
+                    is AvatarStoreItem -> resetAvatar()
+                }
+                _redeemResultMessage.value = "${item.name} unequipped. You still own it."
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't unequip ${item.id}", exception)
+                _redeemResultMessage.value = "Couldn't unequip ${item.name}. Please try again."
+            }
+        }
+    }
+
+    /** Resets the board theme, cell skin and avatar to the defaults. Owned items stay owned. */
+    fun resetCosmeticsToDefault() {
+        viewModelScope.launch {
+            try {
+                storeDataStore.equipBoardTheme(StoreCatalog.DEFAULT_BOARD_THEME_ID)
+                storeDataStore.unequipCellSkin()
+                resetAvatar()
+                _redeemResultMessage.value = "Default look restored. You keep everything you own."
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't reset cosmetics", exception)
+                _redeemResultMessage.value = "Couldn't reset your look. Please try again."
+            }
+        }
+    }
+
+    private suspend fun resetAvatar() {
+        _selectedAvatar.value = AvatarOption.Default
+        settings.setSelectedAvatarId(AvatarOption.Default.id)
+        storeDataStore.equipAvatar(AvatarOption.Default.id)
     }
 
     /**
@@ -343,6 +643,12 @@ class MinesweeperViewModel(
      */
     fun startGame(difficulty: Difficulty) {
         if (startGameJob?.isActive == true) return
+
+        // Maintenance blocks new games only; a game in progress is never interrupted.
+        if (remoteConfig.maintenanceMode) {
+            _redeemResultMessage.value = remoteConfig.maintenanceMessage
+            return
+        }
 
         startGameJob = viewModelScope.launch {
             try {
@@ -373,9 +679,15 @@ class MinesweeperViewModel(
         timerJob?.cancel()
 
         game = MinesweeperGame(difficulty)
+        gameId = UUID.randomUUID().toString()
+        gameRules = remoteConfig.toEconomyRules()
         gameResultSaved = false
         _winAdBonusClaimed.value = false
         _winAdBonusClaimInProgress.value = false
+        // Stage 3E: the optional ad can at most double the base win reward, so
+        // with defaults a win pays at most 50 + 50 Coins (80 net of the entry fee).
+        _winAdBonusOffer.value = minOf(gameRules.winAdBonus, gameRules.winRewardFor(difficulty))
+            .takeIf { gameRules.isWinAdBonusAvailable && it > 0 }
         _lastScore.value = null
         _isNewBestTime.value = false
         _previousBestSeconds.value = null
@@ -536,11 +848,15 @@ class MinesweeperViewModel(
     /**
      * Processes a completed result once.
      *
-     * The fixed game fee is charged for both wins and losses.
-     * The win reward is then granted separately and is not multiplied
-     * by the fee or reduced by reward multipliers.
+     * The entry fee is charged on every finished game, win or loss:
+     * - Win: entry fee, then the win reward (defaults: net +30 Coins). No Life lost.
+     * - Loss: entry fee and exactly one Life (defaults: -20 Coins, -1 Life).
      *
-     * A loss also consumes one Life. A win does not consume or refund Lives.
+     * The values come from the rules captured when the game started, so a
+     * Remote Config change mid-game never alters this game's payout. The
+     * wallet change is a settlement with the idempotency key `game-<id>`,
+     * applied exactly once and retried later if offline. Saving the game
+     * record never depends on the wallet step succeeding.
      */
     private fun completeLevel(
         state: GameState,
@@ -573,47 +889,58 @@ class MinesweeperViewModel(
             durationSeconds = state.elapsedSeconds.toLong()
         )
 
+        val isWin = result == GameResultType.WIN
+        val settlement = PendingSettlement(
+            id = "game-$gameId",
+            owner = settlements.currentOwner(),
+            type = if (isWin) WalletTransactionType.GAME_WIN else WalletTransactionType.GAME_LOSS,
+            plan = GameSettlementRules.forGame(
+                outcome = if (isWin) GameOutcome.WIN else GameOutcome.LOSS,
+                winReward = gameRules.winRewardFor(state.difficulty),
+                entryFee = gameRules.entryFee
+            ),
+            createdAtMillis = gameResult.createdAt
+        )
+
         viewModelScope.launch {
-            // Apply the fee and outcome reward/penalty before saving the result.
-            try {
-                val fee = remoteConfig.lossCoinFee.coerceAtLeast(0)
-
-                if (fee > 0) {
-                    val payment = wallet.spendCoins(fee)
-
-                    if (!payment.success) {
-                        _redeemResultMessage.value =
-                            payment.message.ifBlank {
-                                "You couldn't pay the game fee."
-                            }
-                        return@launch
-                    }
-                }
-
-                if (result == GameResultType.WIN) {
-                    val reward = when (state.difficulty) {
-                        Difficulty.EASY -> remoteConfig.easyWinReward
-                        Difficulty.MEDIUM -> remoteConfig.mediumWinReward
-                        Difficulty.HARD -> remoteConfig.hardWinReward
-                    }.coerceAtLeast(0)
-
-                    if (reward > 0) {
-                        wallet.addCoins(reward)
-                    }
-                } else {
-                    val consumed = lives.consumeHeart()
-
-                    if (!consumed) {
-                        _redeemResultMessage.value =
-                            "You lost, but no Life was available to deduct."
-                    }
-                }
-            } catch (_: Exception) {
-                _redeemResultMessage.value =
-                    "Couldn't apply the game fee or reward. Check your connection."
-                return@launch
+            val outcome = try {
+                settlements.submit(settlement)
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't queue settlement ${settlement.id}", exception)
+                null
             }
 
+            when (outcome) {
+                SettlementResult.Queued -> _redeemResultMessage.value =
+                    if (isWin) {
+                        "You're offline. Your win reward will be added when you reconnect."
+                    } else {
+                        "You're offline. Your Coins and Lives will update when you reconnect."
+                    }
+
+                null -> _redeemResultMessage.value =
+                    "Couldn't update your wallet. Please try again."
+
+                else -> Unit
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                recordResultAndCelebrate(state, result, score, gameResult)
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't record game history", exception)
+            }
+        }
+    }
+
+    private suspend fun recordResultAndCelebrate(
+        state: GameState,
+        result: GameResultType,
+        score: Int,
+        gameResult: GameResult
+    ) {
+        run {
             val historyBeforeThisGame = gameRepository.getGameHistory()
 
             if (result == GameResultType.WIN) {
@@ -645,8 +972,6 @@ class MinesweeperViewModel(
             val achievedTiersBefore =
                 AchievementCalculator.calculate(historyBeforeThisGame)
                     .associate { it.id to it.achievedTier }
-
-            gameRepository.saveGameResult(gameResult)
 
             val historyAfterThisGame =
                 historyBeforeThisGame + GameHistoryItem(
@@ -708,6 +1033,8 @@ class MinesweeperViewModel(
                 _celebrationEvents.value =
                     _celebrationEvents.value + newCelebrations
             }
+
+            gameRepository.saveGameResult(gameResult)
         }
     }
 
@@ -778,25 +1105,48 @@ class MinesweeperViewModel(
         _feedbackSubmitted.value = false
     }
 
+    private val conversionLimit: Int
+        get() = remoteConfig.conversionLimitDaily
+
     fun refreshRedeemStatus() {
-        viewModelScope.launch {
-            _redeemStatus.value = wallet.getRedeemStatus()
+        viewModelScope.launch { loadRedeemStatus() }
+    }
+
+    private suspend fun loadRedeemStatus() {
+        try {
+            _redeemStatus.value = wallet.getRedeemStatus(conversionLimit)
+        } catch (exception: Exception) {
+            // Keep the last known status; the Store stays usable offline.
+            Log.w(TAG, "Couldn't load conversion status", exception)
         }
     }
 
-    fun redeemDiamond() {
-        viewModelScope.launch {
-            val result = wallet.redeemDiamond()
-            _redeemResultMessage.value = result.message
-            _redeemStatus.value = wallet.getRedeemStatus()
-        }
-    }
+    /** Converts 500 Coins into 1 Gem. */
+    fun redeemDiamond() = convert(ConversionDirection.COINS_TO_GEMS)
 
-    fun convertGemToCoins() {
+    /** Converts 1 Gem into 500 Coins. */
+    fun convertGemToCoins() = convert(ConversionDirection.GEMS_TO_COINS)
+
+    private fun convert(direction: ConversionDirection) {
+        if (_isConverting.value) return
+        _isConverting.value = true
+
+        // One id per tap: a retried or duplicated request can't convert twice.
+        val requestId = "convert-${UUID.randomUUID()}"
+
         viewModelScope.launch {
-            val result = wallet.convertGemToCoins()
-            _redeemResultMessage.value = result.message
-            _redeemStatus.value = wallet.getRedeemStatus()
+            try {
+                val result = wallet.convert(direction, conversionLimit, requestId)
+                _redeemResultMessage.value = result.message
+            } catch (exception: Exception) {
+                Log.w(TAG, "Conversion failed", exception)
+                _redeemResultMessage.value =
+                    "Couldn't convert right now. Check your connection and try again."
+            } finally {
+                _isConverting.value = false
+            }
+
+            loadRedeemStatus()
         }
     }
 
@@ -814,45 +1164,28 @@ class MinesweeperViewModel(
         _isRefillingHearts.value = true
 
         viewModelScope.launch {
-            var cost = 0
-
             try {
-                val status = lives.getStatus()
+                when (val result = heartRefills.refill()) {
+                    HeartRefillResult.AlreadyFull ->
+                        _redeemResultMessage.value = "Your hearts are already full."
 
-                if (status.isFull) {
-                    _redeemResultMessage.value =
-                        "Your hearts are already full."
-                    return@launch
-                }
+                    is HeartRefillResult.InsufficientGems ->
+                        _redeemResultMessage.value =
+                            "You need ${result.cost} Gems to refill ${result.missingHearts} " +
+                                    if (result.missingHearts == 1) "heart." else "hearts."
 
-                val missing = status.maxHearts - status.hearts
-                cost = LifeRules.refillCost(status.hearts)
-
-                val payment = wallet.spendDiamonds(cost)
-
-                if (!payment.success) {
-                    _redeemResultMessage.value =
-                        "You need $cost diamonds to refill $missing " +
-                                if (missing == 1) "heart." else "hearts."
-                    return@launch
-                }
-
-                try {
-                    lives.refillHearts()
-                } catch (e: Exception) {
-                    wallet.addDiamonds(cost)
-                    throw e
-                }
-
-                _redeemResultMessage.value =
-                    if (missing == 1) {
-                        "1 heart refilled!"
-                    } else {
-                        "$missing hearts refilled!"
+                    is HeartRefillResult.Refilled -> {
+                        _redeemResultMessage.value =
+                            if (result.heartsAdded == 1) {
+                                "1 heart refilled!"
+                            } else {
+                                "${result.heartsAdded} hearts refilled!"
+                            }
+                        _showHeartsDialog.value = false
                     }
-
-                _showHeartsDialog.value = false
-            } catch (_: Exception) {
+                }
+            } catch (exception: Exception) {
+                Log.w(TAG, "Heart refill failed", exception)
                 _redeemResultMessage.value =
                     "Couldn't refill hearts. Check your connection and try again."
             } finally {
@@ -862,34 +1195,191 @@ class MinesweeperViewModel(
     }
 
     /**
-     * Grants the optional post-win ad bonus only after the ad SDK reports
-     * that the rewarded action was earned.
-     *
-     * This client-side guard prevents accidental repeated taps in one game.
-     * Production wallet integrity must also be enforced server-side.
+     * Returns the bonus offer for the game that was just won, or null when
+     * no bonus applies. Take the ticket before showing the ad and pass it to
+     * [claimWinAdBonus], so the claim is tied to that game and amount even if
+     * Remote Config changes while the ad plays.
      */
-    fun claimWinAdBonus() {
-        val state = _gameState.value ?: return
-        val amount = remoteConfig.rewardedAdBonus
+    fun winAdBonusTicket(): WinBonusTicket? {
+        val state = _gameState.value ?: return null
+        val amount = _winAdBonusOffer.value ?: return null
 
-        if (state.status != GameStatus.WON) return
-        if (!remoteConfig.isWinAdBonusAvailable || amount <= 0) return
-        if (_winAdBonusClaimed.value || _winAdBonusClaimInProgress.value) return
+        if (state.status != GameStatus.WON) return null
+        if (_winAdBonusClaimed.value || _winAdBonusClaimInProgress.value) return null
+        if (!winBonusAdEligible.value) {
+            _redeemResultMessage.value = "You've reached today's bonus ad limit."
+            return null
+        }
+
+        return WinBonusTicket(gameId = gameId, amount = amount)
+    }
+
+    /**
+     * Grants the optional post-win ad bonus. Call only from the ad SDK's
+     * earned-reward callback.
+     *
+     * The settlement key `winbonus-<gameId>` makes the claim idempotent:
+     * duplicate callbacks or retries never pay twice. Production wallet
+     * integrity is enforced server-side when the server economy is enabled.
+     */
+    fun claimWinAdBonus(ticket: WinBonusTicket) {
+        if (ticket.amount <= 0) return
+        if (_winAdBonusClaimInProgress.value) return
 
         _winAdBonusClaimInProgress.value = true
 
+        val settlement = PendingSettlement(
+            id = "winbonus-${ticket.gameId}",
+            owner = settlements.currentOwner(),
+            type = WalletTransactionType.WIN_AD_BONUS,
+            plan = GameSettlementRules.forWinAdBonus(ticket.amount),
+            createdAtMillis = System.currentTimeMillis()
+        )
+
         viewModelScope.launch {
             try {
-                wallet.addCoins(amount)
-                _winAdBonusClaimed.value = true
-                _redeemResultMessage.value = "+$amount bonus Coins added!"
-            } catch (_: Exception) {
+                adUsageStore.recordRewarded(RewardedAdPlacement.WIN_BONUS, settlement.createdAtMillis)
+                val outcome = settlements.submit(settlement)
+                if (ticket.gameId == gameId) _winAdBonusClaimed.value = true
+
+                _redeemResultMessage.value = when (outcome) {
+                    SettlementResult.Applied -> "+${ticket.amount} bonus Coins added!"
+                    SettlementResult.AlreadyApplied -> "Bonus already added."
+                    SettlementResult.Queued ->
+                        "Bonus saved. +${ticket.amount} Coins will be added when you reconnect."
+                }
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't save the win bonus", exception)
                 _redeemResultMessage.value =
                     "Couldn't add the bonus Coins. Please try again."
             } finally {
                 _winAdBonusClaimInProgress.value = false
             }
         }
+    }
+
+    /**
+     * Returns a claim id when the Life recovery ad may be shown now, or null.
+     * Pass the id to [claimLifeRecovery] from the earned-reward callback.
+     */
+    fun lifeRecoveryClaimId(): String? {
+        if (_lifeRecoveryInProgress.value) return null
+        if (lifeRecoveryAd.value != AdEligibility.Eligible) return null
+        return "liferecovery-${UUID.randomUUID()}"
+    }
+
+    /**
+     * Recovers exactly one Life (capped at the maximum). Call only from the
+     * ad SDK's earned-reward callback. The claim id makes it idempotent.
+     */
+    fun claimLifeRecovery(claimId: String) {
+        if (_lifeRecoveryInProgress.value) return
+        _lifeRecoveryInProgress.value = true
+
+        val settlement = PendingSettlement(
+            id = claimId,
+            owner = settlements.currentOwner(),
+            type = WalletTransactionType.LIFE_RECOVERY_AD,
+            plan = SettlementPlan(lifeCredit = 1),
+            createdAtMillis = System.currentTimeMillis()
+        )
+
+        viewModelScope.launch {
+            try {
+                adUsageStore.recordRewarded(RewardedAdPlacement.LIFE_RECOVERY, settlement.createdAtMillis)
+                _redeemResultMessage.value = when (settlements.submit(settlement)) {
+                    SettlementResult.Applied -> "1 Life recovered!"
+                    SettlementResult.AlreadyApplied -> "Life already recovered."
+                    SettlementResult.Queued -> "Life saved. It will be added when you reconnect."
+                }
+            } catch (exception: Exception) {
+                Log.w(TAG, "Couldn't recover a Life", exception)
+                _redeemResultMessage.value = "Couldn't recover a Life. Please try again."
+            } finally {
+                _lifeRecoveryInProgress.value = false
+            }
+        }
+    }
+
+    fun openLuckSpin() {
+        if (luckSpinEligibility.value == null) return
+        _luckSpinResult.value = null
+        _luckSpinOpen.value = true
+    }
+
+    fun closeLuckSpin() {
+        if (_luckSpinBusy.value) return
+        _luckSpinOpen.value = false
+        _luckSpinResult.value = null
+    }
+
+    /** Returns a claim id when a spin may start now, or null. */
+    fun luckSpinClaimId(): String? {
+        if (_luckSpinBusy.value) return null
+        if (luckSpinEligibility.value != AdEligibility.Eligible) return null
+        return "luckspin-${UUID.randomUUID()}"
+    }
+
+    /**
+     * Selects and credits one prize after the ad's earned-reward callback.
+     *
+     * The same slot index drives the wheel animation and the credited
+     * amount, so what the player sees is what they get. With the server
+     * economy enabled, the server chooses and credits the prize.
+     */
+    fun claimLuckSpin(claimId: String) {
+        if (_luckSpinBusy.value) return
+        _luckSpinBusy.value = true
+
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                adUsageStore.recordRewarded(RewardedAdPlacement.LUCK_SPIN, now)
+
+                val table = luckSpinPrizes.value
+                val index = LuckPrizeTable.selectIndex(table)
+                    ?: throw IllegalStateException("Luck Spin has no prizes")
+                val plan = table[index].toSettlementPlan()
+
+                if (!plan.isEmpty) {
+                    settlements.submit(
+                        PendingSettlement(
+                            id = claimId,
+                            owner = settlements.currentOwner(),
+                            type = WalletTransactionType.LUCK_SPIN,
+                            plan = plan,
+                            createdAtMillis = now
+                        )
+                    )
+                }
+
+                val prize = table[index]
+                luckSpinNonce++
+                _luckSpinResult.value = LuckSpinResultUi(
+                    spinNonce = luckSpinNonce,
+                    prizes = table,
+                    prizeIndex = index,
+                    message = when (prize.type) {
+                        LuckPrizeType.COINS -> "You won ${prize.amount} Coins!"
+                        LuckPrizeType.GEMS ->
+                            if (prize.amount == 1) "You won 1 Gem!" else "You won ${prize.amount} Gems!"
+
+                        LuckPrizeType.NONE -> "No reward this time. Better luck on your next spin!"
+                    }
+                )
+            } catch (exception: Exception) {
+                Log.w(TAG, "Luck Spin failed", exception)
+                _redeemResultMessage.value =
+                    "Couldn't complete the spin. Check your connection and try again."
+            } finally {
+                _luckSpinBusy.value = false
+            }
+        }
+    }
+
+    private fun formatWait(millis: Long): String {
+        val minutes = ((millis.coerceAtLeast(0) + 59_999) / 60_000).toInt()
+        return if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
     }
 
     fun consumeRedeemResultMessage() {
@@ -899,5 +1389,11 @@ class MinesweeperViewModel(
     override fun onCleared() {
         timerJob?.cancel()
         feedback.release()
+
+        networkCallback?.let { callback ->
+            val connectivity = getApplication<Application>()
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            runCatching { connectivity?.unregisterNetworkCallback(callback) }
+        }
     }
 }

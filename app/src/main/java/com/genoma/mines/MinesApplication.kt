@@ -1,6 +1,7 @@
 package com.genoma.mines
 
 import android.app.Application
+import com.genoma.mines.ads.AdConsentManager
 import com.genoma.mines.ads.RewardedAdsManager
 import com.genoma.mines.core.remoteconfig.RemoteConfigManager
 import com.google.android.libraries.ads.mobile.sdk.MobileAds
@@ -9,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MinesApplication : Application() {
 
@@ -18,8 +20,13 @@ class MinesApplication : Application() {
     lateinit var rewardedAdsManager: RewardedAdsManager
         private set
 
+    lateinit var adConsentManager: AdConsentManager
+        private set
+
     private val applicationScope =
         CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val adsInitializationStarted = AtomicBoolean(false)
 
     override fun onCreate() {
         super.onCreate()
@@ -28,11 +35,23 @@ class MinesApplication : Application() {
         remoteConfigManager.initialize()
 
         rewardedAdsManager = RewardedAdsManager()
+        adConsentManager = AdConsentManager(this)
 
-        initializeMobileAds()
+        // Consent from a previous session is enough to start straight away;
+        // otherwise MainActivity starts ads once the consent flow completes.
+        if (adConsentManager.canRequestAds.value) {
+            initializeMobileAds()
+        }
     }
 
-    private fun initializeMobileAds() {
+    /**
+     * Initializes the Google Mobile Ads SDK once, and only after UMP says ads
+     * may be requested. Safe to call repeatedly.
+     */
+    fun initializeMobileAds() {
+        if (!adConsentManager.canRequestAds.value) return
+        if (!adsInitializationStarted.compareAndSet(false, true)) return
+
         applicationScope.launch {
             try {
                 MobileAds.initialize(
@@ -44,6 +63,7 @@ class MinesApplication : Application() {
                     rewardedAdsManager.onSdkInitialized()
                 }
             } catch (exception: Exception) {
+                adsInitializationStarted.set(false)
                 rewardedAdsManager.onSdkInitializationFailed(
                     exception.message ?: "Google Mobile Ads initialization failed"
                 )

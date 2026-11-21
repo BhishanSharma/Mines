@@ -5,7 +5,6 @@ import com.genoma.mines.life.domain.LifeStatus
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.Source
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -20,9 +19,20 @@ class FirestoreLifeRepository(
     private val clock: () -> Long = System::currentTimeMillis
 ) {
 
-    private companion object {
+    companion object {
         const val FIELD_HEARTS = "hearts"
         const val FIELD_REGEN_ANCHOR = "heartsRegenAnchor"
+
+        /** Reads hearts from a `users/{uid}` document; missing fields read as full. */
+        fun lifeSnapshotOf(document: DocumentSnapshot?): LifeSnapshot = LifeSnapshot(
+            storedHearts = document?.getLong(FIELD_HEARTS)?.toInt() ?: LifeSnapshot.FULL.storedHearts,
+            regenAnchorMillis = document?.getLong(FIELD_REGEN_ANCHOR) ?: LifeSnapshot.FULL.regenAnchorMillis
+        )
+
+        fun fieldsOf(snapshot: LifeSnapshot): Map<String, Any> = mapOf(
+            FIELD_HEARTS to snapshot.storedHearts,
+            FIELD_REGEN_ANCHOR to snapshot.regenAnchorMillis
+        )
     }
 
     private fun userDoc(uid: String) = firestore.collection("users").document(uid)
@@ -41,7 +51,8 @@ class FirestoreLifeRepository(
     }
 
     suspend fun getStatus(uid: String): LifeStatus {
-        val snapshot = userDoc(uid).get(Source.SERVER).await()
+        // Default source: server when online, local cache when offline.
+        val snapshot = userDoc(uid).get().await()
         return LifeCalculator.status(snapshot.toLifeSnapshot(), clock())
     }
 
@@ -77,13 +88,7 @@ class FirestoreLifeRepository(
         ).await()
     }
 
-    private fun DocumentSnapshot?.toLifeSnapshot() = LifeSnapshot(
-        storedHearts = this?.getLong(FIELD_HEARTS)?.toInt() ?: LifeSnapshot.FULL.storedHearts,
-        regenAnchorMillis = this?.getLong(FIELD_REGEN_ANCHOR) ?: LifeSnapshot.FULL.regenAnchorMillis
-    )
+    private fun DocumentSnapshot?.toLifeSnapshot() = lifeSnapshotOf(this)
 
-    private fun LifeSnapshot.toFields() = mapOf(
-        FIELD_HEARTS to storedHearts,
-        FIELD_REGEN_ANCHOR to regenAnchorMillis
-    )
+    private fun LifeSnapshot.toFields() = fieldsOf(this)
 }

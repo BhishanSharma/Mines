@@ -128,6 +128,8 @@ fun ProfileScreen(
     highlightedDifficultyLabel: String = "",
 
     onAvatarSelected: (AvatarOption) -> Unit = {},
+    // Premium avatars appear in the picker once bought in the Store.
+    ownedStoreItemIds: Set<String> = emptySet(),
     onOpenSettings: () -> Unit = {},
     onKeepGoingClick: () -> Unit = {},
     onDifficultyClick: (String) -> Unit = {},
@@ -417,6 +419,7 @@ fun ProfileScreen(
 
     if (showAvatarPicker) {
         AvatarPickerDialog(
+            ownedStoreItemIds = ownedStoreItemIds,
             currentSelection = selectedAvatar,
             onConfirm = { picked ->
                 onAvatarSelected(picked)
@@ -812,6 +815,7 @@ private fun DifficultyStatRow(
 @Composable
 private fun AvatarPickerDialog(
     currentSelection: AvatarOption,
+    ownedStoreItemIds: Set<String> = emptySet(),
     onConfirm: (AvatarOption) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -840,9 +844,10 @@ private fun AvatarPickerDialog(
                     modifier = Modifier.height(16.dp)
                 )
 
-                // 2 rows x 3 columns, as requested — plain Rows rather
-                // than a lazy grid since the set is small and fixed.
+                // Rows of 3 — plain Rows rather than a lazy grid since the
+                // set is small. Premium avatars show only once owned.
                 AvatarOption.entries
+                    .filter { it.isUsableWith(ownedStoreItemIds) }
                     .chunked(3)
                     .forEach { rowOptions ->
                         Row(

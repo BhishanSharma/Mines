@@ -22,4 +22,6 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.config)
     implementation(libs.kotlinx.coroutines.play.services)
+
+    testImplementation(libs.junit)
 }

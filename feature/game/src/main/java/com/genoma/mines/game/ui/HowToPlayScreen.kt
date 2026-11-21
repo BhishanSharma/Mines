@@ -104,8 +104,8 @@ private val controls = listOf(
 private val heartsAndScoring = listOf(
     HowToPlayStep(
         icon = Icons.Filled.Favorite,
-        title = "Each game costs a heart",
-        description = "Win and you get the heart back. You hold up to 5, and one refills every hour."
+        title = "Losing costs a heart",
+        description = "Each finished game has a small Coin entry fee. A win earns more Coins than the fee and keeps your hearts; a loss costs the fee and 1 heart. You hold up to 5 hearts, and one refills every hour."
     ),
     HowToPlayStep(
         icon = Icons.Filled.Timer,

@@ -1,4 +1,9 @@
 package com.genoma.mines.home.ui
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import com.genoma.mines.core.ui.R as CoreUiR
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -117,7 +122,15 @@ fun HomeScreen(
     bestTimes: Map<Difficulty, String> = emptyMap(),
 
     onOpenTournament: () -> Unit,
-    themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL
+    themeVariant: MinesThemeVariant = MinesThemeVariant.CLASSIC_TEAL,
+
+    // Remote Config: maintenance blocks new games; the banner is informational.
+    maintenanceMessage: String? = null,
+    eventBannerText: String? = null,
+
+    // Luck Spin entry point; null hides it (feature disabled or unavailable).
+    luckSpinStatus: String? = null,
+    onOpenLuckSpin: () -> Unit = {}
 ) {
     ScreenSurface(
         modifier = Modifier.fillMaxSize(),
@@ -338,7 +351,7 @@ fun HomeScreen(
 
                 CurrencyPill(
                     icon = Icons.Filled.Diamond,
-                    contentDescription = "Diamonds",
+                    contentDescription = "Gems",
                     value = gems
                 )
 
@@ -347,6 +360,28 @@ fun HomeScreen(
                     contentDescription = "Coins",
                     value = coins
                 )
+            }
+
+            // ---------- Remote notices ----------
+            if (maintenanceMessage != null) {
+                Spacer(modifier = Modifier.height(Spacing.optionGap))
+                HomeNoticeCard(
+                    title = "Maintenance",
+                    message = maintenanceMessage,
+                    isWarning = true
+                )
+            } else if (!eventBannerText.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(Spacing.optionGap))
+                HomeNoticeCard(
+                    title = "Event",
+                    message = eventBannerText,
+                    isWarning = false
+                )
+            }
+
+            if (luckSpinStatus != null) {
+                Spacer(modifier = Modifier.height(Spacing.optionGap))
+                LuckSpinEntry(status = luckSpinStatus, onClick = onOpenLuckSpin)
             }
 
             // ---------- Hero: copy on the left, illustration on the right ----------
@@ -477,6 +512,7 @@ fun HomeScreen(
             // ---------- Start game ----------
             StartGameButton(
                 hasHearts = lifeStatus.hasHearts,
+                underMaintenance = maintenanceMessage != null,
                 onStartGame = onStartGame,
                 onRefillHearts = onHeartsClick
             )
@@ -486,24 +522,26 @@ fun HomeScreen(
 
 
 /**
- * Primary call to action. Shows the heart a game costs, and with no hearts
- * left turns into a refill button instead of a Start that can't start.
+ * Primary call to action. With no hearts left it turns into a refill button
+ * instead of a Start that can't start. A Life is only deducted after a
+ * confirmed loss, so the button never shows a "-1 Life" cost (plan §1.3).
  */
 @Composable
 private fun StartGameButton(
     hasHearts: Boolean,
+    underMaintenance: Boolean,
     onStartGame: () -> Unit,
     onRefillHearts: () -> Unit
 ) {
-    val containerColor = if (hasHearts) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.errorContainer
+    val containerColor = when {
+        underMaintenance -> MaterialTheme.colorScheme.surfaceVariant
+        hasHearts -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.errorContainer
     }
-    val contentColor = if (hasHearts) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onErrorContainer
+    val contentColor = when {
+        underMaintenance -> MaterialTheme.colorScheme.onSurfaceVariant
+        hasHearts -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onErrorContainer
     }
 
     Row(
@@ -513,6 +551,7 @@ private fun StartGameButton(
             .clip(RoundedCornerShape(16.dp))
             .background(containerColor)
             .clickable(
+                enabled = !underMaintenance,
                 role = Role.Button,
                 onClick = if (hasHearts) onStartGame else onRefillHearts
             ),
@@ -521,7 +560,11 @@ private fun StartGameButton(
     ) {
 
         Icon(
-            imageVector = if (hasHearts) Icons.Filled.PlayArrow else Icons.Filled.Favorite,
+            imageVector = when {
+                underMaintenance -> Icons.Filled.Build
+                hasHearts -> Icons.Filled.PlayArrow
+                else -> Icons.Filled.Favorite
+            },
             contentDescription = null,
             tint = contentColor,
             modifier = Modifier.size(20.dp)
@@ -532,44 +575,119 @@ private fun StartGameButton(
         )
 
         Text(
-            text = if (hasHearts) "Start Game" else "Out of hearts · Refill",
+            text = when {
+                underMaintenance -> "Under maintenance"
+                hasHearts -> "Start Game"
+                else -> "Out of hearts · Refill"
+            },
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = contentColor
         )
+    }
+}
 
-        if (hasHearts) {
-            Spacer(
-                modifier = Modifier.width(10.dp)
-            )
+/** Maintenance or event notice driven by Remote Config. */
+@Composable
+private fun HomeNoticeCard(
+    title: String,
+    message: String,
+    isWarning: Boolean
+) {
+    val container = if (isWarning) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer
+    }
+    val content = if (isWarning) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    }
 
-            // Cost chip: every game spends one heart (refunded on a win).
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(contentColor.copy(alpha = 0.18f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "−1",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = contentColor
-                )
-
-                Spacer(
-                    modifier = Modifier.width(3.dp)
-                )
-
-                Icon(
-                    imageVector = Icons.Filled.Favorite,
-                    contentDescription = "heart",
-                    tint = contentColor,
-                    modifier = Modifier.size(14.dp)
-                )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(container)
+            .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
             }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isWarning) Icons.Filled.Build else Icons.Filled.Celebration,
+            contentDescription = null,
+            tint = content,
+            modifier = Modifier.size(20.dp)
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = content
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = content
+            )
         }
+    }
+}
+
+/** Entry point to the Luck Spin rewarded ad. [status] describes availability. */
+@Composable
+private fun LuckSpinEntry(
+    status: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clickable(
+                onClickLabel = "Open Luck Spin",
+                role = Role.Button,
+                onClick = onClick
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Casino,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(22.dp)
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Luck Spin",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSecondaryContainer
+        )
     }
 }
 

@@ -697,26 +697,13 @@ private fun ResultBanner(
                     Text(text = "Home")
                 }
 
-                // Every new game spends a heart, so the button says so.
+                // Starting a game is free; a heart is only lost after a
+                // confirmed loss, so no cost is shown here (plan §1.3).
                 Button(
                     onClick = onReset,
-                    modifier = Modifier
-                        .weight(1.4f)
-                        .semantics { contentDescription = "Play again, costs 1 heart" }
+                    modifier = Modifier.weight(1.4f)
                 ) {
                     Text(text = "Play again")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "−1",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(start = 2.dp)
-                            .size(14.dp)
-                    )
                 }
             }
             if (isWin && showAdBonus && adBonusAmount > 0) {

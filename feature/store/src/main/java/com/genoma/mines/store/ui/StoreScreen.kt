@@ -59,6 +59,11 @@ import com.genoma.mines.store.domain.BoardThemeItem
 import com.genoma.mines.store.domain.CellSkinItem
 import com.genoma.mines.store.data.StoreCatalog
 import com.genoma.mines.store.domain.StoreCategory
+import com.genoma.mines.store.domain.StoreItemStates
+import com.genoma.mines.store.domain.StoreItemState
+import com.genoma.mines.store.domain.StoreItemAction
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.PaddingValues
 import com.genoma.mines.store.domain.StoreItem
 import com.genoma.mines.core.theme.MinesTheme
 
@@ -87,7 +92,15 @@ fun StoreScreen(
     onRedeemClick: () -> Unit = {},
     onConvertGemToCoinsClick: () -> Unit = {},
     onItemClick: (StoreItem) -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    // Store item id of the equipped premium avatar, if any.
+    equippedAvatarStoreItemId: String? = null,
+    // Remote Config featured item (already validated against the catalog).
+    featuredItemId: String? = null,
+    // True while a purchase or conversion is in flight: buttons are disabled.
+    isBusy: Boolean = false,
+    onUnequip: (StoreItem) -> Unit = {},
+    onResetToDefaults: () -> Unit = {}
 ) {
     ScreenSurface(
         modifier = Modifier.fillMaxSize()
@@ -114,7 +127,7 @@ fun StoreScreen(
                 BalancePill(
                     icon = Icons.Filled.Diamond,
                     value = diamondBalance,
-                    contentDescription = "$diamondBalance diamonds"
+                    contentDescription = "$diamondBalance Gems"
                 )
             }
 
@@ -129,7 +142,8 @@ fun StoreScreen(
                 maxRedemptionsPerWindow = maxRedemptionsPerWindow,
                 nextUnlockMillis = nextUnlockMillis,
                 onRedeemClick = onRedeemClick,
-                onConvertGemToCoinsClick = onConvertGemToCoinsClick
+                onConvertGemToCoinsClick = onConvertGemToCoinsClick,
+                busy = isBusy
             )
 
             Spacer(modifier = Modifier.height(StoreSpacing.sectionGap))
@@ -140,7 +154,10 @@ fun StoreScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 StoreCategory.entries.forEach { category ->
-                    val categoryItems = items.filter { it.category == category }
+                    // The featured item leads its category.
+                    val categoryItems = items
+                        .filter { it.category == category }
+                        .sortedByDescending { it.id == featuredItemId }
 
                     if (categoryItems.isNotEmpty()) {
                         Text(
@@ -154,17 +171,26 @@ fun StoreScreen(
 
                         Column(verticalArrangement = Arrangement.spacedBy(StoreSpacing.rowGap)) {
                             categoryItems.forEach { item ->
-                                StoreItemRow(
-                                    item = item,
-                                    owned = item.price == 0 || ownedItemIds.contains(item.id),
+                                val state = StoreItemStates.resolve(
+                                    price = item.price,
+                                    owned = ownedItemIds.contains(item.id),
                                     equipped = when (item) {
                                         is BoardThemeItem -> equippedBoardThemeId == item.id
                                         is CellSkinItem -> equippedCellSkinId == item.id
-                                        is AvatarStoreItem -> false
+                                        is AvatarStoreItem -> equippedAvatarStoreItemId == item.id
                                     },
-                                    canAfford = diamondBalance >= item.price,
-                                    diamondsShort = (item.price - diamondBalance).coerceAtLeast(0),
-                                    onClick = { onItemClick(item) }
+                                    isDefault = item.id == StoreCatalog.DEFAULT_BOARD_THEME_ID,
+                                    canApplyFromStore = true,
+                                    gemBalance = diamondBalance
+                                )
+
+                                StoreItemRow(
+                                    item = item,
+                                    state = state,
+                                    featured = item.id == featuredItemId,
+                                    enabled = !isBusy,
+                                    onClick = { onItemClick(item) },
+                                    onUnequip = { onUnequip(item) }
                                 )
                             }
                         }
@@ -172,6 +198,26 @@ fun StoreScreen(
                         Spacer(modifier = Modifier.height(StoreSpacing.sectionGap))
                     }
                 }
+
+                val customised = equippedBoardThemeId != StoreCatalog.DEFAULT_BOARD_THEME_ID ||
+                        equippedCellSkinId != null || equippedAvatarStoreItemId != null
+
+                // Explicit reset (plan §1.6). Owned items stay owned.
+                TextButton(
+                    onClick = onResetToDefaults,
+                    enabled = customised && !isBusy,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Reset to default look")
+                }
+                Text(
+                    text = "Restores the default theme, cells and avatar. You keep everything you own.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = StoreSpacing.sectionGap)
+                )
             }
         }
     }
@@ -217,7 +263,8 @@ private fun RedeemCard(
     maxRedemptionsPerWindow: Int,
     nextUnlockMillis: Long?,
     onRedeemClick: () -> Unit,
-    onConvertGemToCoinsClick: () -> Unit
+    onConvertGemToCoinsClick: () -> Unit,
+    busy: Boolean = false
 ) {
     val remainingConversions =
         (maxRedemptionsPerWindow - redemptionsUsedToday).coerceAtLeast(0)
@@ -299,7 +346,7 @@ private fun RedeemCard(
 
                 Button(
                     onClick = onRedeemClick,
-                    enabled = canRedeem
+                    enabled = canRedeem && !busy
                 ) {
                     Text("Get 1 Gem")
                 }
@@ -328,7 +375,7 @@ private fun RedeemCard(
 
                 Button(
                     onClick = onConvertGemToCoinsClick,
-                    enabled = canConvertGemToCoins
+                    enabled = canConvertGemToCoins && !busy
                 ) {
                     Text("Get 500 Coins")
                 }
@@ -347,14 +394,15 @@ private fun formatRemaining(unlockAtMillis: Long): String {
 @Composable
 private fun StoreItemRow(
     item: StoreItem,
-    owned: Boolean,
-    equipped: Boolean,
-    canAfford: Boolean,
-    diamondsShort: Int,
-    onClick: () -> Unit
+    state: StoreItemState,
+    featured: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    onUnequip: () -> Unit
 ) {
     Card(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -373,12 +421,27 @@ private fun StoreItemRow(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (featured) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "FEATURED",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.description,
@@ -387,18 +450,22 @@ private fun StoreItemRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (state.canUnequip) {
+                    TextButton(
+                        onClick = onUnequip,
+                        enabled = enabled,
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                    ) {
+                        Text("Unequip", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             PriceBadge(
-                owned = owned,
-                equipped = equipped,
-                price = item.price,
-                canAfford = canAfford,
-                diamondsShort = diamondsShort,
-                // Avatars can't be "applied" from here, only owned.
-                canApply = item !is AvatarStoreItem
+                state = state,
+                price = item.price
             )
         }
     }
@@ -547,27 +614,29 @@ private fun RoboAvatarPreview(modifier: Modifier = Modifier) {
  */
 @Composable
 private fun PriceBadge(
-    owned: Boolean,
-    equipped: Boolean,
-    price: Int,
-    canAfford: Boolean,
-    diamondsShort: Int,
-    canApply: Boolean
+    state: StoreItemState,
+    price: Int
 ) {
-    when {
-        equipped -> StatusChip(
+    when (state.action) {
+        StoreItemAction.APPLIED -> StatusChip(
             text = "Applied",
             container = MaterialTheme.colorScheme.primaryContainer,
             content = MaterialTheme.colorScheme.onPrimaryContainer
         )
 
-        owned -> StatusChip(
-            text = if (canApply) "Apply" else "Owned",
+        StoreItemAction.APPLY -> StatusChip(
+            text = "Apply",
             container = MaterialTheme.colorScheme.surfaceVariant,
-            content = if (canApply) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            content = MaterialTheme.colorScheme.primary
         )
 
-        canAfford -> Row(
+        StoreItemAction.OWNED -> StatusChip(
+            text = "Owned",
+            container = MaterialTheme.colorScheme.surfaceVariant,
+            content = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        StoreItemAction.BUY -> Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
                 .background(MaterialTheme.colorScheme.primary)
@@ -596,7 +665,7 @@ private fun PriceBadge(
             )
         }
 
-        else -> Column(horizontalAlignment = Alignment.End) {
+        StoreItemAction.NEED_MORE_GEMS -> Column(horizontalAlignment = Alignment.End) {
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -620,7 +689,7 @@ private fun PriceBadge(
             }
             Spacer(modifier = Modifier.height(3.dp))
             Text(
-                text = "Need $diamondsShort more",
+                text = "Need ${state.gemsShort} more",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -64,4 +64,22 @@ object LifeCalculator {
     }
 
     fun refill(nowMillis: Long): LifeSnapshot = LifeSnapshot(MAX_HEARTS, nowMillis)
+
+    /**
+     * Applies [lifeDebit] heart deductions and then [lifeCredit] recoveries.
+     *
+     * Deductions stop at zero hearts (a loss with no heart left never goes
+     * negative) and recoveries are capped at [MAX_HEARTS].
+     */
+    fun applyChange(
+        snapshot: LifeSnapshot,
+        nowMillis: Long,
+        lifeDebit: Int,
+        lifeCredit: Int
+    ): LifeSnapshot {
+        var current = normalize(snapshot, nowMillis)
+        repeat(lifeDebit.coerceAtLeast(0)) { current = consume(current, nowMillis) ?: current }
+        repeat(lifeCredit.coerceAtLeast(0)) { current = refund(current, nowMillis) }
+        return current
+    }
 }

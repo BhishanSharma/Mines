@@ -38,6 +38,9 @@ class RewardedAdsManager {
          */
         const val TEST_REWARDED_AD_UNIT_ID =
             "/21775744923/example/rewarded"
+
+        private const val RETRY_BASE_DELAY_MILLIS = 5_000L
+        private const val RETRY_MAX_DELAY_MILLIS = 5 * 60_000L
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -50,6 +53,15 @@ class RewardedAdsManager {
     private var sdkInitialized = false
     private var isLoading = false
     private var rewardedAd: RewardedAd? = null
+
+    // Failed loads are retried with exponential backoff so one failure
+    // (offline at launch, a no-fill) does not disable ads for the session.
+    private var failedLoadAttempts = 0
+    private var retryScheduled = false
+    private val retryLoad = Runnable {
+        retryScheduled = false
+        loadRewardedAdInternal()
+    }
 
     /**
      * Called once the Google Mobile Ads SDK initialization callback completes.
@@ -79,6 +91,12 @@ class RewardedAdsManager {
      */
     fun loadRewardedAd() {
         runOnMain {
+            // An explicit request (for example the win screen appearing)
+            // skips any pending backoff and tries straight away.
+            if (retryScheduled) {
+                mainHandler.removeCallbacks(retryLoad)
+                retryScheduled = false
+            }
             loadRewardedAdInternal()
         }
     }
@@ -103,6 +121,7 @@ class RewardedAdsManager {
                     override fun onAdLoaded(ad: RewardedAd) {
                         runOnMain {
                             isLoading = false
+                            failedLoadAttempts = 0
                             rewardedAd = ad
                             mutableState.value = RewardedAdState.Ready
                         }
@@ -114,6 +133,7 @@ class RewardedAdsManager {
                             rewardedAd = null
                             mutableState.value =
                                 RewardedAdState.Unavailable(adError.message)
+                            scheduleRetry()
                         }
                     }
                 }
@@ -124,7 +144,18 @@ class RewardedAdsManager {
             mutableState.value = RewardedAdState.Unavailable(
                 exception.message ?: "Unable to load rewarded ad"
             )
+            scheduleRetry()
         }
+    }
+
+    private fun scheduleRetry() {
+        if (retryScheduled || !sdkInitialized) return
+
+        val delay = (RETRY_BASE_DELAY_MILLIS shl failedLoadAttempts.coerceAtMost(6))
+            .coerceAtMost(RETRY_MAX_DELAY_MILLIS)
+        failedLoadAttempts++
+        retryScheduled = true
+        mainHandler.postDelayed(retryLoad, delay)
     }
 
     /**
@@ -137,6 +168,8 @@ class RewardedAdsManager {
      * onAdFailed is called if the ad cannot be shown.
      *
      * Returns false immediately when no ad is ready or another ad is showing.
+     * Returns true once the request is handled; a failure while showing is
+     * reported through [onAdFailed] only, so callers show a single message.
      */
     fun showRewardedAd(
         activity: Activity,
@@ -223,7 +256,7 @@ class RewardedAdsManager {
                 onAdFailed(exception.message ?: "Unable to show rewarded ad")
                 loadRewardedAdInternal()
             }
-            false
+            true
         }
     }
 

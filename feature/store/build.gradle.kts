@@ -29,4 +29,6 @@ dependencies {
     api(platform(libs.firebase.bom))
     api(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
+
+    testImplementation(libs.junit)
 }

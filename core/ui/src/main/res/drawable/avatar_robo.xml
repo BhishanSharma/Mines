@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Premium "Robo" avatar sold in the Store (item id: avatar_robo). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+
+    <!-- Backdrop -->
+    <path
+        android:fillColor="#1E3A4C"
+        android:pathData="M32,0 A32,32 0,1 1,32,64 A32,32 0,1 1,32,0 Z" />
+
+    <!-- Antenna -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M31,6 L33,6 L33,14 L31,14 Z" />
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M32,2 A3,3 0,1 1,32,8 A3,3 0,1 1,32,2 Z" />
+
+    <!-- Ears -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M10,26 L15,26 L15,38 L10,38 Z M49,26 L54,26 L54,38 L49,38 Z" />
+
+    <!-- Head -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M20,14 L44,14 C47.3,14 50,16.7 50,20 L50,42 C50,45.3 47.3,48 44,48 L20,48 C16.7,48 14,45.3 14,42 L14,20 C14,16.7 16.7,14 20,14 Z" />
+
+    <!-- Visor -->
+    <path
+        android:fillColor="#263238"
+        android:pathData="M21,21 L43,21 C44.7,21 46,22.3 46,24 L46,32 C46,33.7 44.7,35 43,35 L21,35 C19.3,35 18,33.7 18,32 L18,24 C18,22.3 19.3,21 21,21 Z" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#4DD0E1"
+        android:pathData="M25,24.5 A3.5,3.5 0,1 1,25,31.5 A3.5,3.5 0,1 1,25,24.5 Z M39,24.5 A3.5,3.5 0,1 1,39,31.5 A3.5,3.5 0,1 1,39,24.5 Z" />
+    <path
+        android:fillColor="#E0F7FA"
+        android:pathData="M26,25.5 A1.2,1.2 0,1 1,26,27.9 A1.2,1.2 0,1 1,26,25.5 Z M40,25.5 A1.2,1.2 0,1 1,40,27.9 A1.2,1.2 0,1 1,40,25.5 Z" />
+
+    <!-- Mouth grille -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M23,39 L41,39 L41,44 L23,44 Z" />
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M27,39 L28.5,39 L28.5,44 L27,44 Z M31.25,39 L32.75,39 L32.75,44 L31.25,44 Z M35.5,39 L37,39 L37,44 L35.5,44 Z" />
+
+    <!-- Neck and shoulders -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M27,48 L37,48 L37,53 L27,53 Z" />
+    <path
+        android:fillColor="#3FA9A0"
+        android:pathData="M14,64 L16,57 C17,54 20,53 24,53 L40,53 C44,53 47,54 48,57 L50,64 Z" />
+</vector>

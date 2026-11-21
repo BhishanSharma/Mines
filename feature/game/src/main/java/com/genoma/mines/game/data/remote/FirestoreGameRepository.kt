@@ -149,15 +149,19 @@ class FirestoreGameRepository(
      * rather than risking an oversized commit.
      */
     suspend fun deleteAllUserData(uid: String) {
-        val gamesSnapshot = userDoc(uid)
-            .collection("games")
-            .get()
-            .await()
+        // Game history and the wallet ledger (feature:wallet's
+        // WalletTransactionDocs.COLLECTION) both live under the user.
+        for (subcollection in listOf("games", "walletTransactions")) {
+            val snapshot = userDoc(uid)
+                .collection(subcollection)
+                .get()
+                .await()
 
-        gamesSnapshot.documents.chunked(400).forEach { chunk ->
-            val batch = firestore.batch()
-            chunk.forEach { doc -> batch.delete(doc.reference) }
-            batch.commit().await()
+            snapshot.documents.chunked(400).forEach { chunk ->
+                val batch = firestore.batch()
+                chunk.forEach { doc -> batch.delete(doc.reference) }
+                batch.commit().await()
+            }
         }
 
         userDoc(uid).delete().await()

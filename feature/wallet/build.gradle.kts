@@ -14,6 +14,7 @@ android {
 
 dependencies {
     implementation(project(":core:session"))
+    api(project(":core:economy"))
 
     api(libs.androidx.datastore.preferences)
     api(platform(libs.firebase.bom))

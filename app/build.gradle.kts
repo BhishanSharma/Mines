@@ -44,6 +44,7 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:session"))
     implementation(project(":core:remoteconfig"))
+    implementation(project(":core:economy"))
 
     // Features
     implementation(project(":feature:auth"))
@@ -76,8 +77,9 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.analytics)
 
-    // Google Mobile Ads Next-Gen
+    // Google Mobile Ads Next-Gen + consent (UMP)
     implementation(libs.gma.nextgen)
+    implementation(libs.google.ump)
 
     // Tests
     testImplementation(libs.junit)

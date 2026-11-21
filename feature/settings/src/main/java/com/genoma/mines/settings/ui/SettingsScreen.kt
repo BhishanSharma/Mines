@@ -1,4 +1,6 @@
 package com.genoma.mines.settings.ui
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
@@ -87,7 +89,10 @@ fun SettingsScreen(
     onDeleteAccount: () -> Unit,
     isDeletingAccount: Boolean = false,
     onHowToPlayClick: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    // Shown only where a consent message applies (UMP privacy options).
+    onPrivacyOptionsClick: (() -> Unit)? = null,
+    onWalletHistoryClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val appVersion = getInstalledAppVersion(context)
@@ -313,6 +318,24 @@ fun SettingsScreen(
                     subtitle = "Share your feedback about the app",
                     onClick = onFeedbackClick
                 )
+
+                if (onWalletHistoryClick != null) {
+                    SettingActionRow(
+                        icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                        title = "Wallet history",
+                        subtitle = "Recent Coins, Gems and Lives changes",
+                        onClick = onWalletHistoryClick
+                    )
+                }
+
+                if (onPrivacyOptionsClick != null) {
+                    SettingActionRow(
+                        icon = Icons.Filled.PrivacyTip,
+                        title = "Privacy options",
+                        subtitle = "Review or change your ad consent choices",
+                        onClick = onPrivacyOptionsClick
+                    )
+                }
 
                 // Version
                 SettingInfoRow(

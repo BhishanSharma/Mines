@@ -1,20 +1,34 @@
 package com.genoma.mines.wallet.data
 
+import com.genoma.mines.core.economy.ConversionDirection
+import com.genoma.mines.core.economy.WalletTransaction
 import kotlinx.coroutines.flow.Flow
 
 interface WalletRepository {
     val coins: Flow<Int>
     val diamonds: Flow<Int>
 
+    /** Most recent wallet changes, newest first. */
+    val history: Flow<List<WalletTransaction>>
+
     suspend fun addCoins(amount: Int)
     suspend fun spendCoins(amount: Int): RedeemResult
-    suspend fun getRedeemStatus(): RedeemStatus
 
-    /** Converts 500 Coins into 1 Gem. */
-    suspend fun redeemDiamond(): RedeemResult
+    /** Conversion allowance for today, using the configured [dailyLimit]. */
+    suspend fun getRedeemStatus(dailyLimit: Int): RedeemStatus
 
-    /** Converts 1 Gem into 500 Coins. */
-    suspend fun convertGemToCoins(): RedeemResult
+    /**
+     * Converts between Coins and Gems (500:1) within the shared daily
+     * allowance.
+     *
+     * [requestId] is an idempotency key: repeating a call with the same id
+     * (a double tap, a retry after a timeout) never converts twice.
+     */
+    suspend fun convert(
+        direction: ConversionDirection,
+        dailyLimit: Int,
+        requestId: String
+    ): RedeemResult
 
     suspend fun spendDiamonds(amount: Int): RedeemResult
 

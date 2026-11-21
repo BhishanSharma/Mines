@@ -1,5 +1,10 @@
 package com.genoma.mines
 import com.genoma.mines.ads.RewardedAdState
+import com.genoma.mines.presentation.ui.WalletHistoryScreen
+import com.genoma.mines.life.ui.LifeRecoveryAdUi
+import com.genoma.mines.home.ui.LuckSpinUiState
+import com.genoma.mines.home.ui.LuckSpinDialog
+import com.genoma.mines.core.economy.AdEligibility
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -41,6 +46,7 @@ import com.genoma.mines.wallet.data.remote.FirestoreWalletRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.genoma.mines.game.domain.Difficulty
 import com.genoma.mines.game.domain.GameResultType
+import com.genoma.mines.game.domain.GameStatus
 import com.genoma.mines.game.domain.LevelCalculator
 import com.genoma.mines.core.ui.components.BottomNavItem
 import com.genoma.mines.core.ui.components.BottomNavbar
@@ -90,6 +96,7 @@ private sealed class Screen {
     data class History(val difficulty: Difficulty? = null) : Screen()
     object Achievements : Screen()
     object Feedback : Screen()
+    object WalletHistory : Screen()
     object Celebration : Screen()
 
     object MoreGames : Screen()
@@ -113,6 +120,7 @@ private val ScreenSaver = Saver<Screen, String>(
             is Screen.History -> "History:${screen.difficulty?.name.orEmpty()}"
             Screen.Achievements -> "Achievements"
             Screen.Feedback -> "Feedback"
+            Screen.WalletHistory -> "WalletHistory"
             Screen.Celebration -> "Celebration"
             Screen.MoreGames -> "MoreGames"
             Screen.Store -> "Store"
@@ -134,6 +142,7 @@ private val ScreenSaver = Saver<Screen, String>(
             "History" -> Screen.History(difficulty)
             "Achievements" -> Screen.Achievements
             "Feedback" -> Screen.Feedback
+            "WalletHistory" -> Screen.WalletHistory
             "Celebration" -> Screen.Celebration
             "MoreGames" -> Screen.MoreGames
             "Store" -> Screen.Store
@@ -163,6 +172,12 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
+        // Privacy consent (UMP) before any ad request; ads start once allowed.
+        val app = application as MinesApplication
+        app.adConsentManager.gatherConsent(this) {
+            app.initializeMobileAds()
+        }
+
         setContent {
             val viewModel: MinesweeperViewModel = viewModel()
 
@@ -178,6 +193,13 @@ class MainActivity : ComponentActivity() {
                 MinesweeperApp(viewModel = viewModel)
             }
         }
+    }
+
+    // Returning to the foreground is a good moment to apply anything that
+    // was earned offline. Same default key as `viewModel()` in setContent.
+    override fun onStart() {
+        super.onStart()
+        ViewModelProvider(this)[MinesweeperViewModel::class.java].retryPendingSettlements()
     }
 
     // Stop the clock when the app goes to the background. Same default
@@ -287,6 +309,48 @@ fun MinesweeperApp(
     val rewardedAdState by app.rewardedAdsManager.state.collectAsState()
     val remoteConfig by app.remoteConfigManager.snapshot.collectAsState()
     val winAdBonusClaimed by viewModel.winAdBonusClaimed.collectAsState()
+    val winAdBonusOffer by viewModel.winAdBonusOffer.collectAsState()
+    val winBonusAdEligible by viewModel.winBonusAdEligible.collectAsState()
+    val lifeRecoveryAd by viewModel.lifeRecoveryAd.collectAsState()
+    val lifeRecoveryInProgress by viewModel.lifeRecoveryInProgress.collectAsState()
+    val luckSpinStatus by viewModel.luckSpinStatus.collectAsState()
+    val luckSpinEligibility by viewModel.luckSpinEligibility.collectAsState()
+    val luckSpinOpen by viewModel.luckSpinOpen.collectAsState()
+    val luckSpinBusy by viewModel.luckSpinBusy.collectAsState()
+    val luckSpinResult by viewModel.luckSpinResult.collectAsState()
+    val luckSpinPrizes by viewModel.luckSpinPrizes.collectAsState()
+    val walletHistory by viewModel.walletHistory.collectAsState()
+    val privacyOptionsRequired by app.adConsentManager.privacyOptionsRequired.collectAsState()
+
+    val adReady = rewardedAdState == RewardedAdState.Ready
+    val adBusy = rewardedAdState == RewardedAdState.Loading ||
+            rewardedAdState == RewardedAdState.Showing ||
+            rewardedAdState == RewardedAdState.Initializing
+
+    // One place that shows a rewarded ad and reports failures once.
+    fun showRewarded(onEarned: () -> Unit) {
+        val shown = app.rewardedAdsManager.showRewardedAd(
+            activity = activity,
+            onRewardEarned = onEarned,
+            onAdFailed = { error ->
+                Toast.makeText(context, "Ad unavailable: $error", Toast.LENGTH_SHORT).show()
+            }
+        )
+        if (!shown) {
+            Toast.makeText(context, "Rewarded ad isn't ready yet.", Toast.LENGTH_SHORT).show()
+            app.rewardedAdsManager.loadRewardedAd()
+        }
+    }
+
+    // Ask for a fresh ad as soon as a win screen with a bonus offer appears,
+    // instead of waiting for the background retry.
+    LaunchedEffect(gameState?.status, winAdBonusOffer, rewardedAdState) {
+        if (gameState?.status == GameStatus.WON && winAdBonusOffer != null &&
+            rewardedAdState is RewardedAdState.Unavailable
+        ) {
+            app.rewardedAdsManager.loadRewardedAd()
+        }
+    }
     val winAdBonusClaimInProgress by
     viewModel.winAdBonusClaimInProgress.collectAsState()
     val isNewBestTime by viewModel.isNewBestTime.collectAsState()
@@ -298,6 +362,8 @@ fun MinesweeperApp(
     val redeemStatus by viewModel.redeemStatus.collectAsState()
     val redeemResultMessage by viewModel.redeemResultMessage.collectAsState()
     val ownedStoreItemIds by viewModel.ownedStoreItemIds.collectAsState()
+    val isPurchasing by viewModel.isPurchasing.collectAsState()
+    val isConverting by viewModel.isConverting.collectAsState()
     val equippedBoardThemeId by viewModel.equippedBoardThemeId.collectAsState()
     val equippedCellSkinId by viewModel.equippedCellSkinId.collectAsState()
     val themeVariant = StoreCatalog.boardThemeById(equippedBoardThemeId)?.style?.themeVariant ?: MinesThemeVariant.CLASSIC_TEAL
@@ -496,7 +562,7 @@ fun MinesweeperApp(
                 screen = Screen.Home
             }
 
-            is Screen.Feedback -> {
+            is Screen.Feedback, is Screen.WalletHistory -> {
                 screen = Screen.Settings
             }
 
@@ -616,13 +682,22 @@ fun MinesweeperApp(
                                             // so the wallet doesn't get left behind on this device at sign-in.
                                             val guestCoins = guestWalletStore.coins.first()
                                             val guestDiamonds = guestWalletStore.diamonds.first()
+                                            val guestConversionsToday =
+                                                guestWalletStore.conversionsUsedToday()
 
-                                            if (guestCoins > 0 || guestDiamonds > 0) {
+                                            if (guestCoins > 0 || guestDiamonds > 0 ||
+                                                guestConversionsToday > 0
+                                            ) {
                                                 try {
+                                                    // The migration id makes this idempotent: if
+                                                    // clearing below fails, the next sign-in can't
+                                                    // credit the same guest Coins twice.
                                                     firestoreWalletRepository.migrateGuestWallet(
                                                         uid = result.profile.id,
+                                                        migrationId = guestWalletStore.migrationId(),
                                                         coins = guestCoins,
-                                                        diamonds = guestDiamonds
+                                                        diamonds = guestDiamonds,
+                                                        conversionsUsedToday = guestConversionsToday
                                                     )
                                                     guestWalletStore.clear()
                                                 } catch (_: Exception) {
@@ -638,6 +713,8 @@ fun MinesweeperApp(
                                                 guestStoreDataStore.equippedBoardThemeId.first()
                                             val guestEquippedCellSkinId =
                                                 guestStoreDataStore.equippedCellSkinId.first()
+                                            val guestEquippedAvatarId =
+                                                guestStoreDataStore.equippedAvatarId.first()
 
                                             if (guestOwnedItemIds.isNotEmpty()) {
                                                 try {
@@ -645,7 +722,8 @@ fun MinesweeperApp(
                                                         uid = result.profile.id,
                                                         ownedItemIds = guestOwnedItemIds,
                                                         equippedBoardThemeId = guestEquippedBoardThemeId,
-                                                        equippedCellSkinId = guestEquippedCellSkinId
+                                                        equippedCellSkinId = guestEquippedCellSkinId,
+                                                        equippedAvatarId = guestEquippedAvatarId
                                                     )
                                                     guestStoreDataStore.clear()
                                                 } catch (_: Exception) {
@@ -720,7 +798,13 @@ fun MinesweeperApp(
                         bestTimes = bestSecondsByDifficulty.mapValues { (_, seconds) ->
                             formatBestTime(seconds)
                         },
-                        themeVariant = themeVariant
+                        themeVariant = themeVariant,
+                        maintenanceMessage = remoteConfig.maintenanceMessage
+                            .takeIf { remoteConfig.maintenanceMode },
+                        eventBannerText = remoteConfig.eventBannerText
+                            .takeIf { remoteConfig.isEventBannerVisible },
+                        luckSpinStatus = luckSpinStatus,
+                        onOpenLuckSpin = { viewModel.openLuckSpin() }
                     )
                 }
 
@@ -728,6 +812,12 @@ fun MinesweeperApp(
                 is Screen.Settings -> {
 
                     SettingsScreen(
+                        onWalletHistoryClick = { screen = Screen.WalletHistory },
+                        onPrivacyOptionsClick = if (privacyOptionsRequired) {
+                            { app.adConsentManager.showPrivacyOptions(activity) }
+                        } else {
+                            null
+                        },
                         soundEnabled = soundEnabled,
                         hapticsEnabled = hapticsEnabled,
                         themePreference = themePreference,
@@ -855,6 +945,13 @@ fun MinesweeperApp(
 
 
 
+                is Screen.WalletHistory -> {
+                    WalletHistoryScreen(
+                        transactions = walletHistory,
+                        onBack = { screen = Screen.Settings }
+                    )
+                }
+
                 /*
                  * FEEDBACK
                  */
@@ -961,34 +1058,21 @@ fun MinesweeperApp(
                             previousBestSeconds = previousBestSeconds,
                             boardTheme = equippedBoardTheme?.style,
                             frostCellSkinEquipped = equippedCellSkin?.id == "cellskin_frost",
-                            showWinAdBonus = remoteConfig.isWinAdBonusAvailable,
-                            winAdBonusAmount = remoteConfig.rewardedAdBonus,
+                            // The offer was captured when this game started, so
+                            // a Remote Config change mid-game can't change it.
+                            showWinAdBonus = winAdBonusOffer != null && winBonusAdEligible,
+                            winAdBonusAmount = winAdBonusOffer ?: 0,
                             winAdBonusReady = rewardedAdState == RewardedAdState.Ready,
                             winAdBonusClaimed = winAdBonusClaimed,
                             winAdBonusLoading = winAdBonusClaimInProgress ||
                                     rewardedAdState == RewardedAdState.Loading ||
                                     rewardedAdState == RewardedAdState.Showing,
-                            onWinAdBonusClick = {
-                                val shown = app.rewardedAdsManager.showRewardedAd(
-                                    activity = activity,
-                                    onRewardEarned = {
-                                        viewModel.claimWinAdBonus()
-                                    },
-                                    onAdFailed = { error ->
-                                        Toast.makeText(
-                                            context,
-                                            "Ad unavailable: $error",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                )
+                            onWinAdBonusClick = onWinAdBonusClick@{
+                                val ticket = viewModel.winAdBonusTicket()
+                                    ?: return@onWinAdBonusClick
 
-                                if (!shown) {
-                                    Toast.makeText(
-                                        context,
-                                        "Rewarded ad isn't ready yet.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                showRewarded {
+                                    viewModel.claimWinAdBonus(ticket)
                                 }
                             },
 
@@ -1069,6 +1153,7 @@ fun MinesweeperApp(
                         bestTimes = bestTimesByDifficultyLabel,
                         highlightedDifficultyLabel = bestTimeDifficultyLabel,
                         onAvatarSelected = { avatar -> viewModel.setAvatar(avatar) },
+                        ownedStoreItemIds = ownedStoreItemIds,
                         onOpenSettings = { screen = Screen.Settings },
                         onKeepGoingClick = {
                             selectedBottomNavItem = BottomNavItem.ACHIEVEMENTS
@@ -1084,6 +1169,10 @@ fun MinesweeperApp(
                 }
 
                 is Screen.Store -> {
+                    val storeItems = remember(remoteConfig.newThemeEnabled, ownedStoreItemIds) {
+                        StoreCatalog.visibleItems(remoteConfig.newThemeEnabled, ownedStoreItemIds)
+                    }
+
                     StoreScreen(
                         coinBalance = coins,
                         diamondBalance = diamonds,
@@ -1091,7 +1180,8 @@ fun MinesweeperApp(
                         canConvertGemToCoins =
                             redeemStatus?.canConvertGemToCoins ?: false,
                         redemptionsUsedToday = redeemStatus?.redemptionsUsedToday ?: 0,
-                        maxRedemptionsPerWindow = redeemStatus?.maxRedemptionsPerWindow ?: 2,
+                        maxRedemptionsPerWindow = redeemStatus?.maxRedemptionsPerWindow
+                            ?: remoteConfig.conversionLimitDaily,
                         nextUnlockMillis = redeemStatus?.nextUnlockMillis,
                         onRedeemClick = { viewModel.redeemDiamond() },
                         onConvertGemToCoinsClick = {
@@ -1103,7 +1193,16 @@ fun MinesweeperApp(
                         onItemClick = { item ->
                             viewModel.purchaseOrEquipStoreItem(item)
                         },
-                        onBack = { screen = Screen.Home }
+                        onBack = { screen = Screen.Home },
+                        items = storeItems,
+                        equippedAvatarStoreItemId = selectedAvatar.storeItemId,
+                        featuredItemId = StoreCatalog.featuredItemId(
+                            remoteConfig.storeFeaturedItem,
+                            storeItems
+                        ),
+                        isBusy = isPurchasing || isConverting,
+                        onUnequip = { item -> viewModel.unequipStoreItem(item) },
+                        onResetToDefaults = { viewModel.resetCosmeticsToDefault() }
                     )
                 }
 
@@ -1151,6 +1250,39 @@ fun MinesweeperApp(
                 }
             }
 
+            // Luck Spin (Stage 3F), opened from the Home entry.
+            if (luckSpinOpen) {
+                LuckSpinDialog(
+                    state = LuckSpinUiState(
+                        prizes = luckSpinPrizes,
+                        statusText = when {
+                            luckSpinEligibility != AdEligibility.Eligible ->
+                                luckSpinStatus ?: "Luck Spin is unavailable right now."
+
+                            adReady -> luckSpinStatus ?: ""
+                            adBusy -> "Loading ad…"
+                            else -> "Ad unavailable right now. Try again soon."
+                        },
+                        canSpin = luckSpinEligibility == AdEligibility.Eligible && adReady,
+                        isBusy = luckSpinBusy || rewardedAdState == RewardedAdState.Showing,
+                        result = luckSpinResult
+                    ),
+                    onSpin = {
+                        viewModel.luckSpinClaimId()?.let { claimId ->
+                            showRewarded { viewModel.claimLuckSpin(claimId) }
+                        }
+                    },
+                    onDismiss = { viewModel.closeLuckSpin() }
+                )
+
+                // Ask for an ad as soon as the dialog opens if none is cached.
+                LaunchedEffect(Unit) {
+                    if (rewardedAdState is RewardedAdState.Unavailable) {
+                        app.rewardedAdsManager.loadRewardedAd()
+                    }
+                }
+            }
+
             // Drawn over whichever screen asked for it: Home (tapped the
             // hearts / Start with none left) or Game (Restart with none left).
             if (showHeartsDialog) {
@@ -1168,9 +1300,49 @@ fun MinesweeperApp(
                         if (screen is Screen.Game) viewModel.goBackToHome()
                         selectedBottomNavItem = BottomNavItem.STORE
                         screen = Screen.Store
+                    },
+                    recoveryAd = lifeRecoveryAd?.let { eligibility ->
+                        lifeRecoveryAdUi(
+                            eligibility = eligibility,
+                            adReady = adReady,
+                            adBusy = adBusy,
+                            claiming = lifeRecoveryInProgress
+                        )
+                    },
+                    onWatchRecoveryAd = {
+                        viewModel.lifeRecoveryClaimId()?.let { claimId ->
+                            showRewarded { viewModel.claimLifeRecovery(claimId) }
+                        }
                     }
                 )
             }
         }
     }
+}
+
+/** Label/state for the Hearts dialog's "Watch ad · Recover 1 Life" action. */
+private fun lifeRecoveryAdUi(
+    eligibility: AdEligibility,
+    adReady: Boolean,
+    adBusy: Boolean,
+    claiming: Boolean
+): LifeRecoveryAdUi = when {
+    claiming -> LifeRecoveryAdUi(enabled = false, label = "Recovering…", isLoading = true)
+
+    eligibility is AdEligibility.CoolingDown -> {
+        val minutes = ((eligibility.availableAtMillis - System.currentTimeMillis())
+            .coerceAtLeast(0) + 59_999) / 60_000
+        LifeRecoveryAdUi(enabled = false, label = "Next Life ad in ${minutes}m")
+    }
+
+    eligibility == AdEligibility.DailyCapReached ||
+            eligibility == AdEligibility.TotalDailyCapReached ->
+        LifeRecoveryAdUi(enabled = false, label = "Daily Life ad limit reached")
+
+    eligibility == AdEligibility.Disabled ->
+        LifeRecoveryAdUi(enabled = false, label = "Life ads unavailable")
+
+    adReady -> LifeRecoveryAdUi(enabled = true, label = "Watch ad · Recover 1 Life")
+    adBusy -> LifeRecoveryAdUi(enabled = false, label = "Loading ad…", isLoading = true)
+    else -> LifeRecoveryAdUi(enabled = false, label = "Ad unavailable right now")
 }

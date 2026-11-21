@@ -118,4 +118,36 @@ class LifeCalculatorTest {
         assertEquals(0, LifeCalculator.status(LifeSnapshot(-3, t0), t0).hearts)
         assertEquals(MAX_HEARTS, LifeCalculator.status(LifeSnapshot(99, t0), t0).hearts)
     }
+
+    @Test
+    fun `applyChange deducts one heart for a loss`() {
+        val after = LifeCalculator.applyChange(LifeSnapshot.FULL, t0, lifeDebit = 1, lifeCredit = 0)
+        assertEquals(MAX_HEARTS - 1, LifeCalculator.status(after, t0).hearts)
+    }
+
+    @Test
+    fun `applyChange never goes below zero hearts`() {
+        val after = LifeCalculator.applyChange(LifeSnapshot(0, t0), t0, lifeDebit = 1, lifeCredit = 0)
+        assertEquals(0, LifeCalculator.status(after, t0).hearts)
+    }
+
+    @Test
+    fun `applyChange recovers one heart and never exceeds the maximum`() {
+        val partial = LifeCalculator.applyChange(LifeSnapshot(2, t0), t0, lifeDebit = 0, lifeCredit = 1)
+        assertEquals(3, LifeCalculator.status(partial, t0).hearts)
+
+        val full = LifeCalculator.applyChange(LifeSnapshot.FULL, t0, lifeDebit = 0, lifeCredit = 1)
+        assertEquals(MAX_HEARTS, LifeCalculator.status(full, t0).hearts)
+    }
+
+    @Test
+    fun `applyChange keeps natural regeneration progress`() {
+        // 2 hearts, anchor 30 minutes ago: recovering a heart must not reset the regen clock.
+        val snapshot = LifeSnapshot(2, t0 - 30 * 60_000L)
+        val after = LifeCalculator.applyChange(snapshot, t0, lifeDebit = 0, lifeCredit = 1)
+        val status = LifeCalculator.status(after, t0)
+
+        assertEquals(3, status.hearts)
+        assertEquals(t0 + 30 * 60_000L, status.nextHeartAtMillis)
+    }
 }

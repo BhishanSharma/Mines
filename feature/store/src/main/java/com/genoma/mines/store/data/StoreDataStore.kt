@@ -16,6 +16,7 @@ class StoreDataStore(private val context: Context) : StoreRepository {
         private val OWNED_ITEMS = stringPreferencesKey("owned_item_ids")
         private val EQUIPPED_BOARD_THEME = stringPreferencesKey("equipped_board_theme")
         private val EQUIPPED_CELL_SKIN = stringPreferencesKey("equipped_cell_skin")
+        private val EQUIPPED_AVATAR = stringPreferencesKey("equipped_avatar")
         private const val DEFAULT_BOARD_THEME = "board_classic_teal"
     }
 
@@ -33,6 +34,16 @@ class StoreDataStore(private val context: Context) : StoreRepository {
 
     override val equippedCellSkinId: Flow<String?> = context.storeDataStore.data.map { prefs ->
         prefs[EQUIPPED_CELL_SKIN]
+    }
+
+    override val equippedAvatarId: Flow<String?> = context.storeDataStore.data.map { prefs ->
+        prefs[EQUIPPED_AVATAR]
+    }
+
+    override suspend fun equipAvatar(avatarId: String) {
+        context.storeDataStore.edit { prefs ->
+            prefs[EQUIPPED_AVATAR] = avatarId
+        }
     }
 
     override suspend fun addOwnedItem(itemId: String) {
@@ -79,6 +90,7 @@ class StoreDataStore(private val context: Context) : StoreRepository {
             prefs.remove(OWNED_ITEMS)
             prefs.remove(EQUIPPED_BOARD_THEME)
             prefs.remove(EQUIPPED_CELL_SKIN)
+            prefs.remove(EQUIPPED_AVATAR)
         }
     }
 }

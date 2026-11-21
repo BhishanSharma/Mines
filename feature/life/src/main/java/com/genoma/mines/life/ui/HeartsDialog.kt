@@ -1,4 +1,6 @@
 package com.genoma.mines.life.ui
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material3.OutlinedButton
 import com.genoma.mines.core.theme.HeartRed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,9 +30,17 @@ import com.genoma.mines.core.theme.MinesTheme
 import com.genoma.mines.life.domain.LifeRules
 import com.genoma.mines.life.domain.LifeStatus
 
+/** State of the optional "Watch ad · Recover 1 Life" action (Stage 3D). */
+data class LifeRecoveryAdUi(
+    val enabled: Boolean,
+    val label: String,
+    val isLoading: Boolean = false
+)
+
 /**
- * Shows hearts, the regen countdown, and the diamond refill offer. Opened by
- * tapping the home-screen hearts, or automatically when a game can't start.
+ * Shows hearts, the regen countdown, the Gem refill offer and, when enabled,
+ * a rewarded ad that recovers one heart. Opened by tapping the home-screen
+ * hearts, or automatically when a game can't start.
  */
 @Composable
 fun HeartsDialog(
@@ -42,7 +52,10 @@ fun HeartsDialog(
     // Where to send a player who can't afford a refill (the Store, which
     // has the coin-to-diamond redeem). Null hides the option.
     onGetDiamonds: (() -> Unit)? = null,
-    refillCost: Int = LifeRules.refillCost(status.hearts)
+    refillCost: Int = LifeRules.refillCost(status.hearts),
+    // Null hides the rewarded-ad recovery option (flag off or hearts full).
+    recoveryAd: LifeRecoveryAdUi? = null,
+    onWatchRecoveryAd: () -> Unit = {}
 ) {
     val missingHearts = (status.maxHearts - status.hearts).coerceAtLeast(0)
     val canAfford = diamondBalance >= refillCost
@@ -81,10 +94,10 @@ fun HeartsDialog(
 
                 Text(
                     text = if (nextHeartAt == null) {
-                        "You're ready to play. Losing or quitting a game costs 1 heart."
+                        "You're ready to play. Losing a game costs 1 heart."
                     } else {
                         "Next free heart in ${formatCountdown(nextHeartAt)}.\n" +
-                                "Losing or quitting a game costs 1 heart."
+                                "Losing a game costs 1 heart."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
@@ -93,8 +106,8 @@ fun HeartsDialog(
                 if (!status.isFull) {
                     Text(
                         // "Diamonds" everywhere: this used to say "gems".
-                        text = "You have $diamondBalance diamonds. " +
-                            "${LifeRules.DIAMONDS_PER_HEART} diamonds per heart.",
+                        text = "You have $diamondBalance Gems. " +
+                            "${LifeRules.DIAMONDS_PER_HEART} Gems per heart.",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (canAfford) {
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -102,6 +115,30 @@ fun HeartsDialog(
                             MaterialTheme.colorScheme.error
                         }
                     )
+                }
+
+                if (recoveryAd != null && !status.isFull) {
+                    OutlinedButton(
+                        onClick = onWatchRecoveryAd,
+                        enabled = recoveryAd.enabled && !isRefilling,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (recoveryAd.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.PlayCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(text = recoveryAd.label)
+                    }
                 }
             }
         },
@@ -116,7 +153,7 @@ fun HeartsDialog(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Get diamonds")
+                    Text(text = "Get Gems")
                 }
             } else if (!status.isFull) {
                 Button(
@@ -141,7 +178,7 @@ fun HeartsDialog(
                                 if (missingHearts == 1) "Refill 1 heart for $refillCost"
                                 else "Refill $missingHearts hearts for $refillCost"
                             } else {
-                                "Need $refillCost diamonds"
+                                "Need $refillCost Gems"
                             }
                         )
                     }

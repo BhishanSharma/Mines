@@ -34,7 +34,8 @@ class FirestoreStoreRepository(
                     ownedItemIds = ownedItemIds,
                     equippedBoardThemeId = snapshot?.getString("equippedBoardThemeId")
                         ?: DEFAULT_BOARD_THEME,
-                    equippedCellSkinId = snapshot?.getString("equippedCellSkinId")
+                    equippedCellSkinId = snapshot?.getString("equippedCellSkinId"),
+                    equippedAvatarId = snapshot?.getString("equippedAvatarId")
                 )
             )
         }
@@ -48,6 +49,13 @@ class FirestoreStoreRepository(
         @Suppress("UNCHECKED_CAST")
         val ownedItemIds = snapshot.get("ownedStoreItemIds") as? List<String>
         return ownedItemIds?.contains(itemId) == true
+    }
+
+    suspend fun equipAvatar(uid: String, avatarId: String) {
+        userDoc(uid).set(
+            mapOf("equippedAvatarId" to avatarId),
+            SetOptions.merge()
+        ).await()
     }
 
     suspend fun addOwnedItem(uid: String, itemId: String) {
@@ -90,7 +98,8 @@ class FirestoreStoreRepository(
         uid: String,
         ownedItemIds: Set<String>,
         equippedBoardThemeId: String,
-        equippedCellSkinId: String?
+        equippedCellSkinId: String?,
+        equippedAvatarId: String? = null
     ) {
         if (ownedItemIds.isEmpty()) return
 
@@ -101,6 +110,10 @@ class FirestoreStoreRepository(
 
         if (equippedCellSkinId != null) {
             updates["equippedCellSkinId"] = equippedCellSkinId
+        }
+
+        if (equippedAvatarId != null) {
+            updates["equippedAvatarId"] = equippedAvatarId
         }
 
         userDoc(uid).set(updates, SetOptions.merge()).await()

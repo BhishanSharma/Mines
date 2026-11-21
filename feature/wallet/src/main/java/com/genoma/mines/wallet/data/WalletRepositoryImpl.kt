@@ -1,5 +1,7 @@
 package com.genoma.mines.wallet.data
 
+import com.genoma.mines.core.economy.ConversionDirection
+import com.genoma.mines.core.economy.WalletTransaction
 import com.genoma.mines.session.SessionManager
 import com.genoma.mines.session.UserSession
 import com.genoma.mines.wallet.data.remote.FirestoreWalletRepository
@@ -23,111 +25,67 @@ class WalletRepositoryImpl(
                     firestoreWallet.observeWallet(session.firebaseUid)
 
                 UserSession.Guest ->
-                    combine(
-                        guestWallet.coins,
-                        guestWallet.diamonds
-                    ) { coins, diamonds ->
-                        WalletSnapshot(
-                            coins = coins,
-                            diamonds = diamonds
-                        )
+                    combine(guestWallet.coins, guestWallet.diamonds) { coins, diamonds ->
+                        WalletSnapshot(coins = coins, diamonds = diamonds)
                     }
             }
         }
 
-    override val coins: Flow<Int> =
-        walletSnapshot.map { it.coins }
+    override val coins: Flow<Int> = walletSnapshot.map { it.coins }
 
-    override val diamonds: Flow<Int> =
-        walletSnapshot.map { it.diamonds }
+    override val diamonds: Flow<Int> = walletSnapshot.map { it.diamonds }
+
+    override val history: Flow<List<WalletTransaction>> =
+        sessionManager.sessionFlow.flatMapLatest { session ->
+            when (session) {
+                is UserSession.Authenticated -> firestoreWallet.observeHistory(session.firebaseUid)
+                UserSession.Guest -> guestWallet.history
+            }
+        }
 
     override suspend fun addCoins(amount: Int) {
         when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated ->
-                firestoreWallet.addCoins(
-                    session.firebaseUid,
-                    amount
-                )
-
-            UserSession.Guest ->
-                guestWallet.addCoins(amount)
+            is UserSession.Authenticated -> firestoreWallet.addCoins(session.firebaseUid, amount)
+            UserSession.Guest -> guestWallet.addCoins(amount)
         }
     }
 
-    override suspend fun spendCoins(amount: Int): RedeemResult {
-        return when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated ->
-                firestoreWallet.spendCoins(
-                    session.firebaseUid,
-                    amount
-                )
-
-            UserSession.Guest ->
-                guestWallet.spendCoins(amount)
+    override suspend fun spendCoins(amount: Int): RedeemResult =
+        when (val session = sessionManager.currentSession) {
+            is UserSession.Authenticated -> firestoreWallet.spendCoins(session.firebaseUid, amount)
+            UserSession.Guest -> guestWallet.spendCoins(amount)
         }
-    }
 
     override suspend fun addDiamonds(amount: Int) {
         when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated ->
-                firestoreWallet.addDiamonds(
-                    session.firebaseUid,
-                    amount
-                )
-
-            UserSession.Guest ->
-                guestWallet.addDiamonds(amount)
+            is UserSession.Authenticated -> firestoreWallet.addDiamonds(session.firebaseUid, amount)
+            UserSession.Guest -> guestWallet.addDiamonds(amount)
         }
     }
 
-    override suspend fun getRedeemStatus(): RedeemStatus {
-        return when (val session = sessionManager.currentSession) {
+    override suspend fun getRedeemStatus(dailyLimit: Int): RedeemStatus =
+        when (val session = sessionManager.currentSession) {
             is UserSession.Authenticated ->
-                firestoreWallet.getRedeemStatus(
-                    session.firebaseUid
-                )
+                firestoreWallet.getRedeemStatus(session.firebaseUid, dailyLimit)
 
-            UserSession.Guest ->
-                guestWallet.getRedeemStatus()
+            UserSession.Guest -> guestWallet.getRedeemStatus(dailyLimit)
         }
-    }
 
-    override suspend fun spendDiamonds(
-        amount: Int
-    ): RedeemResult {
-        return when (val session = sessionManager.currentSession) {
+    override suspend fun spendDiamonds(amount: Int): RedeemResult =
+        when (val session = sessionManager.currentSession) {
+            is UserSession.Authenticated -> firestoreWallet.spendDiamonds(session.firebaseUid, amount)
+            UserSession.Guest -> guestWallet.spendDiamonds(amount)
+        }
+
+    override suspend fun convert(
+        direction: ConversionDirection,
+        dailyLimit: Int,
+        requestId: String
+    ): RedeemResult =
+        when (val session = sessionManager.currentSession) {
             is UserSession.Authenticated ->
-                firestoreWallet.spendDiamonds(
-                    session.firebaseUid,
-                    amount
-                )
+                firestoreWallet.convert(session.firebaseUid, direction, dailyLimit, requestId)
 
-            UserSession.Guest ->
-                guestWallet.spendDiamonds(amount)
+            UserSession.Guest -> guestWallet.convert(direction, dailyLimit, requestId)
         }
-    }
-
-    override suspend fun redeemDiamond(): RedeemResult {
-        return when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated ->
-                firestoreWallet.redeemDiamond(
-                    session.firebaseUid
-                )
-
-            UserSession.Guest ->
-                guestWallet.redeemDiamond()
-        }
-    }
-
-    override suspend fun convertGemToCoins(): RedeemResult {
-        return when (val session = sessionManager.currentSession) {
-            is UserSession.Authenticated ->
-                firestoreWallet.convertGemToCoins(
-                    session.firebaseUid
-                )
-
-            UserSession.Guest ->
-                guestWallet.convertGemToCoins()
-        }
-    }
 }

@@ -33,6 +33,7 @@ include(":core:theme")
 include(":core:ui")
 include(":core:session")
 include(":core:remoteconfig")
+include(":core:economy")
 
 // --- Feature modules: one Gradle module per product area / team ---
 include(":feature:auth")

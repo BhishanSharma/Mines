@@ -20,6 +20,7 @@ dependencies {
     api(project(":feature:profile"))
     api(project(":feature:game"))
     api(project(":feature:life"))
+    api(project(":core:economy"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -25,12 +25,14 @@ class StoreRepositoryImpl(
                     combine(
                         guestStore.ownedItemIds,
                         guestStore.equippedBoardThemeId,
-                        guestStore.equippedCellSkinId
-                    ) { ownedItemIds, equippedBoardThemeId, equippedCellSkinId ->
+                        guestStore.equippedCellSkinId,
+                        guestStore.equippedAvatarId
+                    ) { ownedItemIds, equippedBoardThemeId, equippedCellSkinId, equippedAvatarId ->
                         StoreSnapshot(
                             ownedItemIds = ownedItemIds,
                             equippedBoardThemeId = equippedBoardThemeId,
-                            equippedCellSkinId = equippedCellSkinId
+                            equippedCellSkinId = equippedCellSkinId,
+                            equippedAvatarId = equippedAvatarId
                         )
                     }
             }
@@ -44,6 +46,16 @@ class StoreRepositoryImpl(
 
     override val equippedCellSkinId: Flow<String?> =
         storeSnapshot.map { it.equippedCellSkinId }
+
+    override val equippedAvatarId: Flow<String?> =
+        storeSnapshot.map { it.equippedAvatarId }
+
+    override suspend fun equipAvatar(avatarId: String) {
+        when (val session = sessionManager.currentSession) {
+            is UserSession.Authenticated -> firestoreStore.equipAvatar(session.firebaseUid, avatarId)
+            UserSession.Guest -> guestStore.equipAvatar(avatarId)
+        }
+    }
 
     override suspend fun isOwned(itemId: String): Boolean {
         return when (val session = sessionManager.currentSession) {
